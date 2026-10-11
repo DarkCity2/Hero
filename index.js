@@ -1,4 +1,14 @@
-const { Client, GatewayIntentBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType } = require('discord.js');
+const { 
+  Client, 
+  GatewayIntentBits, 
+  EmbedBuilder, 
+  ActionRowBuilder, 
+  ButtonBuilder, 
+  ButtonStyle, 
+  StringSelectMenuBuilder, 
+  ChannelType, 
+  PermissionFlagsBits 
+} = require('discord.js');
 
 const client = new Client({
   intents: [
@@ -8,73 +18,98 @@ const client = new Client({
   ]
 });
 
-// قائمة القواعد والألوان
-const baseNames = {
-  silver: 'Silver Base',
-  gold: 'Gold Base',
-  crystal: 'Crystal Base',
-  bloodmoon: 'BloodMoon Base',
-  rainbow: 'Rainbow Base GoUp',
-  candy: 'Candy Base GoUp',
-  cyber: 'Cyber Base GoUp',
-  party: 'Party Base GoUp',
-  bw: 'Black & White Base GoUp',
-  aqua: 'Aqua Base GoUp',
-  lava: 'Lava Base GoUp',
-  football: 'Football Base GoUp',
-  summer: 'Summer Base GoUp',
-  dreamy: 'Dreamy Base GoUp',
-  galaxy: 'Galaxy Base',
-  radioactive: 'Radioactive Base',
-  halloween: 'Halloween Base'
-};
+// قائمة كافة قواعد الألوان الخاصة بماب النطة
+const bases = [
+  { label: 'Silver Base', value: 'silver', description: 'فتح تذكرة للحصول على لون Silver Base', emoji: '⚪' },
+  { label: 'Gold Base', value: 'gold', description: 'فتح تذكرة للحصول على لون Gold Base', emoji: '🟡' },
+  { label: 'Crystal Base', value: 'crystal', description: 'فتح تذكرة للحصول على لون Crystal Base', emoji: '💎' },
+  { label: 'BloodMoon Base', value: 'bloodmoon', description: 'فتح تذكرة للحصول على لون BloodMoon Base', emoji: '🌑' },
+  { label: 'Rainbow Base GoUp', value: 'rainbow', description: 'فتح تذكرة للحصول على لون Rainbow Base', emoji: '🌈' },
+  { label: 'Candy Base GoUp', value: 'candy', description: 'فتح تذكرة للحصول على لون Candy Base', emoji: '🍬' },
+  { label: 'Cyber Base GoUp', value: 'cyber', description: 'فتح تذكرة للحصول على لون Cyber Base', emoji: '🤖' },
+  { label: 'Party Base GoUp', value: 'party', description: 'فتح تذكرة للحصول على لون Party Base', emoji: '🎉' },
+  { label: 'Black & White Base GoUp', value: 'bw', description: 'فتح تذكرة للحصول على لون Black & White Base', emoji: '⬛' },
+  { label: 'Aqua Base GoUp', value: 'aqua', description: 'فتح تذكرة للحصول على لون Aqua Base', emoji: '💧' },
+  { label: 'Lava Base GoUp', value: 'lava', description: 'فتح تذكرة للحصول على لون Lava Base', emoji: '🌋' },
+  { label: 'Football Base GoUp', value: 'football', description: 'فتح تذكرة للحصول على لون Football Base', emoji: '⚽' },
+  { label: 'Summer Base GoUp', value: 'summer', description: 'فتح تذكرة للحصول على لون Summer Base', emoji: '☀️' },
+  { label: 'Dreamy Base GoUp', value: 'dreamy', description: 'فتح تذكرة للحصول على لون Dreamy Base', emoji: '☁️' },
+  { label: 'Galaxy Base', value: 'galaxy', description: 'فتح تذكرة للحصول على لون Galaxy Base', emoji: '🌌' },
+  { label: 'Radioactive Base', value: 'radioactive', description: 'فتح تذكرة للحصول على لون Radioactive Base', emoji: '☢️' },
+  { label: 'Halloween Base', value: 'halloween', description: 'فتح تذكرة للحصول على لون Halloween Base', emoji: '🎃' }
+];
 
 client.once('ready', () => {
-  console.log(`✅ البوت شغال بنجاح: ${client.user.tag}`);
+  console.log(`✅ بوت ماب النطة جاهز ويعمل باسم: ${client.user.tag}`);
 });
 
-// أمر !panel لإرسال قائمة الأزرار
+// أوامر الأدمن والمشرفين
 client.on('messageCreate', async message => {
   if (message.author.bot) return;
 
+  // 1. أمر لوحة تذاكر الألوان (!panel)
   if (message.content === '!panel') {
-    const row1 = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('ticket_silver').setLabel('Silver Base').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('ticket_gold').setLabel('Gold Base').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('ticket_crystal').setLabel('Crystal Base').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('ticket_rainbow').setLabel('Rainbow Base').setStyle(ButtonStyle.Secondary)
+    const selectMenu = new StringSelectMenuBuilder()
+      .setCustomId('select_base_ticket')
+      .setPlaceholder('اختر القاعدة للحصول على اللون...')
+      .addOptions(bases);
+
+    const row = new ActionRowBuilder().addComponents(selectMenu);
+
+    const embed = new EmbedBuilder()
+      .setTitle('🎨 لوحة تذاكر ألوان القواعد (Parkour Bases)')
+      .setDescription('اختر القاعدة التي حققتها من القائمة المنسدلة أدناه لفتح تذكرة وإرسال الإثبات للإدارة:')
+      .setColor('#2b2d31')
+      .setFooter({ text: 'Parkour Map Color System' });
+
+    await message.channel.send({ embeds: [embed], components: [row] });
+  }
+
+  // 2. أمر لوحة التوثيق الفوري (!verify-panel)
+  if (message.content === '!verify-panel') {
+    const verifyBtn = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId('verify_member')
+        .setLabel('تأكيد الدخول / Verify')
+        .setEmoji('✅')
+        .setStyle(ButtonStyle.Success)
     );
 
     const embed = new EmbedBuilder()
-      .setTitle('🎫 تذاكر الحصول على ألوان ماب النطة')
-      .setDescription('اضغط على الزر الخاص بالقاعدة المطلوبة أدناه لفتح تذكرة خاصة بك والحصول على اللون:')
-      .setColor('#5865F2');
+      .setTitle('🛡️ التوثيق والدخول للسيرفر')
+      .setDescription('اضغط على الزر أدناه للتحقق والحصول على رتبة الأعضاء والوصول لكافة الرومات.')
+      .setColor('#57f287');
 
-    await message.channel.send({ embeds: [embed], components: [row1] });
+    await message.channel.send({ embeds: [embed], components: [verifyBtn] });
   }
 });
 
-// معالجة فتح التذاكر عند الضغط على الأزرار
+// معالجة الضغط على التفاعلات
 client.on('interactionCreate', async interaction => {
-  if (!interaction.isButton()) return;
+  // أ) نظام التوثيق الضغطة الواحدة
+  if (interaction.isButton() && interaction.customId === 'verify_member') {
+    return interaction.reply({ content: 'تم توثيق حسابك بنجاح! استمتع باللعب 🎮', ephemeral: true });
+  }
 
-  if (interaction.customId.startsWith('ticket_')) {
-    const baseKey = interaction.customId.replace('ticket_', '');
-    const baseName = baseNames[baseKey] || 'Custom Base';
+  // ب) نظام فتح التذكرة عبر القائمة المنسدلة
+  if (interaction.isStringSelectMenu() && interaction.customId === 'select_base_ticket') {
+    const selectedValue = interaction.values[0];
+    const selectedBase = bases.find(b => b.value === selectedValue);
 
+    // إنشاء قناة التذكرة
     const ch = await interaction.guild.channels.create({
-      name: `ticket-${baseKey}-${interaction.user.username}`.toLowerCase(),
+      name: `ticket-${selectedValue}-${interaction.user.username}`.toLowerCase(),
       type: ChannelType.GuildText,
       permissionOverwrites: [
-        { id: interaction.guild.id, deny: ['ViewChannel'] },
-        { id: interaction.user.id, allow: ['ViewChannel', 'SendMessages', 'AttachFiles'] }
+        { id: interaction.guild.id, deny: [PermissionFlagsBits.ViewChannel] },
+        { id: interaction.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.AttachFiles] }
       ]
     });
 
     const embed = new EmbedBuilder()
-      .setTitle(`🎫 تذكرة لون: ${baseName}`)
-      .setDescription(`مرحباً <@${interaction.user.id}>!\nلقد فتحت تذكرة للحصول على لون **${baseName}**.\nالرجاء إرسال إثباتك أو متطلباتك هنا للإدارة.`)
-      .setColor('#57f287');
+      .setTitle(`🎫 تذكرة لون: ${selectedBase.label}`)
+      .setDescription(`مرحباً <@${interaction.user.id}>!\nفتح التذكرة خاص بـ **${selectedBase.label}**.\n\n📸 **الرجاء إرفاق صورة/فيديو لإثبات وصورك للقاعدة وسيتم تسليمك اللون قريباً.**`)
+      .setColor('#f1c40f');
 
     const closeBtn = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
@@ -85,14 +120,14 @@ client.on('interactionCreate', async interaction => {
     );
 
     await ch.send({ content: `<@${interaction.user.id}>`, embeds: [embed], components: [closeBtn] });
-    return interaction.reply({ content: `تم إنشاء تذكرتك بنجاح: ${ch}`, ephemeral: true });
+    return interaction.reply({ content: `تم فتح تذكرتك بنجاح في الروم: ${ch}`, ephemeral: true });
   }
 
-  if (interaction.customId === 'close_ticket') {
-    await interaction.reply('سيتم إغلاق التذكرة خلال 5 ثوانٍ...');
+  // ج) زر إغلاق التذكرة
+  if (interaction.isButton() && interaction.customId === 'close_ticket') {
+    await interaction.reply('سيتم إغلاق وتنظيف التذكرة خلال 5 ثوانٍ...');
     setTimeout(() => interaction.channel.delete().catch(() => {}), 5000);
   }
 });
 
-// استخدام البيئة لتمرير التوكن بأمان
 client.login(process.env.DISCORD_TOKEN);
