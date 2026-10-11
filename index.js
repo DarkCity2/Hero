@@ -9,7 +9,21 @@ const {
   ChannelType, 
   PermissionFlagsBits 
 } = require('discord.js');
+const express = require('express');
 
+// 1. تشغيل سيرفر ويب خفيف لضمان قبول Render للخدمة المجانية فوراً
+const app = express();
+const port = process.env.PORT || 3000;
+
+app.get('/', (req, res) => {
+  res.send('Void Community Parkour Bot is Running Live!');
+});
+
+app.listen(port, () => {
+  console.log(`🌐 Web server running on port ${port}`);
+});
+
+// 2. إعداد بوت الديسكورد
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -18,7 +32,7 @@ const client = new Client({
   ]
 });
 
-// قائمة كافة قواعد الألوان الخاصة بماب النطة
+// قائمة القواعد والألوان المخصصة لماب النطة
 const bases = [
   { label: 'Silver Base', value: 'silver', description: 'فتح تذكرة للحصول على لون Silver Base', emoji: '⚪' },
   { label: 'Gold Base', value: 'gold', description: 'فتح تذكرة للحصول على لون Gold Base', emoji: '🟡' },
@@ -40,14 +54,14 @@ const bases = [
 ];
 
 client.once('ready', () => {
-  console.log(`✅ بوت ماب النطة جاهز ويعمل باسم: ${client.user.tag}`);
+  console.log(`✅ [Void Community] البوت يعمل بنجاح باسم: ${client.user.tag}`);
 });
 
-// أوامر الأدمن والمشرفين
+// الأوامر النصية
 client.on('messageCreate', async message => {
   if (message.author.bot) return;
 
-  // 1. أمر لوحة تذاكر الألوان (!panel)
+  // 1. أمر إرسال قائمة تذاكر الألوان (!panel)
   if (message.content === '!panel') {
     const selectMenu = new StringSelectMenuBuilder()
       .setCustomId('select_base_ticket')
@@ -57,15 +71,15 @@ client.on('messageCreate', async message => {
     const row = new ActionRowBuilder().addComponents(selectMenu);
 
     const embed = new EmbedBuilder()
-      .setTitle('🎨 لوحة تذاكر ألوان القواعد (Parkour Bases)')
-      .setDescription('اختر القاعدة التي حققتها من القائمة المنسدلة أدناه لفتح تذكرة وإرسال الإثبات للإدارة:')
+      .setTitle('🎨 Void Community | نظام ألوان ماب النطة')
+      .setDescription('مرحباً بك في سيرفر **Void Community**!\nاختر القاعدة التي حققتها من القائمة المنسدلة أدناه لفتح تذكرة وإرسال إثباتك للإدارة:')
       .setColor('#2b2d31')
-      .setFooter({ text: 'Parkour Map Color System' });
+      .setFooter({ text: 'Void Community - Parkour Map' });
 
     await message.channel.send({ embeds: [embed], components: [row] });
   }
 
-  // 2. أمر لوحة التوثيق الفوري (!verify-panel)
+  // 2. أمر لوحة التوثيق (!verify-panel)
   if (message.content === '!verify-panel') {
     const verifyBtn = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
@@ -76,27 +90,27 @@ client.on('messageCreate', async message => {
     );
 
     const embed = new EmbedBuilder()
-      .setTitle('🛡️ التوثيق والدخول للسيرفر')
+      .setTitle('🛡️ Void Community | التوثيق والدخول')
       .setDescription('اضغط على الزر أدناه للتحقق والحصول على رتبة الأعضاء والوصول لكافة الرومات.')
-      .setColor('#57f287');
+      .setColor('#57f287')
+      .setFooter({ text: 'Void Community Security' });
 
     await message.channel.send({ embeds: [embed], components: [verifyBtn] });
   }
 });
 
-// معالجة الضغط على التفاعلات
+// التعامل مع التفاعلات والأزرار
 client.on('interactionCreate', async interaction => {
-  // أ) نظام التوثيق الضغطة الواحدة
+  // أ) التوثيق
   if (interaction.isButton() && interaction.customId === 'verify_member') {
-    return interaction.reply({ content: 'تم توثيق حسابك بنجاح! استمتع باللعب 🎮', ephemeral: true });
+    return interaction.reply({ content: 'مرحباً بك في **Void Community**! تم توثيق حسابك بنجاح 🎉', ephemeral: true });
   }
 
-  // ب) نظام فتح التذكرة عبر القائمة المنسدلة
+  // ب) فتح التذاكر
   if (interaction.isStringSelectMenu() && interaction.customId === 'select_base_ticket') {
     const selectedValue = interaction.values[0];
     const selectedBase = bases.find(b => b.value === selectedValue);
 
-    // إنشاء قناة التذكرة
     const ch = await interaction.guild.channels.create({
       name: `ticket-${selectedValue}-${interaction.user.username}`.toLowerCase(),
       type: ChannelType.GuildText,
@@ -107,8 +121,8 @@ client.on('interactionCreate', async interaction => {
     });
 
     const embed = new EmbedBuilder()
-      .setTitle(`🎫 تذكرة لون: ${selectedBase.label}`)
-      .setDescription(`مرحباً <@${interaction.user.id}>!\nفتح التذكرة خاص بـ **${selectedBase.label}**.\n\n📸 **الرجاء إرفاق صورة/فيديو لإثبات وصورك للقاعدة وسيتم تسليمك اللون قريباً.**`)
+      .setTitle(`🎫 Void Community | تذكرة لون: ${selectedBase.label}`)
+      .setDescription(`مرحباً <@${interaction.user.id}>!\nلقد فتحت تذكرة خاصة بـ **${selectedBase.label}**.\n\n📸 **الرجاء إرفاق صورة/فيديو لإثبات وصورك للقاعدة وسيتم تسليمك اللون من قبل إدارة Void Community.**`)
       .setColor('#f1c40f');
 
     const closeBtn = new ActionRowBuilder().addComponents(
@@ -120,12 +134,12 @@ client.on('interactionCreate', async interaction => {
     );
 
     await ch.send({ content: `<@${interaction.user.id}>`, embeds: [embed], components: [closeBtn] });
-    return interaction.reply({ content: `تم فتح تذكرتك بنجاح في الروم: ${ch}`, ephemeral: true });
+    return interaction.reply({ content: `تم فتح تذكرتك بنجاح في القناة: ${ch}`, ephemeral: true });
   }
 
-  // ج) زر إغلاق التذكرة
+  // ج) إغلاق التذكرة
   if (interaction.isButton() && interaction.customId === 'close_ticket') {
-    await interaction.reply('سيتم إغلاق وتنظيف التذكرة خلال 5 ثوانٍ...');
+    await interaction.reply('سيتم إغلاق التذكرة خلال 5 ثوانٍ...');
     setTimeout(() => interaction.channel.delete().catch(() => {}), 5000);
   }
 });
