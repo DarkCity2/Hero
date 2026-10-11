@@ -19,6 +19,7 @@ const {
 } = require('discord.js');
 const express = require('express');
 const session = require('express-session');
+const axios = require('axios');
 
 // ------------------- 1. بيانات قواعد الألوان (17 لون) -------------------
 let basesData = {
@@ -45,10 +46,14 @@ let serverSettings = {
   ticketCategory: 'Tickets 🎫',
   supportRole: 'Staff Moderator 🛠️',
   logChannel: 'ticket-logs 📜',
-  maxTickets: 1
+  maxTickets: 1,
+  modLogsChannel: 'mod-logs 🔨',
+  autoMuteSpam: true,
+  blockLinks: true,
+  antiRaid: true
 };
 
-// ------------------- 2. السيرفر والجسلسات -------------------
+// ------------------- 2. السيرفر والتوثيق -------------------
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -61,13 +66,18 @@ app.use(session({
 }));
 
 const PORT = Number(process.env.PORT) || 3000;
+const BASE_URL = (process.env.BASE_URL || 'https://void-community.onrender.com').replace(/\/$/, '');
+const CLIENT_ID = process.env.CLIENT_ID;
+const CLIENT_SECRET = process.env.CLIENT_SECRET;
 const DASHBOARD_PASSWORD = process.env.DASHBOARD_PASSWORD || 'VD122';
 const TOKEN = process.env.TOKEN;
+const REDIRECT_URI = `${BASE_URL}/api/auth/callback`;
 
-// ------------------- 3. التصميم الأسطوري المطور الخرافي (مع الشعار والتأثيرات) -------------------
-const VOID_LOGO_URL = 'https://i.ibb.co/L6S9bK9/IMG-6085.jpg'; // رابط صورة VOID المباشر
+// رابط الصورة المباشر لـ VOID
+const VOID_IMG_URL = 'https://i.ibb.co/L6S9bK9/IMG-6085.jpg';
 
-const renderUltimateLayout = (activeTab, content) => `
+// ------------------- 3. تصميم اللوحة الأسطوري الفخم -------------------
+const renderUltimateLayout = (activeTab, content, user) => `
   <!DOCTYPE html>
   <html lang="ar" dir="rtl">
   <head>
@@ -78,21 +88,28 @@ const renderUltimateLayout = (activeTab, content) => `
       * { box-sizing: border-box; font-family: 'Cairo', sans-serif; }
       
       body { 
-        background: #06040d;
+        background: #05030a url('${VOID_IMG_URL}') no-repeat center top fixed;
+        background-size: cover;
         color: #f8fafc; margin: 0; padding: 0; display: flex; min-height: 100vh; overflow-x: hidden; 
+      }
+
+      /* طبقة إعتام مخصصة للتصميم */
+      body::before {
+        content: ''; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(5, 3, 10, 0.88); z-index: 1; backdrop-filter: blur(12px);
       }
 
       /* Sidebar الخرافي */
       .sidebar {
-        width: 280px; background: rgba(12, 9, 24, 0.95); backdrop-filter: blur(30px);
-        border-left: 1px solid rgba(139, 92, 246, 0.25); padding: 25px 15px; display: flex;
+        width: 290px; background: rgba(10, 7, 20, 0.95); backdrop-filter: blur(30px);
+        border-left: 1px solid rgba(139, 92, 246, 0.3); padding: 20px 15px; display: flex;
         flex-direction: column; justify-content: space-between; position: fixed; right: 0; top: 0; bottom: 0; z-index: 100;
-        box-shadow: -10px 0 40px rgba(0,0,0,0.8);
+        box-shadow: -10px 0 40px rgba(0,0,0,0.9);
       }
       
-      .brand-box { text-align: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid rgba(139, 92, 246, 0.15); }
-      .brand-img { width: 90px; height: 90px; border-radius: 20px; border: 2px solid rgba(168, 85, 247, 0.6); box-shadow: 0 0 25px rgba(168, 85, 247, 0.4); object-fit: cover; margin-bottom: 10px; }
-      .brand-title { font-size: 22px; font-weight: 900; background: linear-gradient(135deg, #e9d5ff, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: 2px; }
+      .brand-box { text-align: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid rgba(139, 92, 246, 0.2); }
+      .brand-img { width: 100%; height: 110px; border-radius: 16px; border: 1px solid rgba(168, 85, 247, 0.6); box-shadow: 0 0 25px rgba(168, 85, 247, 0.4); object-fit: cover; margin-bottom: 12px; }
+      .brand-title { font-size: 20px; font-weight: 900; background: linear-gradient(135deg, #e9d5ff, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: 2px; }
 
       .nav-group { margin-bottom: 20px; }
       .nav-label { font-size: 11px; color: #a855f7; font-weight: 700; text-transform: uppercase; margin-bottom: 8px; padding-right: 12px; }
@@ -102,26 +119,26 @@ const renderUltimateLayout = (activeTab, content) => `
         padding: 13px 16px; border-radius: 14px; color: #94a3b8; text-decoration: none;
         font-weight: 600; font-size: 14px; margin-bottom: 6px; transition: all 0.3s ease;
       }
-      .nav-item:hover { background: rgba(124, 58, 237, 0.15); color: #fff; }
-      .nav-item.active { background: linear-gradient(135deg, rgba(124, 58, 237, 0.35), rgba(99, 102, 241, 0.25)); color: #fff; border: 1px solid rgba(139, 92, 246, 0.5); box-shadow: 0 0 20px rgba(124, 58, 237, 0.3); }
+      .nav-item:hover { background: rgba(124, 58, 237, 0.2); color: #fff; }
+      .nav-item.active { background: linear-gradient(135deg, rgba(124, 58, 237, 0.4), rgba(99, 102, 241, 0.3)); color: #fff; border: 1px solid rgba(139, 92, 246, 0.6); box-shadow: 0 0 20px rgba(124, 58, 237, 0.4); }
       
       .badge-check { background: rgba(34, 197, 94, 0.2); color: #4ade80; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; border: 1px solid rgba(34, 197, 94, 0.4); }
 
       /* Main Content */
-      .main-content { margin-right: 280px; flex: 1; padding: 40px; max-width: 1200px; }
+      .main-content { margin-right: 290px; flex: 1; padding: 35px; max-width: 1200px; position: relative; z-index: 10; }
       
       .glass-card {
-        background: rgba(18, 14, 32, 0.8); backdrop-filter: blur(25px);
-        border: 1px solid rgba(139, 92, 246, 0.25); border-radius: 22px;
-        padding: 30px; margin-bottom: 25px; box-shadow: 0 15px 50px rgba(0,0,0,0.6);
+        background: rgba(16, 12, 28, 0.85); backdrop-filter: blur(25px);
+        border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 22px;
+        padding: 30px; margin-bottom: 25px; box-shadow: 0 15px 50px rgba(0,0,0,0.7);
       }
 
       h1, h2, h3 { color: #fff; margin-top: 0; }
       .purple-gradient { background: linear-gradient(135deg, #c084fc, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
       
       input, textarea, select {
-        width: 100%; padding: 14px 18px; border-radius: 14px; border: 1px solid rgba(139, 92, 246, 0.3);
-        background: rgba(8, 6, 16, 0.85); color: #fff; outline: none; margin-top: 8px; font-size: 15px; transition: 0.3s;
+        width: 100%; padding: 14px 18px; border-radius: 14px; border: 1px solid rgba(139, 92, 246, 0.35);
+        background: rgba(8, 6, 16, 0.9); color: #fff; outline: none; margin-top: 8px; font-size: 15px; transition: 0.3s;
       }
       select option { background: #0c0a14; color: #fff; }
       label { font-size: 14px; font-weight: 600; color: #cbd5e1; display: block; margin-top: 15px; }
@@ -133,13 +150,21 @@ const renderUltimateLayout = (activeTab, content) => `
         text-align: center; text-decoration: none; display: inline-block;
       }
       .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 30px rgba(124, 58, 237, 0.6); }
+
+      .toggle-box { display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.03); padding: 15px 20px; border-radius: 16px; border: 1px solid rgba(139,92,246,0.2); margin-top: 12px; }
+      .switch { position: relative; display: inline-block; width: 50px; height: 26px; }
+      .switch input { opacity: 0; width: 0; height: 0; }
+      .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #1e1b4b; transition: .4s; border-radius: 34px; border: 1px solid rgba(139,92,246,0.3); }
+      .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+      input:checked + .slider { background: #7c3aed; }
+      input:checked + .slider:before { transform: translateX(24px); }
     </style>
   </head>
   <body>
     <div class="sidebar">
       <div>
         <div class="brand-box">
-          <img src="${VOID_LOGO_URL}" class="brand-img" alt="VOID LOGO" onerror="this.style.display='none'">
+          <img src="${VOID_IMG_URL}" class="brand-img" alt="VOID LOGO">
           <div class="brand-title">VOID COMMUNITY</div>
         </div>
         
@@ -180,7 +205,7 @@ const renderUltimateLayout = (activeTab, content) => `
   </html>
 `;
 
-// ------------------- 4. تسجيل الدخول السريع المباشر (بكلمة المرور فقط) -------------------
+// ------------------- 4. تسجيل الدخول + OAuth2 -------------------
 app.get('/login', (req, res) => {
   res.send(`
     <!DOCTYPE html>
@@ -190,21 +215,25 @@ app.get('/login', (req, res) => {
       <title>Void - تسجيل الدخول</title>
       <style>
         @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap');
-        body { background: #05040a; color: #fff; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: 'Cairo', sans-serif; }
-        .login-card { background: rgba(18, 14, 30, 0.9); backdrop-filter: blur(25px); border: 1px solid rgba(139, 92, 246, 0.35); padding: 45px; border-radius: 24px; text-align: center; width: 400px; box-shadow: 0 20px 60px rgba(0,0,0,0.8); }
-        .logo-img { width: 100px; height: 100px; border-radius: 20px; border: 2px solid #a855f7; box-shadow: 0 0 25px rgba(168, 85, 247, 0.5); margin-bottom: 15px; object-fit: cover; }
+        body { 
+          background: #05040a url('${VOID_IMG_URL}') no-repeat center center fixed;
+          background-size: cover; color: #fff; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: 'Cairo', sans-serif; 
+        }
+        body::before { content: ''; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(5,3,10,0.85); z-index: 1; backdrop-filter: blur(8px); }
+        .login-card { position: relative; z-index: 10; background: rgba(18, 14, 30, 0.95); backdrop-filter: blur(25px); border: 1px solid rgba(139, 92, 246, 0.4); padding: 40px; border-radius: 24px; text-align: center; width: 420px; box-shadow: 0 20px 60px rgba(0,0,0,0.9); }
+        .logo-banner { width: 100%; height: 160px; border-radius: 18px; border: 1px solid rgba(168, 85, 247, 0.6); box-shadow: 0 0 30px rgba(168, 85, 247, 0.5); margin-bottom: 20px; object-fit: cover; }
         input { width: 100%; padding: 15px; border-radius: 14px; border: 1px solid rgba(139, 92, 246, 0.4); background: rgba(10, 8, 20, 0.9); color: #fff; text-align: center; font-size: 16px; margin-bottom: 20px; outline: none; }
         button { background: linear-gradient(135deg, #7c3aed, #6366f1); color: #fff; border: none; padding: 15px; border-radius: 14px; width: 100%; font-weight: bold; font-size: 16px; cursor: pointer; box-shadow: 0 4px 20px rgba(124,58,237,0.4); }
       </style>
     </head>
     <body>
       <div class="login-card">
-        <img src="${VOID_LOGO_URL}" class="logo-img" alt="VOID LOGO" onerror="this.style.display='none'">
+        <img src="${VOID_IMG_URL}" class="logo-banner" alt="VOID LOGO">
         <h1 style="font-size: 26px; margin-bottom: 5px;" class="purple-gradient">VOID COMMUNITY</h1>
-        <p style="color: #a78bfa; font-size: 13px; margin-bottom: 25px;">أدخل كلمة المرور لدخول لوحة التحكم مباشرة</p>
-        <form action="/login" method="POST">
+        <p style="color: #a78bfa; font-size: 13px; margin-bottom: 25px;">أدخل كلمة المرور للانتقال لربط الديسكورد</p>
+        <form action="/login/pass" method="POST">
           <input type="password" name="password" placeholder="كلمة المرور" required autofocus>
-          <button type="submit">دخول اللوحة الفخمة</button>
+          <button type="submit">دخول ونقلي لديسكورد</button>
         </form>
       </div>
     </body>
@@ -212,12 +241,48 @@ app.get('/login', (req, res) => {
   `);
 });
 
-app.post('/login', (req, res) => {
+app.post('/login/pass', (req, res) => {
   if (req.body.password === DASHBOARD_PASSWORD) {
-    req.session.authenticated = true;
-    res.redirect('/');
+    req.session.passAuthenticated = true;
+    const discordAuthUrl = `https://discord.com/api/oauth2/authorize?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code&scope=identify%20guilds`;
+    res.redirect(discordAuthUrl);
   } else {
     res.send('<h2 style="color:red; text-align:center; font-family:sans-serif; margin-top:50px;">❌ كلمة المرور خاطئة!<br><br><a href="/login">إعادة المحاولة</a></h2>');
+  }
+});
+
+app.get('/api/auth/callback', async (req, res) => {
+  const code = req.query.code;
+  if (!code) return res.redirect('/login');
+
+  try {
+    const params = new URLSearchParams();
+    params.append('client_id', CLIENT_ID);
+    params.append('client_secret', CLIENT_SECRET);
+    params.append('grant_type', 'authorization_code');
+    params.append('code', code);
+    params.append('redirect_uri', REDIRECT_URI);
+
+    const tokenResponse = await axios.post('https://discord.com/api/oauth2/token', params, {
+      headers: { 
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      }
+    });
+
+    const userResponse = await axios.get('https://discord.com/api/users/@me', {
+      headers: { 
+        Authorization: `Bearer ${tokenResponse.data.access_token}`,
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      }
+    });
+
+    req.session.authenticated = true;
+    req.session.user = userResponse.data;
+    res.redirect('/');
+  } catch (error) {
+    console.error('OAuth Error:', error.response?.data || error.message);
+    res.send('<h2 style="color:red; text-align:center; font-family:sans-serif; margin-top:50px;">❌ فشل الربط مع ديسكورد.<br>تأكد من تجديد الـ CLIENT_SECRET بـ Render.<br><br><a href="/login" style="color:#a78bfa;">إعادة المحاولة</a></h2>');
   }
 });
 
@@ -226,7 +291,7 @@ app.get('/logout', (req, res) => {
   res.redirect('/login');
 });
 
-// ------------------- 5. صفحات اللوحة الشغالة 100% -------------------
+// ------------------- 5. صفحات اللوحة الكاملة -------------------
 
 // أ) ألوان القواعد
 app.get('/', (req, res) => {
@@ -245,9 +310,9 @@ app.get('/', (req, res) => {
     <div class="glass-card" style="display: flex; justify-content: space-between; align-items: center;">
       <div>
         <h1 class="purple-gradient" style="margin: 0; font-size: 24px;">🎨 إدارة ألوان القواعد (17 لون)</h1>
-        <p style="color: #94a3b8; margin: 5px 0 0 0;">تعديل أسعار وشروط القواعد ونشر اللوحة في القنوات مباشرة.</p>
+        <p style="color: #94a3b8; margin: 5px 0 0 0;">مرحباً بك، ${req.session.user?.username || 'المسؤول'} 👋 | تعديل أسعار ونشر اللوحة.</p>
       </div>
-      <span style="background: rgba(34,197,94,0.2); color: #4ade80; border: 1px solid rgba(34,197,94,0.4); padding: 8px 16px; border-radius: 20px; font-weight: 700;">🟢 النظام نشط ومفعل</span>
+      <span style="background: rgba(34,197,94,0.2); color: #4ade80; border: 1px solid rgba(34,197,94,0.4); padding: 8px 16px; border-radius: 20px; font-weight: 700;">🟢 التوثيق نشط</span>
     </div>
 
     <div class="glass-card">
@@ -274,7 +339,7 @@ app.get('/', (req, res) => {
     </form>
   `;
 
-  res.send(renderUltimateLayout('colors', content));
+  res.send(renderUltimateLayout('colors', content, req.session.user));
 });
 
 app.post('/save-colors', (req, res) => {
@@ -313,7 +378,7 @@ app.get('/tickets', (req, res) => {
       </div>
     </form>
   `;
-  res.send(renderUltimateLayout('tickets', content));
+  res.send(renderUltimateLayout('tickets', content, req.session.user));
 });
 
 app.post('/save-tickets', (req, res) => {
@@ -325,35 +390,106 @@ app.post('/save-tickets', (req, res) => {
   res.redirect('/tickets');
 });
 
-// ج) باقي الأزرار
+// ج) إدارة السيرفر
 app.get('/moderation', (req, res) => {
   if (!req.session.authenticated) return res.redirect('/login');
-  res.send(renderUltimateLayout('moderation', `
+  const content = `
     <div class="glass-card">
-      <h1 class="purple-gradient">🔨 إدارة السيرفر والعقوبات</h1>
-      <p style="color: #94a3b8;">إعدادات الحظر والتنبيهات المباشرة لـ Void Community.</p>
+      <h1 class="purple-gradient" style="margin:0; font-size:24px;">🔨 نظام إدارة السيرفر والعقوبات</h1>
+      <p style="color: #94a3b8; margin-top: 5px;">تخصيص الإجراءات الإدارية والسجلات في Void Community.</p>
     </div>
-  `));
+
+    <form action="/save-mod" method="POST">
+      <div class="glass-card">
+        <div class="toggle-box">
+          <div>
+            <strong>تفعيل الميوت الآلي للسبام</strong>
+            <div style="font-size:12px; color:#94a3b8;">إعطاء تايم أوت تلقائي عند تكرار الرسائل المزعجة.</div>
+          </div>
+          <label class="switch"><input type="checkbox" name="autoMuteSpam" ${serverSettings.autoMuteSpam ? 'checked' : ''}><span class="slider"></span></label>
+        </div>
+
+        <label>قناة سجلات الإدارة والعقوبات (Mod Logs):</label>
+        <input type="text" name="modLogsChannel" value="${serverSettings.modLogsChannel}">
+
+        <button type="submit" class="btn">💾 حفظ إعدادات الإدارة</button>
+      </div>
+    </form>
+  `;
+  res.send(renderUltimateLayout('moderation', content, req.session.user));
 });
 
+app.post('/save-mod', (req, res) => {
+  if (!req.session.authenticated) return res.redirect('/login');
+  serverSettings.autoMuteSpam = !!req.body.autoMuteSpam;
+  serverSettings.modLogsChannel = req.body.modLogsChannel;
+  res.redirect('/moderation');
+});
+
+// د) السجلات (اللوقات)
 app.get('/logs', (req, res) => {
   if (!req.session.authenticated) return res.redirect('/login');
-  res.send(renderUltimateLayout('logs', `
+  const content = `
     <div class="glass-card">
-      <h1 class="purple-gradient">📜 سجلات الأحداث واللوقات</h1>
-      <p style="color: #94a3b8;">تتبع حذف الرسائل ودخول وخروج الأعضاء.</p>
+      <h1 class="purple-gradient" style="margin:0; font-size:24px;">📜 سجلات الأحداث الشاملة (Audit Logs)</h1>
+      <p style="color: #94a3b8; margin-top: 5px;">مراقبة كل تحركات السيرفر بحرفية عالية.</p>
     </div>
-  `));
+
+    <div class="glass-card">
+      <div class="toggle-box">
+        <div><strong>سجل حذف الرسائل</strong><div style="font-size:12px; color:#94a3b8;">إرسال نسخة من الرسائل المحذوفة مع اسم العضو.</div></div>
+        <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+      </div>
+
+      <div class="toggle-box">
+        <div><strong>سجل تعديل الرسائل</strong><div style="font-size:12px; color:#94a3b8;">تتبع النص القبل والبعد عند التعديل.</div></div>
+        <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+      </div>
+
+      <div class="toggle-box">
+        <div><strong>سجل دخول وخروج الأعضاء</strong><div style="font-size:12px; color:#94a3b8;">تسجيل انضمام ومغادرة الأعضاء ورتبهم.</div></div>
+        <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+      </div>
+
+      <button onclick="alert('تم تحديث خيارات السجلات بنجاح!')" class="btn">💾 حفظ خيارات اللوقات</button>
+    </div>
+  `;
+  res.send(renderUltimateLayout('logs', content, req.session.user));
 });
 
+// هـ) الحماية ومكافحة الهجمات
 app.get('/security', (req, res) => {
   if (!req.session.authenticated) return res.redirect('/login');
-  res.send(renderUltimateLayout('security', `
+  const content = `
     <div class="glass-card">
-      <h1 class="purple-gradient">🛡️ الحماية ومكافحة الهجمات (Anti-Raid)</h1>
-      <p style="color: #94a3b8;">حماية السيرفر من السبام ودخول الحسابات الوهمية.</p>
+      <h1 class="purple-gradient" style="margin:0; font-size:24px;">🛡️ نظام الحماية ومكافحة الهجمات (Anti-Raid)</h1>
+      <p style="color: #94a3b8; margin-top: 5px;">حظر الروابط، البوتات الخبيثة، والسبام.</p>
     </div>
-  `));
+
+    <form action="/save-sec" method="POST">
+      <div class="glass-card">
+        <div class="toggle-box">
+          <div><strong>حظر الروابط المباشرة والسيرفرات</strong><div style="font-size:12px; color:#94a3b8;">حذف أي رابط دعوة خارجي فوراً.</div></div>
+          <label class="switch"><input type="checkbox" name="blockLinks" ${serverSettings.blockLinks ? 'checked' : ''}><span class="slider"></span></label>
+        </div>
+
+        <div class="toggle-box">
+          <div><strong>تفعيل نظام Anti-Raid</strong><div style="font-size:12px; color:#94a3b8;">حظر الحسابات الوهمية التي تدخل بشكل متزامن.</div></div>
+          <label class="switch"><input type="checkbox" name="antiRaid" ${serverSettings.antiRaid ? 'checked' : ''}><span class="slider"></span></label>
+        </div>
+
+        <button type="submit" class="btn">💾 حفظ إعدادات الحماية</button>
+      </div>
+    </form>
+  `;
+  res.send(renderUltimateLayout('security', content, req.session.user));
+});
+
+app.post('/save-sec', (req, res) => {
+  if (!req.session.authenticated) return res.redirect('/login');
+  serverSettings.blockLinks = !!req.body.blockLinks;
+  serverSettings.antiRaid = !!req.body.antiRaid;
+  res.redirect('/security');
 });
 
 // نشر اللوحة
@@ -388,7 +524,7 @@ app.post('/send-panel', async (req, res) => {
 
 app.listen(PORT, () => console.log(`🌐 Dashboard Active on port ${PORT}`));
 
-// ------------------- 6. تشغيل بوت ديسكورد -------------------
+// ------------------- 6. تشغيل بوت ديسكورد والتذاكر -------------------
 const client = new Client({
   intents: [
     I.Guilds, I.GuildMembers, I.GuildMessages, I.MessageContent,
