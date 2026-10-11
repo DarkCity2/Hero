@@ -7,23 +7,20 @@ const {
   ButtonStyle, 
   StringSelectMenuBuilder, 
   ChannelType, 
-  PermissionFlagsBits 
+  PermissionFlagsBits,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle
 } = require('discord.js');
 const express = require('express');
 
-// 1. تشغيل سيرفر خفيف لإنهاء التعليق في Render فوراً
+// 1. تشغيل سيرفر الويب لخدمة Render المجانية
 const app = express();
 const port = process.env.PORT || 3000;
+app.get('/', (req, res) => res.send('Void Community System is Online!'));
+app.listen(port, () => console.log(`🌐 Server active on port ${port}`));
 
-app.get('/', (req, res) => {
-  res.send('Void Community Parkour Bot is Live!');
-});
-
-app.listen(port, () => {
-  console.log(`🌐 Web server running on port ${port}`);
-});
-
-// 2. إعداد بوت الديسكورد
+// 2. إعداد البوت
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -32,115 +29,208 @@ const client = new Client({
   ]
 });
 
-// قائمة القواعد والألوان المخصصة لماب النطة
+// تخزين بيانات طلبات المستخدمين المؤقتة
+const userRequests = new Map();
+
+// قائمة القواعد والألوان
 const bases = [
-  { label: 'Silver Base', value: 'silver', description: 'فتح تذكرة للحصول على لون Silver Base', emoji: '⚪' },
-  { label: 'Gold Base', value: 'gold', description: 'فتح تذكرة للحصول على لون Gold Base', emoji: '🟡' },
-  { label: 'Crystal Base', value: 'crystal', description: 'فتح تذكرة للحصول على لون Crystal Base', emoji: '💎' },
-  { label: 'BloodMoon Base', value: 'bloodmoon', description: 'فتح تذكرة للحصول على لون BloodMoon Base', emoji: '🌑' },
-  { label: 'Rainbow Base GoUp', value: 'rainbow', description: 'فتح تذكرة للحصول على لون Rainbow Base', emoji: '🌈' },
-  { label: 'Candy Base GoUp', value: 'candy', description: 'فتح تذكرة للحصول على لون Candy Base', emoji: '🍬' },
-  { label: 'Cyber Base GoUp', value: 'cyber', description: 'فتح تذكرة للحصول على لون Cyber Base', emoji: '🤖' },
-  { label: 'Party Base GoUp', value: 'party', description: 'فتح تذكرة للحصول على لون Party Base', emoji: '🎉' },
-  { label: 'Black & White Base GoUp', value: 'bw', description: 'فتح تذكرة للحصول على لون Black & White Base', emoji: '⬛' },
-  { label: 'Aqua Base GoUp', value: 'aqua', description: 'فتح تذكرة للحصول على لون Aqua Base', emoji: '💧' },
-  { label: 'Lava Base GoUp', value: 'lava', description: 'فتح تذكرة للحصول على لون Lava Base', emoji: '🌋' },
-  { label: 'Football Base GoUp', value: 'football', description: 'فتح تذكرة للحصول على لون Football Base', emoji: '⚽' },
-  { label: 'Summer Base GoUp', value: 'summer', description: 'فتح تذكرة للحصول على لون Summer Base', emoji: '☀️' },
-  { label: 'Dreamy Base GoUp', value: 'dreamy', description: 'فتح تذكرة للحصول على لون Dreamy Base', emoji: '☁️' },
-  { label: 'Galaxy Base', value: 'galaxy', description: 'فتح تذكرة للحصول على لون Galaxy Base', emoji: '🌌' },
-  { label: 'Radioactive Base', value: 'radioactive', description: 'فتح تذكرة للحصول على لون Radioactive Base', emoji: '☢️' },
-  { label: 'Halloween Base', value: 'halloween', description: 'فتح تذكرة للحصول على لون Halloween Base', emoji: '🎃' }
+  { label: 'Silver Base', value: 'silver', description: 'تقديم طلب لون Silver Base', emoji: '⚪' },
+  { label: 'Gold Base', value: 'gold', description: 'تقديم طلب لون Gold Base', emoji: '🟡' },
+  { label: 'Crystal Base', value: 'crystal', description: 'تقديم طلب لون Crystal Base', emoji: '💎' },
+  { label: 'BloodMoon Base', value: 'bloodmoon', description: 'تقديم طلب لون BloodMoon Base', emoji: '🌑' },
+  { label: 'Rainbow Base GoUp', value: 'rainbow', description: 'تقديم طلب لون Rainbow Base GoUp', emoji: '🌈' },
+  { label: 'Candy Base GoUp', value: 'candy', description: 'تقديم طلب لون Candy Base GoUp', emoji: '🍬' },
+  { label: 'Cyber Base GoUp', value: 'cyber', description: 'تقديم طلب لون Cyber Base GoUp', emoji: '🤖' },
+  { label: 'Party Base GoUp', value: 'party', description: 'تقديم طلب لون Party Base GoUp', emoji: '🎉' },
+  { label: 'Black & White Base GoUp', value: 'bw', description: 'تقديم طلب لون Black & White Base GoUp', emoji: '⬛' },
+  { label: 'Aqua Base GoUp', value: 'aqua', description: 'تقديم طلب لون Aqua Base GoUp', emoji: '💧' },
+  { label: 'Lava Base GoUp', value: 'lava', description: 'تقديم طلب لون Lava Base GoUp', emoji: '🌋' },
+  { label: 'Football Base GoUp', value: 'football', description: 'تقديم طلب لون Football Base GoUp', emoji: '⚽' },
+  { label: 'Summer Base GoUp', value: 'summer', description: 'تقديم طلب لون Summer Base GoUp', emoji: '☀️' },
+  { label: 'Dreamy Base GoUp', value: 'dreamy', description: 'تقديم طلب لون Dreamy Base GoUp', emoji: '☁️' },
+  { label: 'Galaxy Base', value: 'galaxy', description: 'تقديم طلب لون Galaxy Base', emoji: '🌌' },
+  { label: 'Radioactive Base', value: 'radioactive', description: 'تقديم طلب لون Radioactive Base', emoji: '☢️' },
+  { label: 'Halloween Base', value: 'halloween', description: 'تقديم طلب لون Halloween Base', emoji: '🎃' }
 ];
 
 client.once('ready', () => {
   console.log(`✅ [Void Community] البوت يعمل بنجاح باسم: ${client.user.tag}`);
 });
 
-// الأوامر النصية
+// أمر إرسال لوحة الألوان
 client.on('messageCreate', async message => {
   if (message.author.bot) return;
 
-  // 1. أمر لوحة تذاكر ألوان القواعد (!panel)
   if (message.content === '!panel') {
     const selectMenu = new StringSelectMenuBuilder()
-      .setCustomId('select_base_ticket')
-      .setPlaceholder('اختر القاعدة للحصول على اللون...')
+      .setCustomId('select_base_color')
+      .setPlaceholder('اختر لون القاعدة المطلوبة...')
       .addOptions(bases);
 
     const row = new ActionRowBuilder().addComponents(selectMenu);
 
     const embed = new EmbedBuilder()
-      .setTitle('🎨 Void Community | نظام ألوان ماب النطة')
-      .setDescription('مرحباً بك في سيرفر **Void Community**!\nاختر القاعدة التي حققتها من القائمة المنسدلة أدناه لفتح تذكرة وإرسال إثباتك للإدارة:')
+      .setTitle('🎨 Void Community | نظام طلبات ألوان القواعد')
+      .setDescription('اختر القاعدة التي تريد طلبها من القائمة المنسدلة أدناه لتقديم بيانتك ونوع المقابل:')
       .setColor('#2b2d31')
-      .setFooter({ text: 'Void Community - Parkour Map' });
+      .setFooter({ text: 'Void Community System' });
 
     await message.channel.send({ embeds: [embed], components: [row] });
   }
-
-  // 2. أمر لوحة التوثيق الفوري (!verify-panel)
-  if (message.content === '!verify-panel') {
-    const verifyBtn = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId('verify_member')
-        .setLabel('تأكيد الدخول / Verify')
-        .setEmoji('✅')
-        .setStyle(ButtonStyle.Success)
-    );
-
-    const embed = new EmbedBuilder()
-      .setTitle('🛡️ Void Community | التوثيق والدخول')
-      .setDescription('اضغط على الزر أدناه للتحقق والحصول على رتبة الأعضاء والوصول لكافة الرومات.')
-      .setColor('#57f287')
-      .setFooter({ text: 'Void Community Security' });
-
-    await message.channel.send({ embeds: [embed], components: [verifyBtn] });
-  }
 });
 
-// التعامل مع التفاعلات والضغطات
+// التعامل مع جميع التفاعلات (النماذج، القوائم، الأزرار)
 client.on('interactionCreate', async interaction => {
-  // أ) نظام التوثيق
-  if (interaction.isButton() && interaction.customId === 'verify_member') {
-    return interaction.reply({ content: 'مرحباً بك في **Void Community**! تم توثيق حسابك بنجاح 🎉', ephemeral: true });
-  }
 
-  // ب) فتح التذاكر عند اختيار قاعدة من القائمة
-  if (interaction.isStringSelectMenu() && interaction.customId === 'select_base_ticket') {
+  // Step 1: اختيار القاعدة من القائمة -> فتح النموذج (Modal)
+  if (interaction.isStringSelectMenu() && interaction.customId === 'select_base_color') {
     const selectedValue = interaction.values[0];
     const selectedBase = bases.find(b => b.value === selectedValue);
 
-    const ch = await interaction.guild.channels.create({
-      name: `ticket-${selectedValue}-${interaction.user.username}`.toLowerCase(),
-      type: ChannelType.GuildText,
-      permissionOverwrites: [
-        { id: interaction.guild.id, deny: [PermissionFlagsBits.ViewChannel] },
-        { id: interaction.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.AttachFiles] }
-      ]
+    const modal = new ModalBuilder()
+      .setCustomId(`modal_guarantee_${selectedValue}`)
+      .setTitle(`${selectedBase.label} بيانات ضمان`);
+
+    const guaranteeInput = new TextInputBuilder()
+      .setCustomId('guarantee_value')
+      .setLabel('اكتب الضمان حقك')
+      .setPlaceholder('اكتب الضمان')
+      .setStyle(TextInputStyle.Short)
+      .setRequired(true);
+
+    const missingInput = new TextInputBuilder()
+      .setCustomId('missing_count')
+      .setLabel('اكتب عدد نواقصك')
+      .setPlaceholder('مثال: 2')
+      .setStyle(TextInputStyle.Short)
+      .setRequired(true);
+
+    modal.addComponents(
+      new ActionRowBuilder().addComponents(guaranteeInput),
+      new ActionRowBuilder().addComponents(missingInput)
+    );
+
+    await interaction.showModal(modal);
+  }
+
+  // Step 2: استقبال بيانات النموذج -> عرض اختيار نوع المقابل
+  if (interaction.isModalSubmit() && interaction.customId.startsWith('modal_guarantee_')) {
+    const baseKey = interaction.customId.replace('modal_guarantee_', '');
+    const selectedBase = bases.find(b => b.value === baseKey);
+
+    const guarantee = interaction.fields.getTextInputValue('guarantee_value');
+    const missing = interaction.fields.getTextInputValue('missing_count');
+
+    // حفظ البيانات مؤقتاً للمستخدم
+    userRequests.set(interaction.user.id, {
+      base: selectedBase.label,
+      baseKey: baseKey,
+      guarantee: guarantee,
+      missing: missing
     });
 
-    const embed = new EmbedBuilder()
-      .setTitle(`🎫 Void Community | تذكرة لون: ${selectedBase.label}`)
-      .setDescription(`مرحباً <@${interaction.user.id}>!\nلقد فتحت تذكرة خاصة بـ **${selectedBase.label}**.\n\n📸 **الرجاء إرفاق صورة/فيديو لإثبات وصورك للقاعدة وسيتم تسليمك اللون من قبل إدارة Void Community.**`)
-      .setColor('#f1c40f');
+    const paymentMenu = new StringSelectMenuBuilder()
+      .setCustomId('select_payment_type')
+      .setPlaceholder('اختر نوع المقابل')
+      .addOptions([
+        { label: 'مقابل مادي', value: 'money', description: 'عرض المقابل المادي المحدد لهذا اللون', emoji: '💰' },
+        { label: 'أغراض داخل اللعبة', value: 'in_game', description: 'عرض الأغراض المحتدة مسبقاً لهذا اللون', emoji: '🎁' }
+      ]);
 
-    const closeBtn = new ActionRowBuilder().addComponents(
+    const row = new ActionRowBuilder().addComponents(paymentMenu);
+
+    await interaction.reply({
+      content: `✅ **تم حفظ الضمان وعدد النواقص.**\n\n🎨 **الآن اختر نوع المقابل للحصول على ${selectedBase.label}:**`,
+      components: [row],
+      ephemeral: true
+    });
+  }
+
+  // Step 3: اختيار نوع المقابل -> عرض ملخص الطلب مع أزرار القبول والرفض
+  if (interaction.isStringSelectMenu() && interaction.customId === 'select_payment_type') {
+    const paymentType = interaction.values[0];
+    const userData = userRequests.get(interaction.user.id);
+
+    if (!userData) {
+      return interaction.reply({ content: '❌ حدث خطأ، يرجى إعادة محاولة التقديم من البداية.', ephemeral: true });
+    }
+
+    userData.paymentType = paymentType === 'money' ? 'مقابل مادي 💰' : 'أغراض داخل اللعبة 🎁';
+
+    const confirmBtns = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
-        .setCustomId('close_ticket')
-        .setLabel('إغلاق التذكرة')
-        .setEmoji('🔒')
+        .setCustomId('accept_request')
+        .setLabel('قبول')
+        .setEmoji('✅')
+        .setStyle(ButtonStyle.Success),
+      new ButtonBuilder()
+        .setCustomId('reject_request')
+        .setLabel('رفض')
+        .setEmoji('❌')
         .setStyle(ButtonStyle.Danger)
     );
 
-    await ch.send({ content: `<@${interaction.user.id}>`, embeds: [embed], components: [closeBtn] });
-    return interaction.reply({ content: `تم فتح تذكرتك بنجاح في القناة: ${ch}`, ephemeral: true });
+    const summaryText = `🎁 **مقابل الأغراض للون ${userData.base}:**\n(١٠ وتحت وتحت كروماندو كاندي وفوق باستثناء البارتي، ١٠٠ وفوق دب كاندي وفوق باستثناء البارتي)\n\n:ضمانك **${userData.guarantee}**\n:عدد نواقصك **${userData.missing}**\n\n**هل توافق على هذا المقابل؟**`;
+
+    await interaction.update({
+      content: summaryText,
+      components: [confirmBtns]
+    });
   }
 
-  // ج) إغلاق التذكرة
-  if (interaction.isButton() && interaction.customId === 'close_ticket') {
-    await interaction.reply('سيتم إغلاق التذكرة خلال 5 ثوانٍ...');
-    setTimeout(() => interaction.channel.delete().catch(() => {}), 5000);
+  // Step 4: التعامل مع زري القبول والرفض
+  if (interaction.isButton()) {
+    if (interaction.customId === 'accept_request') {
+      const userData = userRequests.get(interaction.user.id);
+
+      // إنشاء روم التذكرة للإدارة
+      const ch = await interaction.guild.channels.create({
+        name: `ticket-${userData ? userData.baseKey : 'base'}-${interaction.user.username}`.toLowerCase(),
+        type: ChannelType.GuildText,
+        permissionOverwrites: [
+          { id: interaction.guild.id, deny: [PermissionFlagsBits.ViewChannel] },
+          { id: interaction.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.AttachFiles] }
+        ]
+      });
+
+      const embed = new EmbedBuilder()
+        .setTitle(`🎫 Void Community | طلب لون ${userData ? userData.base : ''}`)
+        .addFields(
+          { name: '👤 صاحب الطلب', value: `<@${interaction.user.id}>`, inline: true },
+          { name: '🛡️ الضمان', value: userData ? userData.guarantee : 'غير محدد', inline: true },
+          { name: '🔢 عدد النواقص', value: userData ? userData.missing : 'غير محدد', inline: true },
+          { name: '💳 نوع المقابل', value: userData ? userData.paymentType : 'غير محدد', inline: false }
+        )
+        .setColor('#57f287')
+        .setFooter({ text: 'Void Community System' });
+
+      const closeBtn = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId('close_ticket')
+          .setLabel('إغلاق التذكرة')
+          .setEmoji('🔒')
+          .setStyle(ButtonStyle.Danger)
+      );
+
+      await ch.send({ content: `<@${interaction.user.id}>`, embeds: [embed], components: [closeBtn] });
+
+      await interaction.update({
+        content: `🎉 **تم قبولك للطلب بنجاح!**\nتم فتح التذكرة الخاصة بك هنا: ${ch}`,
+        components: []
+      });
+    }
+
+    if (interaction.customId === 'reject_request') {
+      await interaction.update({
+        content: '❌ **تم إلغاء الطلب.** يمكنك التقديم مجدداً في أي وقت.',
+        components: []
+      });
+    }
+
+    if (interaction.customId === 'close_ticket') {
+      await interaction.reply('سيتم إغلاق التذكرة خلال 5 ثوانٍ...');
+      setTimeout(() => interaction.channel.delete().catch(() => {}), 5000);
+    }
   }
 });
 
