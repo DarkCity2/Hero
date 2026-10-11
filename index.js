@@ -122,7 +122,7 @@ const renderGlassLayout = (title, content) => `
 
 // ------------------- مسارات الدخول والتوثيق -------------------
 
-// 1. صفحة الدخول (كلمة المرور فقط)
+// 1. صفحة الدخول (كلمة المرور أولاً)
 app.get('/login', (req, res) => {
   const content = `
     <div style="max-width: 420px; margin: 80px auto;">
@@ -140,7 +140,7 @@ app.get('/login', (req, res) => {
   res.send(renderGlassLayout('Void Community - Login', content));
 });
 
-// 2. التحقق من كلمة المرور ثم التحويل التلقائي المباشر لـ Discord OAuth2
+// 2. التحقق من كلمة المرور ثم التحويل التلقائي لـ Discord
 app.post('/login/pass', (req, res) => {
   if (req.body.password === DASHBOARD_PASSWORD) {
     req.session.passAuthenticated = true;
@@ -167,13 +167,14 @@ app.get('/api/auth/callback', async (req, res) => {
   if (!code) return res.redirect('/login');
 
   try {
-    const tokenResponse = await axios.post('https://discord.com/api/oauth2/token', new URLSearchParams({
-      client_id: CLIENT_ID,
-      client_secret: CLIENT_SECRET,
-      grant_type: 'authorization_code',
-      code: code,
-      redirect_uri: REDIRECT_URI
-    }), {
+    const params = new URLSearchParams();
+    params.append('client_id', CLIENT_ID);
+    params.append('client_secret', CLIENT_SECRET);
+    params.append('grant_type', 'authorization_code');
+    params.append('code', code);
+    params.append('redirect_uri', REDIRECT_URI);
+
+    const tokenResponse = await axios.post('https://discord.com/api/oauth2/token', params, {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
     });
 
@@ -185,12 +186,12 @@ app.get('/api/auth/callback', async (req, res) => {
     req.session.user = userResponse.data;
     res.redirect('/');
   } catch (error) {
-    console.error('OAuth Error:', error.response?.data || error.message);
+    console.error('OAuth Error Details:', error.response?.data || error.message);
     const errContent = `
       <div style="max-width: 420px; margin: 80px auto; text-align: center;">
         <div class="glass-card">
           <h2 style="color: #ef4444;">❌ فشل الربط مع Discord</h2>
-          <p style="color: #94a3b8;">تأكد من إعدادات OAuth2 و Redirect URI في ديسكورد.</p>
+          <p style="color: #94a3b8; margin-bottom: 20px;">تأكد من مطابقة CLIENT_SECRET و Redirect URI في Render و Discord.</p>
           <a href="/login" class="btn">إعادة المحاولة</a>
         </div>
       </div>
@@ -208,7 +209,6 @@ app.get('/', (req, res) => {
     ? `https://cdn.discordapp.com/avatars/${req.session.user.id}/${req.session.user.avatar}.png` 
     : 'https://cdn.discordapp.com/embed/avatars/0.png';
 
-  // سحب القنوات النصية تلقائياً
   let channelOptionsHTML = '<option value="" disabled selected>اختر الروم المخصصة لإرسال اللوحة إليها...</option>';
   try {
     client.guilds.cache.forEach(guild => {
@@ -266,7 +266,7 @@ app.get('/', (req, res) => {
   res.send(renderGlassLayout('Void Community - Dashboard', content));
 });
 
-// حفظ التعديلات وإظهار صفحة زجاجية متناسقة
+// حفظ التعديلات وإظهار صفحة زجاجية أنيقة
 app.post('/save', (req, res) => {
   if (!req.session.authenticated) return res.redirect('/login');
   Object.keys(basesData).forEach(key => {
@@ -323,7 +323,7 @@ app.post('/send-panel', async (req, res) => {
         <div class="glass-card">
           <div style="font-size: 50px; margin-bottom: 10px;">🚀</div>
           <h2 class="purple-gradient-text">تم إرسال اللوحة بنجاح!</h2>
-          <p style="color: #94a3b8; margin-bottom: 25px;">تم إرسال لوحة خيارات الألوان للقناة: <strong>#${channel.name}</strong></p>
+          <p style="color: #94a3b8; margin-bottom: 25px;">تم إرسال لوحة خيارات الألوان للقناة المحددة بنجاح.</p>
           <a href="/" class="btn">العودة للوحة التحكم</a>
         </div>
       </div>
