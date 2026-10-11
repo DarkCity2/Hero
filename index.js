@@ -22,9 +22,10 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use(session({
-  secret: 'void_community_oauth_glass_2026',
+  secret: 'void_community_glassmorphism_secure_key_2026',
   resave: false,
-  saveUninitialized: true
+  saveUninitialized: false,
+  cookie: { maxAge: 3600000 * 24 } // 24 ساعة
 }));
 
 const port = process.env.PORT || 3000;
@@ -57,76 +58,89 @@ let basesData = {
   halloween: { name: 'Halloween Base', emoji: '🎃', money: 'اذا ناقصك 15 وتحت المبلغ ( 30 ريال ) اذا فوق 15 ( 60 ريال )', items: 'شروط الأغراض المحددة مسبقاً' }
 };
 
-// ------------------- مسارات الربط والدخول -------------------
+// ------------------- قوالب التصميم الزجاجية -------------------
+const renderGlassLayout = (title, content) => `
+  <!DOCTYPE html>
+  <html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${title}</title>
+    <style>
+      * { box-sizing: border-box; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+      body { 
+        background: #080612; color: #f8fafc; margin: 0; padding: 0; min-height: 100vh;
+        display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; overflow-x: hidden;
+      }
+      .bg-glow-1, .bg-glow-2 {
+        position: fixed; width: 450px; height: 450px; border-radius: 50%;
+        filter: blur(120px); opacity: 0.35; pointer-events: none; z-index: 0; animation: pulse 10s infinite alternate;
+      }
+      .bg-glow-1 { background: #7c3aed; top: -10%; left: -10%; }
+      .bg-glow-2 { background: #2563eb; bottom: -10%; right: -10%; animation-delay: 5s; }
+      @keyframes pulse { 0% { transform: scale(1); opacity: 0.25; } 100% { transform: scale(1.2); opacity: 0.45; } }
+      .main-wrapper { position: relative; z-index: 10; width: 100%; max-width: 1000px; padding: 20px; }
+      .glass-card {
+        background: rgba(18, 16, 28, 0.65);
+        backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(139, 92, 246, 0.25); border-radius: 24px;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        padding: 35px; margin-bottom: 25px; transition: all 0.3s ease;
+      }
+      .glass-card:hover { border-color: rgba(139, 92, 246, 0.45); box-shadow: 0 20px 60px rgba(124, 58, 237, 0.15); }
+      h1, h2, h3 { color: #fff; margin-top: 0; }
+      .purple-gradient-text { background: linear-gradient(135deg, #c084fc, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+      input, textarea, select {
+        width: 100%; padding: 14px 18px; border-radius: 12px;
+        border: 1px solid rgba(139, 92, 246, 0.3); background: rgba(10, 8, 20, 0.7);
+        color: #fff; font-size: 15px; outline: none; transition: 0.3s; margin-top: 8px;
+      }
+      input:focus, textarea:focus, select:focus {
+        border-color: #a78bfa; box-shadow: 0 0 15px rgba(167, 139, 250, 0.25);
+      }
+      select option { background: #0c0a14; color: #fff; }
+      label { font-size: 14px; font-weight: 600; color: #cbd5e1; display: block; margin-top: 15px; }
+      .btn {
+        background: linear-gradient(135deg, #7c3aed, #6366f1); color: #fff; border: none;
+        padding: 15px 28px; border-radius: 12px; font-weight: 700; font-size: 16px; cursor: pointer;
+        width: 100%; transition: all 0.3s ease; box-shadow: 0 4px 20px rgba(124, 58, 237, 0.35); margin-top: 20px;
+        text-align: center; text-decoration: none; display: inline-block;
+      }
+      .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 25px rgba(124, 58, 237, 0.55); }
+      .btn-blue { background: linear-gradient(135deg, #2563eb, #3b82f6); box-shadow: 0 4px 20px rgba(37, 99, 235, 0.35); }
+      .btn-blue:hover { box-shadow: 0 6px 25px rgba(37, 99, 235, 0.55); }
+      .badge { background: rgba(34, 197, 94, 0.15); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3); padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 700; }
+    </style>
+  </head>
+  <body>
+    <div class="bg-glow-1"></div>
+    <div class="bg-glow-2"></div>
+    <div class="main-wrapper">${content}</div>
+  </body>
+  </html>
+`;
 
-// صفحة الدخول: إدخال الباسوورد أولاً
+// ------------------- مسارات الدخول والتوثيق -------------------
+
+// 1. صفحة الدخول (كلمة المرور فقط)
 app.get('/login', (req, res) => {
-  res.send(`
-    <!DOCTYPE html>
-    <html lang="ar" dir="rtl">
-    <head>
-      <meta charset="UTF-8">
-      <title>Void Community - تسجيل الدخول</title>
-      <style>
-        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { 
-          background: #05040a; color: #fff; display: flex; justify-content: center; align-items: center; 
-          height: 100vh; margin: 0; overflow: hidden; position: relative; 
-        }
-        .glow-1, .glow-2 {
-          position: absolute; width: 350px; height: 350px; border-radius: 50%;
-          filter: blur(100px); opacity: 0.5; animation: pulse 8s infinite alternate;
-        }
-        .glow-1 { background: #7c3aed; top: 10%; left: 20%; }
-        .glow-2 { background: #3b82f6; bottom: 10%; right: 20%; animation-delay: 4s; }
-        @keyframes pulse { 0% { transform: scale(1); } 100% { transform: scale(1.3); } }
-
-        .login-card {
-          background: rgba(18, 16, 28, 0.65);
-          backdrop-filter: blur(20px);
-          padding: 40px 35px; border-radius: 24px;
-          box-shadow: 0 0 40px rgba(124, 58, 237, 0.25);
-          width: 380px; text-align: center;
-          border: 1px solid rgba(139, 92, 246, 0.3); z-index: 10;
-        }
-        .logo-box {
-          width: 80px; height: 80px; margin: 0 auto 15px;
-          background: radial-gradient(circle, #7c3aed, #4c1d95);
-          border-radius: 50%; display: flex; align-items: center;
-          justify-content: center; box-shadow: 0 0 25px #7c3aed; font-size: 32px;
-        }
-        h2 { font-size: 26px; margin: 0 0 8px; color: #fff; }
-        p { color: #a78bfa; font-size: 14px; margin-bottom: 25px; }
-        input {
-          width: 100%; padding: 14px; border-radius: 12px; border: 1px solid rgba(139, 92, 246, 0.4);
-          background: rgba(15, 13, 25, 0.8); color: #fff; margin-bottom: 15px; text-align: center; outline: none; font-size: 16px;
-        }
-        .btn-pass {
-          background: linear-gradient(135deg, #7c3aed, #6366f1); color: #fff; border: none;
-          padding: 14px; border-radius: 12px; width: 100%; cursor: pointer; font-weight: bold; font-size: 16px; transition: 0.3s;
-        }
-        .btn-pass:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(124, 58, 237, 0.4); }
-      </style>
-    </head>
-    <body>
-      <div class="glow-1"></div>
-      <div class="glow-2"></div>
-      <div class="login-card">
-        <div class="logo-box">🌌</div>
-        <h2>لوحة تحكم Void</h2>
-        <p>أدخل كلمة المرور للانتقال لربط الحساب</p>
-
+  const content = `
+    <div style="max-width: 420px; margin: 80px auto;">
+      <div class="glass-card" style="text-align: center;">
+        <div style="width: 80px; height: 80px; background: radial-gradient(circle, #7c3aed, #4c1d95); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; font-size: 36px; box-shadow: 0 0 30px rgba(124, 58, 237, 0.5);">🌌</div>
+        <h2 style="font-size: 26px;" class="purple-gradient-text">لوحة تحكم Void</h2>
+        <p style="color: #a78bfa; font-size: 14px; margin-bottom: 25px;">قم بإدخال كلمة المرور للانتقال التلقائي للربط</p>
         <form action="/login/pass" method="POST">
-          <input type="password" name="password" placeholder="كلمة المرور" required>
-          <button type="submit" class="btn-pass">دخول بالنظام</button>
+          <input type="password" name="password" placeholder="كلمة المرور السرية" required style="text-align: center;">
+          <button type="submit" class="btn">دخول للنظام</button>
         </form>
       </div>
-    </body>
-    </html>
-  `);
+    </div>
+  `;
+  res.send(renderGlassLayout('Void Community - Login', content));
 });
 
-// التحقق من كلمة المرور ثم التحويل التلقائي لتسجيل ديسكورد
+// 2. التحقق من كلمة المرور ثم التحويل التلقائي المباشر لـ Discord OAuth2
 app.post('/login/pass', (req, res) => {
   if (req.body.password === DASHBOARD_PASSWORD) {
     req.session.passAuthenticated = true;
@@ -134,11 +148,20 @@ app.post('/login/pass', (req, res) => {
     const discordAuthUrl = `https://discord.com/api/oauth2/authorize?client_id=${CLIENT_ID}&redirect_uri=${redirectUriEncoded}&response_type=code&scope=identify%20guilds`;
     res.redirect(discordAuthUrl);
   } else {
-    res.send('<h2 style="color:red; text-align:center; font-family:sans-serif; margin-top:50px;">❌ كلمة المرور خاطئة! <a href="/login">إعادة المحاولة</a></h2>');
+    const errorContent = `
+      <div style="max-width: 420px; margin: 80px auto; text-align: center;">
+        <div class="glass-card">
+          <h2 style="color: #ef4444;">❌ كلمة المرور خاطئة</h2>
+          <p style="color: #94a3b8; margin-bottom: 20px;">يرجى التأكد من كلمة المرور وإعادة المحاولة.</p>
+          <a href="/login" class="btn">إعادة المحاولة</a>
+        </div>
+      </div>
+    `;
+    res.send(renderGlassLayout('خطأ في الدخول', errorContent));
   }
 });
 
-// استقبال رد ديسكورد OAuth2
+// 3. استقبال توثيق Discord OAuth2
 app.get('/api/auth/callback', async (req, res) => {
   const code = req.query.code;
   if (!code) return res.redirect('/login');
@@ -163,132 +186,115 @@ app.get('/api/auth/callback', async (req, res) => {
     res.redirect('/');
   } catch (error) {
     console.error('OAuth Error:', error.response?.data || error.message);
-    res.send('<h2 style="color:red; text-align:center; font-family:sans-serif; margin-top:50px;">❌ فشل التوثيق من ديسكورد. <a href="/login">إعادة المحاولة</a></h2>');
+    const errContent = `
+      <div style="max-width: 420px; margin: 80px auto; text-align: center;">
+        <div class="glass-card">
+          <h2 style="color: #ef4444;">❌ فشل الربط مع Discord</h2>
+          <p style="color: #94a3b8;">تأكد من إعدادات OAuth2 و Redirect URI في ديسكورد.</p>
+          <a href="/login" class="btn">إعادة المحاولة</a>
+        </div>
+      </div>
+    `;
+    res.send(renderGlassLayout('خطأ التوثيق', errContent));
   }
 });
 
-// ------------------- اللوحة الرئيسية مع سحب الرومات تلقائياً -------------------
-app.get('/', async (req, res) => {
+// ------------------- اللوحة الرئيسية -------------------
+app.get('/', (req, res) => {
   if (!req.session.authenticated) return res.redirect('/login');
 
-  const userInfo = req.session.user ? `<span style="color:#a78bfa;">مرحباً، ${req.session.user.username} 👋</span>` : '';
+  const username = req.session.user ? req.session.user.username : 'المسؤول';
+  const avatar = req.session.user && req.session.user.avatar 
+    ? `https://cdn.discordapp.com/avatars/${req.session.user.id}/${req.session.user.avatar}.png` 
+    : 'https://cdn.discordapp.com/embed/avatars/0.png';
 
-  // سحب كافة القنوات النصية للسيرفرات التي يملك فيها البوت صلاحيات
-  let channelOptionsHTML = '<option value="" disabled selected>اختر الروم المراد إرسال اللوحة إليها...</option>';
+  // سحب القنوات النصية تلقائياً
+  let channelOptionsHTML = '<option value="" disabled selected>اختر الروم المخصصة لإرسال اللوحة إليها...</option>';
   try {
     client.guilds.cache.forEach(guild => {
       const textChannels = guild.channels.cache.filter(c => c.type === ChannelType.GuildText);
       textChannels.forEach(channel => {
-        channelOptionsHTML += `<option value="${channel.id}"># ${channel.name} (${guild.name})</option>`;
+        channelOptionsHTML += `<option value="${channel.id}"># ${channel.name} — (${guild.name})</option>`;
       });
     });
   } catch (e) {
     console.error(e);
   }
 
-  res.send(`
-    <!DOCTYPE html>
-    <html lang="ar" dir="rtl">
-    <head>
-      <meta charset="UTF-8">
-      <title>Void Community - Dashboard</title>
-      <style>
-        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
-        body { background: #05040a; color: #f8fafc; padding: 40px 20px; margin: 0; min-height: 100vh; position: relative; }
-        .glow-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; background: radial-gradient(circle at 50% 10%, rgba(124, 58, 237, 0.15), transparent 70%); }
-        .container { max-width: 1000px; margin: 0 auto; position: relative; z-index: 10; }
-        .header { 
-          display: flex; justify-content: space-between; align-items: center; 
-          background: rgba(18, 16, 28, 0.65); backdrop-filter: blur(15px);
-          padding: 20px 30px; border-radius: 20px; margin-bottom: 30px; 
-          border: 1px solid rgba(139, 92, 246, 0.3); box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-        }
-        h1 { margin: 0; color: #c084fc; font-size: 24px; text-shadow: 0 0 15px rgba(192, 132, 252, 0.4); }
-        .badge { background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.4); padding: 8px 16px; border-radius: 20px; font-weight: bold; }
-        .panel-box { 
-          background: rgba(18, 16, 28, 0.65); backdrop-filter: blur(15px);
-          padding: 30px; border-radius: 20px; border: 1px solid rgba(139, 92, 246, 0.3); margin-bottom: 30px;
-          box-shadow: 0 10px 30px rgba(0,0,0,0.4);
-        }
-        .card { 
-          background: rgba(10, 8, 18, 0.6); padding: 20px; border-radius: 16px; 
-          margin-bottom: 20px; border: 1px solid rgba(255, 255, 255, 0.08); transition: 0.3s;
-        }
-        .card:hover { border-color: rgba(167, 139, 250, 0.4); box-shadow: 0 5px 20px rgba(124, 58, 237, 0.15); }
-        label { font-weight: bold; display: block; margin-top: 12px; color: #cbd5e1; }
-        textarea, input, select { 
-          width: 100%; padding: 12px; border-radius: 10px; border: 1px solid rgba(139, 92, 246, 0.3); 
-          background: rgba(5, 4, 10, 0.8); color: #fff; margin-top: 6px; box-sizing: border-box; outline: none; transition: 0.3s;
-        }
-        select option { background: #0c0a14; color: #fff; }
-        textarea:focus, input:focus, select:focus { border-color: #a78bfa; box-shadow: 0 0 10px rgba(167, 139, 250, 0.3); }
-        button { 
-          background: linear-gradient(135deg, #7c3aed, #6366f1); color: #fff; border: none; 
-          padding: 16px 30px; font-size: 17px; border-radius: 12px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 20px;
-          box-shadow: 0 4px 20px rgba(124, 58, 237, 0.4); transition: 0.3s;
-        }
-        button:hover { transform: translateY(-2px); box-shadow: 0 6px 25px rgba(124, 58, 237, 0.6); }
-        .btn-send { background: linear-gradient(135deg, #2563eb, #3b82f6); margin-top: 12px; }
-      </style>
-    </head>
-    <body>
-      <div class="glow-bg"></div>
-      <div class="container">
-        <div class="header">
-          <div>
-            <h1>🎮 لوحة تحكم Void Community</h1>
-            ${userInfo}
-          </div>
-          <span class="badge">🟢 موثق ومتصل</span>
+  const content = `
+    <div class="glass-card" style="display: flex; justify-content: space-between; align-items: center;">
+      <div style="display: flex; align-items: center; gap: 15px;">
+        <img src="${avatar}" style="width: 50px; height: 50px; border-radius: 50%; border: 2px solid #7c3aed;">
+        <div>
+          <h2 style="margin: 0; font-size: 20px;" class="purple-gradient-text">لوحة تحكم Void Community</h2>
+          <span style="color: #a78bfa; font-size: 14px;">مرحباً بك، ${username} 👋</span>
         </div>
-
-        <div class="panel-box">
-          <h2 style="margin-top:0; color:#c084fc;">📢 إرسال لوحة الألوان إلى ديسكورد</h2>
-          <form action="/send-panel" method="POST">
-            <label>اختر القناة المخصصة من السيرفر:</label>
-            <select name="channel_id" required>
-              ${channelOptionsHTML}
-            </select>
-            <button type="submit" class="btn-send">🚀 إرسال اللوحة للقناة المحددة</button>
-          </form>
-        </div>
-
-        <form action="/save" method="POST">
-          <h2 style="color:#c084fc; margin-bottom:20px;">🎨 تعديل أسعار وشروط الألوان (17 لون)</h2>
-          ${Object.keys(basesData).map(key => `
-            <div class="card">
-              <h3 style="margin:0; color:#a78bfa;">${basesData[key].emoji}${basesData[key].name}</h3>
-              <label>💰 المقابل المادي:</label>
-              <textarea name="${key}_money" rows="2">${basesData[key].money}</textarea>
-              <label>🎁 مقابل الأغراض:</label>
-              <textarea name="${key}_items" rows="2">${basesData[key].items}</textarea>
-            </div>
-          `).join('')}
-          <button type="submit">💾 حفظ كافة التعديلات</button>
-        </form>
       </div>
-    </body>
-    </html>
-  `);
+      <span class="badge">🟢 النظام موثق ومتصل</span>
+    </div>
+
+    <div class="glass-card">
+      <h2 style="font-size: 20px;" class="purple-gradient-text">📢 إرسال لوحة الألوان إلى ديسكورد</h2>
+      <form action="/send-panel" method="POST">
+        <label>اختر القناة من القائمة المنسدلة:</label>
+        <select name="channel_id" required>
+          ${channelOptionsHTML}
+        </select>
+        <button type="submit" class="btn btn-blue">🚀 إرسال اللوحة للقناة المحددة</button>
+      </form>
+    </div>
+
+    <form action="/save" method="POST">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h2 style="font-size: 20px; margin: 0;" class="purple-gradient-text">🎨 تعديل أسعار وشروط الألوان (17 لون)</h2>
+      </div>
+      
+      ${Object.keys(basesData).map(key => `
+        <div class="glass-card" style="padding: 22px; margin-bottom: 15px;">
+          <h3 style="margin: 0 0 10px 0; color: #c084fc; font-size: 17px;">${basesData[key].emoji}${basesData[key].name}</h3>
+          <label>💰 المقابل المادي:</label>
+          <textarea name="${key}_money" rows="2">${basesData[key].money}</textarea>
+          <label>🎁 مقابل الأغراض:</label>
+          <textarea name="${key}_items" rows="2">${basesData[key].items}</textarea>
+        </div>
+      `).join('')}
+
+      <button type="submit" class="btn" style="position: sticky; bottom: 20px; z-index: 100;">💾 حفظ كافة التعديلات</button>
+    </form>
+  `;
+
+  res.send(renderGlassLayout('Void Community - Dashboard', content));
 });
 
-// حفظ البيانات وإرسال اللوحة
+// حفظ التعديلات وإظهار صفحة زجاجية متناسقة
 app.post('/save', (req, res) => {
   if (!req.session.authenticated) return res.redirect('/login');
   Object.keys(basesData).forEach(key => {
     if (req.body[`${key}_money`]) basesData[key].money = req.body[`${key}_money`];
     if (req.body[`${key}_items`]) basesData[key].items = req.body[`${key}_items`];
   });
-  res.send('<h2 style="text-align:center; color:#4ade80; font-family:sans-serif; margin-top:50px;">✅ تم حفظ التعديلات بنجاح!<br><br><a href="/" style="color:#a78bfa;">العودة للوحة التحكم</a></h2>');
+
+  const successContent = `
+    <div style="max-width: 450px; margin: 80px auto; text-align: center;">
+      <div class="glass-card">
+        <div style="font-size: 50px; margin-bottom: 10px;">✅</div>
+        <h2 class="purple-gradient-text">تم حفظ التعديلات بنجاح!</h2>
+        <p style="color: #94a3b8; margin-bottom: 25px;">تم تحديث أسعار وشروط جميع القواعد والألوان بالنظام.</p>
+        <a href="/" class="btn">العودة للوحة التحكم</a>
+      </div>
+    </div>
+  `;
+  res.send(renderGlassLayout('تم الحفظ', successContent));
 });
 
+// إرسال اللوحة للقناة
 app.post('/send-panel', async (req, res) => {
   if (!req.session.authenticated) return res.redirect('/login');
   const channelId = req.body.channel_id;
 
   try {
     const channel = await client.channels.fetch(channelId);
-    if (!channel) return res.send('❌ لم يتم العثور على القناة!');
+    if (!channel) throw new Error('القناة غير موجودة أو لا يملك البوت صلاحية الوصول إليها.');
 
     const baseOptions = Object.keys(basesData).map(key => ({
       label: basesData[key].name,
@@ -311,15 +317,35 @@ app.post('/send-panel', async (req, res) => {
       .setFooter({ text: 'Void Community System' });
 
     await channel.send({ embeds: [embed], components: [row] });
-    res.send(`<h2 style="text-align:center; color:#4ade80; font-family:sans-serif; margin-top:50px;">✅ تم إرسال اللوحة للقناة: ${channel.name}<br><br><a href="/" style="color:#a78bfa;">العودة للوحة التحكم</a></h2>`);
+
+    const sentContent = `
+      <div style="max-width: 450px; margin: 80px auto; text-align: center;">
+        <div class="glass-card">
+          <div style="font-size: 50px; margin-bottom: 10px;">🚀</div>
+          <h2 class="purple-gradient-text">تم إرسال اللوحة بنجاح!</h2>
+          <p style="color: #94a3b8; margin-bottom: 25px;">تم إرسال لوحة خيارات الألوان للقناة: <strong>#${channel.name}</strong></p>
+          <a href="/" class="btn">العودة للوحة التحكم</a>
+        </div>
+      </div>
+    `;
+    res.send(renderGlassLayout('تم الإرسال', sentContent));
   } catch (err) {
-    res.send(`<h2 style="text-align:center; color:#ef4444; font-family:sans-serif; margin-top:50px;">❌ حدث خطأ أثناء الإرسال: ${err.message}<br><br><a href="/" style="color:#a78bfa;">العودة للوحة التحكم</a></h2>`);
+    const errContent = `
+      <div style="max-width: 450px; margin: 80px auto; text-align: center;">
+        <div class="glass-card">
+          <h2 style="color: #ef4444;">❌ حدث خطأ أثناء الإرسال</h2>
+          <p style="color: #94a3b8; margin-bottom: 25px;">${err.message}</p>
+          <a href="/" class="btn">العودة للوحة التحكم</a>
+        </div>
+      </div>
+    `;
+    res.send(renderGlassLayout('خطأ إرسال', errContent));
   }
 });
 
 app.listen(port, () => console.log(`🌐 Dashboard Active on port ${port}`));
 
-// ------------------- كود ديسكورد -------------------
+// ------------------- كود ديسكورد وبوت التذاكر -------------------
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -381,7 +407,7 @@ client.on('interactionCreate', async interaction => {
       .setPlaceholder('اختر نوع المقابل')
       .addOptions([
         { label: 'مقابل مادي', value: 'money', description: 'عرض المقابل المادي المحدد لهذا اللون', emoji: '💰' },
-        { label: 'أغراض داخل اللعبة', value: 'items', description: 'عرض الأغراض المحتدة مسبقاً لهذا اللون', emoji: '🎁' }
+        { label: 'أغراض داخل اللعبة', value: 'items', description: 'عرض الأغراض المحددة مسبقاً لهذا اللون', emoji: '🎁' }
       ]);
 
     const row = new ActionRowBuilder().addComponents(paymentMenu);
