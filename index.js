@@ -20,7 +20,7 @@ app.use(express.urlencoded({ extended: true }));
 
 const port = process.env.PORT || 3000;
 
-// قاعدة البيانات الخاصة بالألوان والمبالغ
+// قاعدة بيانات القواعد والمبالغ والشروط
 let basesData = {
   silver: {
     name: 'Silver Base',
@@ -49,7 +49,7 @@ let basesData = {
   }
 };
 
-// 🖥️ رابط لوحة التحكم (Dashboard)
+// 🖥️ صفحة لوحة التحكم للموقع الويب (Dashboard)
 app.get('/', (req, res) => {
   res.send(`
     <!DOCTYPE html>
@@ -62,8 +62,8 @@ app.get('/', (req, res) => {
         .card { background: #1e293b; padding: 20px; border-radius: 12px; margin-bottom: 20px; }
         h1 { color: #38bdf8; text-align: center; }
         label { font-weight: bold; display: block; margin-top: 10px; }
-        textarea, input { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: #fff; margin-top: 5px; }
-        button { background: #22c55e; color: #fff; border: none; padding: 12px 24px; font-size: 16px; border-radius: 6px; cursor: pointer; margin-top: 20px; width: 100%; }
+        textarea { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: #fff; margin-top: 5px; box-sizing: border-box; }
+        button { background: #22c55e; color: #fff; border: none; padding: 12px 24px; font-size: 16px; border-radius: 6px; cursor: pointer; margin-top: 20px; width: 100%; font-weight: bold; }
         button:hover { background: #16a34a; }
       </style>
     </head>
@@ -86,16 +86,16 @@ app.get('/', (req, res) => {
   `);
 });
 
-// حفظ البيانات من لوحة التحكم
+// حفظ البيانات من موقع لوحة التحكم
 app.post('/save', (req, res) => {
   Object.keys(basesData).forEach(key => {
     if (req.body[`${key}_money`]) basesData[key].money = req.body[`${key}_money`];
     if (req.body[`${key}_items`]) basesData[key].items = req.body[`${key}_items`];
   });
-  res.send('<h1 style="text-align:center; margin-top:50px; font-family:sans-serif;">✅ تم حفظ الأسعار والشروط بنجاح! <br><br><a href="/">العودة للوحة التحكم</a></h1>');
+  res.send('<h1 style="text-align:center; margin-top:50px; font-family:sans-serif; color:#22c55e;">✅ تم حفظ الأسعار والشروط بنجاح!<br><br><a href="/" style="color:#38bdf8;">العودة للوحة التحكم</a></h1>');
 });
 
-app.listen(port, () => console.log(`🌐 Dashboard active on port ${port}`));
+app.listen(port, () => console.log(`🌐 Web Dashboard active on port ${port}`));
 
 // ------------------- كود ديسكورد -------------------
 const client = new Client({
@@ -133,7 +133,7 @@ client.on('messageCreate', async message => {
 
     const embed = new EmbedBuilder()
       .setTitle('🎨 Void Community | نظام ألوان ماب النطة')
-      .setDescription('اختر القاعدة التي تريد طلبها من القائمة المنسدلة أدناه لتقديم بيانتك ونوع المقابل:')
+      .setDescription('اختر القاعدة التي تريد طلبها من القائمة المنسدلة أدناه لتقديم بياناتك ونوع المقابل:')
       .setColor('#2b2d31')
       .setFooter({ text: 'Void Community System' });
 
@@ -142,6 +142,7 @@ client.on('messageCreate', async message => {
 });
 
 client.on('interactionCreate', async interaction => {
+  // 1. اختيار القاعدة -> إظهار نموذج الضمان والنواقص
   if (interaction.isStringSelectMenu() && interaction.customId === 'select_base_color') {
     const selectedKey = interaction.values[0];
     const baseInfo = basesData[selectedKey] || { name: selectedKey };
@@ -172,6 +173,7 @@ client.on('interactionCreate', async interaction => {
     await interaction.showModal(modal);
   }
 
+  // 2. إرسال النموذج -> عرض خيارات المقابل
   if (interaction.isModalSubmit() && interaction.customId.startsWith('modal_info_')) {
     const baseKey = interaction.customId.replace('modal_info_', '');
     const guarantee = interaction.fields.getTextInputValue('guarantee_val');
@@ -200,6 +202,7 @@ client.on('interactionCreate', async interaction => {
     });
   }
 
+  // 3. اختيار المقابل -> عرض التفاصيل مع القبول والرفض
   if (interaction.isStringSelectMenu() && interaction.customId === 'select_payment') {
     const payType = interaction.values[0];
     const session = userSessions.get(interaction.user.id);
@@ -234,6 +237,7 @@ client.on('interactionCreate', async interaction => {
     });
   }
 
+  // 4. أزرار القبول والرفض وتذاكر الإدارة
   if (interaction.isButton()) {
     if (interaction.customId === 'btn_accept') {
       const session = userSessions.get(interaction.user.id);
