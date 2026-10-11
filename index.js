@@ -11,12 +11,12 @@ const {
 } = require('discord.js');
 const express = require('express');
 
-// 1. تشغيل سيرفر ويب خفيف لضمان قبول Render للخدمة المجانية فوراً
+// 1. تشغيل سيرفر خفيف لإنهاء التعليق في Render فوراً
 const app = express();
 const port = process.env.PORT || 3000;
 
 app.get('/', (req, res) => {
-  res.send('Void Community Parkour Bot is Running Live!');
+  res.send('Void Community Parkour Bot is Live!');
 });
 
 app.listen(port, () => {
@@ -61,7 +61,7 @@ client.once('ready', () => {
 client.on('messageCreate', async message => {
   if (message.author.bot) return;
 
-  // 1. أمر إرسال قائمة تذاكر الألوان (!panel)
+  // 1. أمر لوحة تذاكر ألوان القواعد (!panel)
   if (message.content === '!panel') {
     const selectMenu = new StringSelectMenuBuilder()
       .setCustomId('select_base_ticket')
@@ -79,7 +79,7 @@ client.on('messageCreate', async message => {
     await message.channel.send({ embeds: [embed], components: [row] });
   }
 
-  // 2. أمر لوحة التوثيق (!verify-panel)
+  // 2. أمر لوحة التوثيق الفوري (!verify-panel)
   if (message.content === '!verify-panel') {
     const verifyBtn = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
@@ -99,14 +99,14 @@ client.on('messageCreate', async message => {
   }
 });
 
-// التعامل مع التفاعلات والأزرار
+// التعامل مع التفاعلات والضغطات
 client.on('interactionCreate', async interaction => {
-  // أ) التوثيق
+  // أ) نظام التوثيق
   if (interaction.isButton() && interaction.customId === 'verify_member') {
     return interaction.reply({ content: 'مرحباً بك في **Void Community**! تم توثيق حسابك بنجاح 🎉', ephemeral: true });
   }
 
-  // ب) فتح التذاكر
+  // ب) فتح التذاكر عند اختيار قاعدة من القائمة
   if (interaction.isStringSelectMenu() && interaction.customId === 'select_base_ticket') {
     const selectedValue = interaction.values[0];
     const selectedBase = bases.find(b => b.value === selectedValue);
