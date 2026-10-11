@@ -73,7 +73,6 @@ const renderProLayout = (activeTab, content) => `
       * { box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; }
       body { background: #06040e; color: #f8fafc; margin: 0; padding: 0; display: flex; min-height: 100vh; overflow-x: hidden; }
       
-      /* Sidebar */
       .sidebar {
         width: 260px; background: rgba(13, 10, 25, 0.85); backdrop-filter: blur(20px);
         border-left: 1px solid rgba(139, 92, 246, 0.2); padding: 25px 15px; display: flex;
@@ -89,9 +88,7 @@ const renderProLayout = (activeTab, content) => `
         font-weight: 600; font-size: 14px; margin-bottom: 5px; transition: 0.3s;
       }
       .nav-item:hover, .nav-item.active { background: rgba(124, 58, 237, 0.2); color: #fff; border: 1px solid rgba(139, 92, 246, 0.3); }
-      .nav-item .icon { font-size: 18px; margin-left: 10px; }
 
-      /* Main Content */
       .main-content { margin-right: 260px; flex: 1; padding: 35px; }
       .glass-card {
         background: rgba(18, 16, 28, 0.65); backdrop-filter: blur(20px);
@@ -147,7 +144,7 @@ const renderProLayout = (activeTab, content) => `
   </html>
 `;
 
-// ------------------- 4. مسارات الدخول والتوثيق المتتابع (مع تفادي الـ Rate Limit) -------------------
+// ------------------- 4. مسارات الدخول والتوثيق -------------------
 app.get('/login', (req, res) => {
   res.send(`
     <!DOCTYPE html>
@@ -200,18 +197,17 @@ app.get('/api/auth/callback', async (req, res) => {
     params.append('code', code);
     params.append('redirect_uri', REDIRECT_URI);
 
-    // إضافة User-Agent لتجاوز Cloudflare Rate Limit
     const tokenResponse = await axios.post('https://discord.com/api/oauth2/token', params, {
       headers: { 
         'Content-Type': 'application/x-www-form-urlencoded',
-        'User-Agent': 'DiscordBot (VoidCommunityDashboard, 1.0.0)'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
       }
     });
 
     const userResponse = await axios.get('https://discord.com/api/users/@me', {
       headers: { 
         Authorization: `Bearer ${tokenResponse.data.access_token}`,
-        'User-Agent': 'DiscordBot (VoidCommunityDashboard, 1.0.0)'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
       }
     });
 
@@ -219,12 +215,12 @@ app.get('/api/auth/callback', async (req, res) => {
     req.session.user = userResponse.data;
     res.redirect('/');
   } catch (error) {
-    console.error('OAuth Error Details:', error.response?.data || error.message);
-    res.send('<h2 style="color:red; text-align:center; font-family:sans-serif; margin-top:50px;">❌ فشل الربط مع ديسكورد.<br>إذا استمر الخطأ انتظر دقيقة واحدة وأعد المحاولة.<br><br><a href="/login" style="color:#a78bfa;">إعادة المحاولة</a></h2>');
+    console.error('OAuth Error:', error.response?.data || error.message);
+    res.send('<h2 style="color:red; text-align:center; font-family:sans-serif; margin-top:50px;">❌ فشل الربط مع ديسكورد.<br>تأكد من تجديد الـ CLIENT_SECRET بـ Render.<br><br><a href="/login" style="color:#a78bfa;">إعادة المحاولة</a></h2>');
   }
 });
 
-// ------------------- 5. الصفحة الرئيسية باللوحة الجانبية -------------------
+// ------------------- 5. الصفحة الرئيسية -------------------
 app.get('/', (req, res) => {
   if (!req.session.authenticated) return res.redirect('/login');
 
@@ -262,7 +258,7 @@ app.get('/', (req, res) => {
       <h2 class="purple-text" style="margin-bottom: 20px;">🎨 أسعار وشروط القواعد (17 لون)</h2>
       ${Object.keys(basesData).map(key => `
         <div class="glass-card" style="padding:20px;">
-          <h3 style="margin:0 0 10px 0; color:#a78bfa;">${basesData[key].emoji} ${basesData[key].name}</h3>
+          <h3 style="margin:0 0 10px 0; color:#a78bfa;">${basesData[key].emoji}${basesData[key].name}</h3>
           <label>💰 المقابل المادي:</label>
           <textarea name="${key}_money" rows="2">${basesData[key].money}</textarea>
           <label>🎁 مقابل الأغراض:</label>
@@ -316,7 +312,7 @@ app.post('/send-panel', async (req, res) => {
 
 app.listen(PORT, () => console.log(`🌐 Dashboard Active on port ${PORT}`));
 
-// ------------------- 6. إعداد وتجهيز بوت الديسكورد المتقدم -------------------
+// ------------------- 6. إعداد وتجهيز بوت الديسكورد -------------------
 const client = new Client({
   intents: [
     I.Guilds, I.GuildMembers, I.GuildMessages, I.MessageContent,
@@ -344,7 +340,7 @@ for (const m of loadFiles('events')) {
   }
 }
 
-// ------------------- 7. تفاعلات الألوان والتذاكر -------------------
+// ------------------- 7. التذاكر والتفاعلات -------------------
 const userSessions = new Map();
 
 client.on('interactionCreate', async interaction => {
@@ -383,4 +379,67 @@ client.on('interactionCreate', async interaction => {
       ]);
 
     await interaction.reply({
-      content: `✅ **تم حفظ الضمان وعدد النواقص.**
+      content: `✅ **تم حفظ الضمان وعدد النواقص.**\n\n🎨 **الآن اختر نوع المقابل للحصول على ${basesData[baseKey]?.name || baseKey}:**`,
+      components: [new ActionRowBuilder().addComponents(paymentMenu)],
+      ephemeral: true
+    });
+  }
+
+  if (interaction.isStringSelectMenu() && interaction.customId === 'select_payment') {
+    const payType = interaction.values[0];
+    const session = userSessions.get(interaction.user.id);
+    if (!session) return interaction.reply({ content: '❌ انتهت الجلسة، يرجى البدء من جديد.', ephemeral: true });
+
+    const baseConfig = basesData[session.baseKey] || { name: session.baseKey, money: 'غير محدد', items: 'غير محدد' };
+    let textDetails = payType === 'money' ? `💰 **المقابل المادي للون ${baseConfig.name}:**\n${baseConfig.money}` : `🎁 **مقابل الأغراض للون ${baseConfig.name}:**\n${baseConfig.items}`;
+
+    const btns = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('btn_accept').setLabel('قبول').setEmoji('✅').setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId('btn_reject').setLabel('رفض').setEmoji('❌').setStyle(ButtonStyle.Danger)
+    );
+
+    await interaction.update({
+      content: `${textDetails}\n\n**ضمانك:** ${session.guarantee}\n**عدد نواقصك:** ${session.missing}\n\n**هل توافق على هذا المقابل؟**`,
+      components: [btns]
+    });
+  }
+
+  if (interaction.isButton()) {
+    if (interaction.customId === 'btn_accept') {
+      const session = userSessions.get(interaction.user.id);
+      const ch = await interaction.guild.channels.create({
+        name: `ticket-${session?.baseKey || 'color'}-${interaction.user.username}`.toLowerCase(),
+        type: ChannelType.GuildText,
+        permissionOverwrites: [
+          { id: interaction.guild.id, deny: [PermissionFlagsBits.ViewChannel] },
+          { id: interaction.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] }
+        ]
+      });
+
+      const embed = new EmbedBuilder()
+        .setTitle(`🎫 Void Community | طلب لون ${basesData[session?.baseKey]?.name || 'Base'}`)
+        .addFields(
+          { name: '👤 العضو', value: `<@${interaction.user.id}>`, inline: true },
+          { name: '🛡️ الضمان', value: session ? session.guarantee : 'غير محدد', inline: true },
+          { name: '🔢 عدد النواقص', value: session ? session.missing : 'غير محدد', inline: true }
+        )
+        .setColor('#57f287')
+        .setFooter({ text: 'Void Community System' });
+
+      await ch.send({ content: `<@${interaction.user.id}>`, embeds: [embed], components: [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('close_ticket').setLabel('إغلاق التذكرة').setEmoji('🔒').setStyle(ButtonStyle.Danger))] });
+      await interaction.update({ content: `🎉 **تم قبول الطلب بنجاح!**\nتم فتح القناة الخاصة بك: ${ch}`, components: [] });
+    }
+
+    if (interaction.customId === 'btn_reject') {
+      await interaction.update({ content: '❌ **تم إلغاء الطلب.**', components: [] });
+    }
+
+    if (interaction.customId === 'close_ticket') {
+      await interaction.reply('سيتم إغلاق التذكرة خلال 5 ثوانٍ...');
+      setTimeout(() => interaction.channel.delete().catch(() => {}), 5000);
+    }
+  }
+});
+
+client.login(TOKEN);
+module.exports = client;
