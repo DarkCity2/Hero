@@ -147,7 +147,7 @@ const renderProLayout = (activeTab, content) => `
   </html>
 `;
 
-// ------------------- 4. مسارات الدخول والتوثيق المتتابع -------------------
+// ------------------- 4. مسارات الدخول والتوثيق المتتابع (مع تفادي الـ Rate Limit) -------------------
 app.get('/login', (req, res) => {
   res.send(`
     <!DOCTYPE html>
@@ -200,20 +200,27 @@ app.get('/api/auth/callback', async (req, res) => {
     params.append('code', code);
     params.append('redirect_uri', REDIRECT_URI);
 
+    // إضافة User-Agent لتجاوز Cloudflare Rate Limit
     const tokenResponse = await axios.post('https://discord.com/api/oauth2/token', params, {
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+      headers: { 
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'User-Agent': 'DiscordBot (VoidCommunityDashboard, 1.0.0)'
+      }
     });
 
     const userResponse = await axios.get('https://discord.com/api/users/@me', {
-      headers: { Authorization: `Bearer ${tokenResponse.data.access_token}` }
+      headers: { 
+        Authorization: `Bearer ${tokenResponse.data.access_token}`,
+        'User-Agent': 'DiscordBot (VoidCommunityDashboard, 1.0.0)'
+      }
     });
 
     req.session.authenticated = true;
     req.session.user = userResponse.data;
     res.redirect('/');
   } catch (error) {
-    console.error('OAuth Error:', error.response?.data || error.message);
-    res.send('<h2 style="color:red; text-align:center; font-family:sans-serif; margin-top:50px;">❌ فشل الربط مع ديسكورد. تأكد من CLIENT_SECRET و Redirect URI.<br><a href="/login">إعادة المحاولة</a></h2>');
+    console.error('OAuth Error Details:', error.response?.data || error.message);
+    res.send('<h2 style="color:red; text-align:center; font-family:sans-serif; margin-top:50px;">❌ فشل الربط مع ديسكورد.<br>إذا استمر الخطأ انتظر دقيقة واحدة وأعد المحاولة.<br><br><a href="/login" style="color:#a78bfa;">إعادة المحاولة</a></h2>');
   }
 });
 
@@ -255,7 +262,7 @@ app.get('/', (req, res) => {
       <h2 class="purple-text" style="margin-bottom: 20px;">🎨 أسعار وشروط القواعد (17 لون)</h2>
       ${Object.keys(basesData).map(key => `
         <div class="glass-card" style="padding:20px;">
-          <h3 style="margin:0 0 10px 0; color:#a78bfa;">${basesData[key].emoji}${basesData[key].name}</h3>
+          <h3 style="margin:0 0 10px 0; color:#a78bfa;">${basesData[key].emoji} ${basesData[key].name}</h3>
           <label>💰 المقابل المادي:</label>
           <textarea name="${key}_money" rows="2">${basesData[key].money}</textarea>
           <label>🎁 مقابل الأغراض:</label>
@@ -376,67 +383,4 @@ client.on('interactionCreate', async interaction => {
       ]);
 
     await interaction.reply({
-      content: `✅ **تم حفظ الضمان وعدد النواقص.**\n\n🎨 **الآن اختر نوع المقابل للحصول على ${basesData[baseKey]?.name || baseKey}:**`,
-      components: [new ActionRowBuilder().addComponents(paymentMenu)],
-      ephemeral: true
-    });
-  }
-
-  if (interaction.isStringSelectMenu() && interaction.customId === 'select_payment') {
-    const payType = interaction.values[0];
-    const session = userSessions.get(interaction.user.id);
-    if (!session) return interaction.reply({ content: '❌ انتهت الجلسة، يرجى البدء من جديد.', ephemeral: true });
-
-    const baseConfig = basesData[session.baseKey] || { name: session.baseKey, money: 'غير محدد', items: 'غير محدد' };
-    let textDetails = payType === 'money' ? `💰 **المقابل المادي للون ${baseConfig.name}:**\n${baseConfig.money}` : `🎁 **مقابل الأغراض للون ${baseConfig.name}:**\n${baseConfig.items}`;
-
-    const btns = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('btn_accept').setLabel('قبول').setEmoji('✅').setStyle(ButtonStyle.Success),
-      new ButtonBuilder().setCustomId('btn_reject').setLabel('رفض').setEmoji('❌').setStyle(ButtonStyle.Danger)
-    );
-
-    await interaction.update({
-      content: `${textDetails}\n\n**ضمانك:** ${session.guarantee}\n**عدد نواقصك:** ${session.missing}\n\n**هل توافق على هذا المقابل؟**`,
-      components: [btns]
-    });
-  }
-
-  if (interaction.isButton()) {
-    if (interaction.customId === 'btn_accept') {
-      const session = userSessions.get(interaction.user.id);
-      const ch = await interaction.guild.channels.create({
-        name: `ticket-${session?.baseKey || 'color'}-${interaction.user.username}`.toLowerCase(),
-        type: ChannelType.GuildText,
-        permissionOverwrites: [
-          { id: interaction.guild.id, deny: [PermissionFlagsBits.ViewChannel] },
-          { id: interaction.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] }
-        ]
-      });
-
-      const embed = new EmbedBuilder()
-        .setTitle(`🎫 Void Community | طلب لون ${basesData[session?.baseKey]?.name || 'Base'}`)
-        .addFields(
-          { name: '👤 العضو', value: `<@${interaction.user.id}>`, inline: true },
-          { name: '🛡️ الضمان', value: session ? session.guarantee : 'غير محدد', inline: true },
-          { name: '🔢 عدد النواقص', value: session ? session.missing : 'غير محدد', inline: true }
-        )
-        .setColor('#57f287')
-        .setFooter({ text: 'Void Community System' });
-
-      await ch.send({ content: `<@${interaction.user.id}>`, embeds: [embed], components: [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('close_ticket').setLabel('إغلاق التذكرة').setEmoji('🔒').setStyle(ButtonStyle.Danger))] });
-      await interaction.update({ content: `🎉 **تم قبول الطلب بنجاح!**\nتم فتح القناة الخاصة بك: ${ch}`, components: [] });
-    }
-
-    if (interaction.customId === 'btn_reject') {
-      await interaction.update({ content: '❌ **تم إلغاء الطلب.**', components: [] });
-    }
-
-    if (interaction.customId === 'close_ticket') {
-      await interaction.reply('سيتم إغلاق التذكرة خلال 5 ثوانٍ...');
-      setTimeout(() => interaction.channel.delete().catch(() => {}), 5000);
-    }
-  }
-});
-
-client.login(TOKEN);
-module.exports = client;
+      content: `✅ **تم حفظ الضمان وعدد النواقص.**
