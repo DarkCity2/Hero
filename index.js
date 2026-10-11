@@ -14,13 +14,90 @@ const {
 } = require('discord.js');
 const express = require('express');
 
-// 1. تشغيل سيرفر الويب لخدمة Render المجانية
 const app = express();
-const port = process.env.PORT || 3000;
-app.get('/', (req, res) => res.send('Void Community System is Online!'));
-app.listen(port, () => console.log(`🌐 Server active on port ${port}`));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// 2. إعداد البوت
+const port = process.env.PORT || 3000;
+
+// قاعدة البيانات الخاصة بالألوان والمبالغ
+let basesData = {
+  silver: {
+    name: 'Silver Base',
+    money: 'اذا ناقصك 15 وتحت المبلغ ( 20 ريال ) اذا فوق 15 ( 40 ريال )',
+    items: '(١٠ وتحت وتحت كروماندو كاندي وفوق باستثناء البارتي، ١٠٠ وفوق دب كاندي وفوق باستثناء البارتي)'
+  },
+  gold: {
+    name: 'Gold Base',
+    money: 'اذا ناقصك 15 وتحت المبلغ ( 20 ريال ) اذا فوق 15 ( 40 ريال )',
+    items: '(١٠ وتحت وتحت كروماندو كاندي وفوق باستثناء البارتي، ١٠٠ وفوق دب كاندي وفوق باستثناء البارتي)'
+  },
+  crystal: {
+    name: 'Crystal Base',
+    money: 'اذا ناقصك 15 وتحت المبلغ ( 25 ريال ) اذا فوق 15 ( 50 ريال )',
+    items: '(١٠ وتحت وتحت كروماندو كاندي وفوق باستثناء البارتي، ١٠٠ وفوق دب كاندي وفوق باستثناء البارتي)'
+  },
+  bloodmoon: {
+    name: 'BloodMoon Base',
+    money: 'اذا ناقصك 15 وتحت المبلغ ( 30 ريال ) اذا فوق 15 ( 60 ريال )',
+    items: '(١٠ وتحت وتحت كروماندو كاندي وفوق باستثناء البارتي، ١٠٠ وفوق دب كاندي وفوق باستثناء البارتي)'
+  },
+  rainbow: {
+    name: 'Rainbow Base GoUp',
+    money: 'اذا ناقصك 15 وتحت المبلغ ( 30 ريال ) اذا فوق 15 ( 60 ريال )',
+    items: '(١٠ وتحت وتحت كروماندو كاندي وفوق باستثناء البارتي، ١٠٠ وفوق دب كاندي وفوق باستثناء البارتي)'
+  }
+};
+
+// 🖥️ رابط لوحة التحكم (Dashboard)
+app.get('/', (req, res) => {
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="ar" dir="rtl">
+    <head>
+      <meta charset="UTF-8">
+      <title>Void Community - Dashboard</title>
+      <style>
+        body { font-family: sans-serif; background: #0f172a; color: #fff; padding: 20px; }
+        .card { background: #1e293b; padding: 20px; border-radius: 12px; margin-bottom: 20px; }
+        h1 { color: #38bdf8; text-align: center; }
+        label { font-weight: bold; display: block; margin-top: 10px; }
+        textarea, input { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: #fff; margin-top: 5px; }
+        button { background: #22c55e; color: #fff; border: none; padding: 12px 24px; font-size: 16px; border-radius: 6px; cursor: pointer; margin-top: 20px; width: 100%; }
+        button:hover { background: #16a34a; }
+      </style>
+    </head>
+    <body>
+      <h1>🎮 Void Community | لوحة تحكم ألوان ماب النطة</h1>
+      <form action="/save" method="POST">
+        ${Object.keys(basesData).map(key => `
+          <div class="card">
+            <h3>🎨 ${basesData[key].name}</h3>
+            <label>💰 المقابل المادي:</label>
+            <textarea name="${key}_money" rows="2">${basesData[key].money}</textarea>
+            <label>🎁 مقابل الأغراض:</label>
+            <textarea name="${key}_items" rows="2">${basesData[key].items}</textarea>
+          </div>
+        `).join('')}
+        <button type="submit">💾 حفظ كافة التعديلات</button>
+      </form>
+    </body>
+    </html>
+  `);
+});
+
+// حفظ البيانات من لوحة التحكم
+app.post('/save', (req, res) => {
+  Object.keys(basesData).forEach(key => {
+    if (req.body[`${key}_money`]) basesData[key].money = req.body[`${key}_money`];
+    if (req.body[`${key}_items`]) basesData[key].items = req.body[`${key}_items`];
+  });
+  res.send('<h1 style="text-align:center; margin-top:50px; font-family:sans-serif;">✅ تم حفظ الأسعار والشروط بنجاح! <br><br><a href="/">العودة للوحة التحكم</a></h1>');
+});
+
+app.listen(port, () => console.log(`🌐 Dashboard active on port ${port}`));
+
+// ------------------- كود ديسكورد -------------------
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -29,35 +106,20 @@ const client = new Client({
   ]
 });
 
-// تخزين بيانات طلبات المستخدمين المؤقتة
-const userRequests = new Map();
+const userSessions = new Map();
 
-// قائمة القواعد والألوان
-const bases = [
+const baseSelectOptions = [
   { label: 'Silver Base', value: 'silver', description: 'تقديم طلب لون Silver Base', emoji: '⚪' },
   { label: 'Gold Base', value: 'gold', description: 'تقديم طلب لون Gold Base', emoji: '🟡' },
   { label: 'Crystal Base', value: 'crystal', description: 'تقديم طلب لون Crystal Base', emoji: '💎' },
   { label: 'BloodMoon Base', value: 'bloodmoon', description: 'تقديم طلب لون BloodMoon Base', emoji: '🌑' },
-  { label: 'Rainbow Base GoUp', value: 'rainbow', description: 'تقديم طلب لون Rainbow Base GoUp', emoji: '🌈' },
-  { label: 'Candy Base GoUp', value: 'candy', description: 'تقديم طلب لون Candy Base GoUp', emoji: '🍬' },
-  { label: 'Cyber Base GoUp', value: 'cyber', description: 'تقديم طلب لون Cyber Base GoUp', emoji: '🤖' },
-  { label: 'Party Base GoUp', value: 'party', description: 'تقديم طلب لون Party Base GoUp', emoji: '🎉' },
-  { label: 'Black & White Base GoUp', value: 'bw', description: 'تقديم طلب لون Black & White Base GoUp', emoji: '⬛' },
-  { label: 'Aqua Base GoUp', value: 'aqua', description: 'تقديم طلب لون Aqua Base GoUp', emoji: '💧' },
-  { label: 'Lava Base GoUp', value: 'lava', description: 'تقديم طلب لون Lava Base GoUp', emoji: '🌋' },
-  { label: 'Football Base GoUp', value: 'football', description: 'تقديم طلب لون Football Base GoUp', emoji: '⚽' },
-  { label: 'Summer Base GoUp', value: 'summer', description: 'تقديم طلب لون Summer Base GoUp', emoji: '☀️' },
-  { label: 'Dreamy Base GoUp', value: 'dreamy', description: 'تقديم طلب لون Dreamy Base GoUp', emoji: '☁️' },
-  { label: 'Galaxy Base', value: 'galaxy', description: 'تقديم طلب لون Galaxy Base', emoji: '🌌' },
-  { label: 'Radioactive Base', value: 'radioactive', description: 'تقديم طلب لون Radioactive Base', emoji: '☢️' },
-  { label: 'Halloween Base', value: 'halloween', description: 'تقديم طلب لون Halloween Base', emoji: '🎃' }
+  { label: 'Rainbow Base GoUp', value: 'rainbow', description: 'تقديم طلب لون Rainbow Base GoUp', emoji: '🌈' }
 ];
 
 client.once('ready', () => {
   console.log(`✅ [Void Community] البوت يعمل بنجاح باسم: ${client.user.tag}`);
 });
 
-// أمر إرسال لوحة الألوان
 client.on('messageCreate', async message => {
   if (message.author.bot) return;
 
@@ -65,12 +127,12 @@ client.on('messageCreate', async message => {
     const selectMenu = new StringSelectMenuBuilder()
       .setCustomId('select_base_color')
       .setPlaceholder('اختر لون القاعدة المطلوبة...')
-      .addOptions(bases);
+      .addOptions(baseSelectOptions);
 
     const row = new ActionRowBuilder().addComponents(selectMenu);
 
     const embed = new EmbedBuilder()
-      .setTitle('🎨 Void Community | نظام طلبات ألوان القواعد')
+      .setTitle('🎨 Void Community | نظام ألوان ماب النطة')
       .setDescription('اختر القاعدة التي تريد طلبها من القائمة المنسدلة أدناه لتقديم بيانتك ونوع المقابل:')
       .setColor('#2b2d31')
       .setFooter({ text: 'Void Community System' });
@@ -79,29 +141,26 @@ client.on('messageCreate', async message => {
   }
 });
 
-// التعامل مع جميع التفاعلات (النماذج، القوائم، الأزرار)
 client.on('interactionCreate', async interaction => {
-
-  // Step 1: اختيار القاعدة من القائمة -> فتح النموذج (Modal)
   if (interaction.isStringSelectMenu() && interaction.customId === 'select_base_color') {
-    const selectedValue = interaction.values[0];
-    const selectedBase = bases.find(b => b.value === selectedValue);
+    const selectedKey = interaction.values[0];
+    const baseInfo = basesData[selectedKey] || { name: selectedKey };
 
     const modal = new ModalBuilder()
-      .setCustomId(`modal_guarantee_${selectedValue}`)
-      .setTitle(`${selectedBase.label} بيانات ضمان`);
+      .setCustomId(`modal_info_${selectedKey}`)
+      .setTitle(`${baseInfo.name} بيانات ضمان`);
 
     const guaranteeInput = new TextInputBuilder()
-      .setCustomId('guarantee_value')
+      .setCustomId('guarantee_val')
       .setLabel('اكتب الضمان حقك')
       .setPlaceholder('اكتب الضمان')
       .setStyle(TextInputStyle.Short)
       .setRequired(true);
 
     const missingInput = new TextInputBuilder()
-      .setCustomId('missing_count')
+      .setCustomId('missing_val')
       .setLabel('اكتب عدد نواقصك')
-      .setPlaceholder('مثال: 2')
+      .setPlaceholder('مثال: 5')
       .setStyle(TextInputStyle.Short)
       .setRequired(true);
 
@@ -113,79 +172,75 @@ client.on('interactionCreate', async interaction => {
     await interaction.showModal(modal);
   }
 
-  // Step 2: استقبال بيانات النموذج -> عرض اختيار نوع المقابل
-  if (interaction.isModalSubmit() && interaction.customId.startsWith('modal_guarantee_')) {
-    const baseKey = interaction.customId.replace('modal_guarantee_', '');
-    const selectedBase = bases.find(b => b.value === baseKey);
+  if (interaction.isModalSubmit() && interaction.customId.startsWith('modal_info_')) {
+    const baseKey = interaction.customId.replace('modal_info_', '');
+    const guarantee = interaction.fields.getTextInputValue('guarantee_val');
+    const missing = interaction.fields.getTextInputValue('missing_val');
 
-    const guarantee = interaction.fields.getTextInputValue('guarantee_value');
-    const missing = interaction.fields.getTextInputValue('missing_count');
-
-    // حفظ البيانات مؤقتاً للمستخدم
-    userRequests.set(interaction.user.id, {
-      base: selectedBase.label,
+    userSessions.set(interaction.user.id, {
       baseKey: baseKey,
       guarantee: guarantee,
       missing: missing
     });
 
     const paymentMenu = new StringSelectMenuBuilder()
-      .setCustomId('select_payment_type')
+      .setCustomId('select_payment')
       .setPlaceholder('اختر نوع المقابل')
       .addOptions([
         { label: 'مقابل مادي', value: 'money', description: 'عرض المقابل المادي المحدد لهذا اللون', emoji: '💰' },
-        { label: 'أغراض داخل اللعبة', value: 'in_game', description: 'عرض الأغراض المحتدة مسبقاً لهذا اللون', emoji: '🎁' }
+        { label: 'أغراض داخل اللعبة', value: 'items', description: 'عرض الأغراض المحتدة مسبقاً لهذا اللون', emoji: '🎁' }
       ]);
 
     const row = new ActionRowBuilder().addComponents(paymentMenu);
 
     await interaction.reply({
-      content: `✅ **تم حفظ الضمان وعدد النواقص.**\n\n🎨 **الآن اختر نوع المقابل للحصول على ${selectedBase.label}:**`,
+      content: `✅ **تم حفظ الضمان وعدد النواقص.**\n\n🎨 **الآن اختر نوع المقابل للحصول على ${basesData[baseKey]?.name || baseKey}:**`,
       components: [row],
       ephemeral: true
     });
   }
 
-  // Step 3: اختيار نوع المقابل -> عرض ملخص الطلب مع أزرار القبول والرفض
-  if (interaction.isStringSelectMenu() && interaction.customId === 'select_payment_type') {
-    const paymentType = interaction.values[0];
-    const userData = userRequests.get(interaction.user.id);
+  if (interaction.isStringSelectMenu() && interaction.customId === 'select_payment') {
+    const payType = interaction.values[0];
+    const session = userSessions.get(interaction.user.id);
 
-    if (!userData) {
-      return interaction.reply({ content: '❌ حدث خطأ، يرجى إعادة محاولة التقديم من البداية.', ephemeral: true });
+    if (!session) {
+      return interaction.reply({ content: '❌ انتهت الجلسة، يرجى البدء من جديد.', ephemeral: true });
     }
 
-    userData.paymentType = paymentType === 'money' ? 'مقابل مادي 💰' : 'أغراض داخل اللعبة 🎁';
+    const baseConfig = basesData[session.baseKey] || {
+      name: session.baseKey,
+      money: 'المقابل المادي غير محدد',
+      items: 'الأغراض غير محدودة'
+    };
 
-    const confirmBtns = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId('accept_request')
-        .setLabel('قبول')
-        .setEmoji('✅')
-        .setStyle(ButtonStyle.Success),
-      new ButtonBuilder()
-        .setCustomId('reject_request')
-        .setLabel('رفض')
-        .setEmoji('❌')
-        .setStyle(ButtonStyle.Danger)
+    let textDetails = '';
+    if (payType === 'money') {
+      textDetails = `💰 **المقابل المادي للون ${baseConfig.name}:**\n${baseConfig.money}`;
+    } else {
+      textDetails = `🎁 **مقابل الأغراض للون ${baseConfig.name}:**\n${baseConfig.items}`;
+    }
+
+    const fullMessage = `${textDetails}\n\n**ضمانك:** ${session.guarantee}\n**عدد نواقصك:** ${session.missing}\n\n**هل توافق على هذا المقابل؟**`;
+
+    const btns = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('btn_accept').setLabel('قبول').setEmoji('✅').setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId('btn_reject').setLabel('رفض').setEmoji('❌').setStyle(ButtonStyle.Danger)
     );
 
-    const summaryText = `🎁 **مقابل الأغراض للون ${userData.base}:**\n(١٠ وتحت وتحت كروماندو كاندي وفوق باستثناء البارتي، ١٠٠ وفوق دب كاندي وفوق باستثناء البارتي)\n\n:ضمانك **${userData.guarantee}**\n:عدد نواقصك **${userData.missing}**\n\n**هل توافق على هذا المقابل؟**`;
-
     await interaction.update({
-      content: summaryText,
-      components: [confirmBtns]
+      content: fullMessage,
+      components: [btns]
     });
   }
 
-  // Step 4: التعامل مع زري القبول والرفض
   if (interaction.isButton()) {
-    if (interaction.customId === 'accept_request') {
-      const userData = userRequests.get(interaction.user.id);
+    if (interaction.customId === 'btn_accept') {
+      const session = userSessions.get(interaction.user.id);
+      const baseName = basesData[session?.baseKey]?.name || 'Base';
 
-      // إنشاء روم التذكرة للإدارة
       const ch = await interaction.guild.channels.create({
-        name: `ticket-${userData ? userData.baseKey : 'base'}-${interaction.user.username}`.toLowerCase(),
+        name: `ticket-${session?.baseKey || 'color'}-${interaction.user.username}`.toLowerCase(),
         type: ChannelType.GuildText,
         permissionOverwrites: [
           { id: interaction.guild.id, deny: [PermissionFlagsBits.ViewChannel] },
@@ -194,35 +249,30 @@ client.on('interactionCreate', async interaction => {
       });
 
       const embed = new EmbedBuilder()
-        .setTitle(`🎫 Void Community | طلب لون ${userData ? userData.base : ''}`)
+        .setTitle(`🎫 Void Community | طلب لون ${baseName}`)
         .addFields(
-          { name: '👤 صاحب الطلب', value: `<@${interaction.user.id}>`, inline: true },
-          { name: '🛡️ الضمان', value: userData ? userData.guarantee : 'غير محدد', inline: true },
-          { name: '🔢 عدد النواقص', value: userData ? userData.missing : 'غير محدد', inline: true },
-          { name: '💳 نوع المقابل', value: userData ? userData.paymentType : 'غير محدد', inline: false }
+          { name: '👤 العضو', value: `<@${interaction.user.id}>`, inline: true },
+          { name: '🛡️ الضمان', value: session ? session.guarantee : 'غير محدد', inline: true },
+          { name: '🔢 عدد النواقص', value: session ? session.missing : 'غير محدد', inline: true }
         )
         .setColor('#57f287')
         .setFooter({ text: 'Void Community System' });
 
       const closeBtn = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId('close_ticket')
-          .setLabel('إغلاق التذكرة')
-          .setEmoji('🔒')
-          .setStyle(ButtonStyle.Danger)
+        new ButtonBuilder().setCustomId('close_ticket').setLabel('إغلاق التذكرة').setEmoji('🔒').setStyle(ButtonStyle.Danger)
       );
 
       await ch.send({ content: `<@${interaction.user.id}>`, embeds: [embed], components: [closeBtn] });
 
       await interaction.update({
-        content: `🎉 **تم قبولك للطلب بنجاح!**\nتم فتح التذكرة الخاصة بك هنا: ${ch}`,
+        content: `🎉 **تم قبول الطلب بنجاح!**\nتم فتح القناة الخاصة بك: ${ch}`,
         components: []
       });
     }
 
-    if (interaction.customId === 'reject_request') {
+    if (interaction.customId === 'btn_reject') {
       await interaction.update({
-        content: '❌ **تم إلغاء الطلب.** يمكنك التقديم مجدداً في أي وقت.',
+        content: '❌ **تم إلغاء الطلب.**',
         components: []
       });
     }
