@@ -393,28 +393,46 @@ async function sendLog(guild, embed, attachment = null) {
   }
 }
 
+// دالة منسقة ونظيفة تماماً لملف الترانسكريبت
 async function createTranscriptBuffer(channel, closedByUser) {
   const fetchedMessages = await channel.messages.fetch({ limit: 100 });
-  const sortedMessages = Array.from(fetchedMessages.values()).reverse();
+  const sortedMessages = Array.from(fetchedMessages.values())
+    .reverse()
+    .filter(msg => !msg.content.includes('جاري حفظ محادثات التذكرة')); // استبعاد رسالة النظام المؤقتة
 
   let transcriptContent = `==================================================\n`;
-  transcriptContent += `  VOID COMMUNITY - TICKET TRANSCRIPT LOG\n`;
-  transcriptContent += `  اسم التذكرة: ${channel.name}\n`;
-  transcriptContent += `  أغلقت بواسطة: ${closedByUser.tag} (${closedByUser.id})\n`;
-  transcriptContent += `  التاريخ والوقت: ${new Date().toLocaleString('ar-SA')}\n`;
+  transcriptContent += `         VOID COMMUNITY - TICKET TRANSCRIPT\n`;
+  transcriptContent += `==================================================\n`;
+  transcriptContent += `📂 اسم التذكرة: ${channel.name}\n`;
+  transcriptContent += `👤 أغلقت بواسطة: ${closedByUser.username}\n`;
+  transcriptContent += `📅 تاريخ الأرشفة: ${new Date().toLocaleString('ar-SA')}\n`;
   transcriptContent += `==================================================\n\n`;
 
   sortedMessages.forEach(msg => {
-    const timeStr = msg.createdAt.toLocaleTimeString('ar-SA');
-    let embedsText = '';
+    const timeStr = msg.createdAt.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
+    let content = msg.content;
+
+    // استخراج محتوى الإمبدات بشكل نظيف ومنمق
     if (msg.embeds.length > 0) {
       msg.embeds.forEach(e => {
-        if (e.title) embedsText += ` [إمبد: ${e.title}]`;
-        if (e.fields) e.fields.forEach(f => embedsText += ` (${f.name}:${f.value})`);
+        if (e.title) content += `\n[عنوان القائمة: ${e.title}]`;
+        if (e.description) content += `\n${e.description}`;
+        if (e.fields) {
+          e.fields.forEach(f => {
+            content += `\n• ${f.name}:${f.value}`;
+          });
+        }
       });
     }
-    transcriptContent += `[${timeStr}] ${msg.author.tag}:${msg.content || embedsText}\n`;
+
+    if (content.trim()) {
+      transcriptContent += `[${timeStr}] ${msg.author.username}:${content.trim()}\n`;
+    }
   });
+
+  transcriptContent += `\n==================================================\n`;
+  transcriptContent += ` نهاية السجل - Void Community Bot\n`;
+  transcriptContent += `==================================================`;
 
   return {
     buffer: Buffer.from(transcriptContent, 'utf-8'),
@@ -505,7 +523,6 @@ client.on('interactionCreate', async interaction => {
         });
       }
 
-      // تحديد اسم التذكرة بوضوح وبدون أخطاء برمجية
       const prefixKey = session?.baseKey ? session.baseKey : 'color';
       const channelName = `ticket-${prefixKey}-${interaction.user.username}`.toLowerCase();
 
@@ -629,7 +646,7 @@ client.on('interactionCreate', async interaction => {
     await interaction.reply({ content: `✅ **تمت إضافة العضو <@${targetUserId}> للتذكرة بنجاح!**` });
   }
 
-  if (interaction.isModalSubmit() && interaction.customId === 'modal_close_reason') {
+  if (interaction.isModalSubmit() && interaction.customId.startsWith('modal_close_reason')) {
     const reason = interaction.fields.getTextInputValue('close_reason_input');
     await interaction.reply('⏳ **جاري حفظ محادثات التذكرة وتنسيق اللوق وإغلاق القناة...**');
 
