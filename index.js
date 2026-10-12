@@ -70,7 +70,10 @@ const DASHBOARD_PASSWORD = process.env.DASHBOARD_PASSWORD || 'VD122';
 const TOKEN = process.env.TOKEN;
 const REDIRECT_URI = `${BASE_URL}/api/auth/callback`;
 
-// ------------------- 3. تصميم واجهة اللوحة الفخم (Glassmorphic + Neon) -------------------
+// رابط الصورة الفضائية الأسطورية المباشر
+const VOID_IMG_URL = 'https://i.ibb.co/L6S9bK9/IMG-6085.jpg';
+
+// ------------------- 3. تصميم اللوحة الفخم (Cosmic Glassmorphic) -------------------
 const renderUltimateLayout = (activeTab, content) => `
   <!DOCTYPE html>
   <html lang="ar" dir="rtl">
@@ -82,66 +85,78 @@ const renderUltimateLayout = (activeTab, content) => `
       * { box-sizing: border-box; font-family: 'Cairo', sans-serif; }
       
       body { 
-        background: #05030a;
+        background: #040208 url('${VOID_IMG_URL}') no-repeat center top fixed;
+        background-size: cover;
         color: #f8fafc; margin: 0; padding: 0; display: flex; min-height: 100vh; overflow-x: hidden; 
       }
 
+      body::before {
+        content: ''; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        background: radial-gradient(circle at center, rgba(13, 8, 28, 0.85) 0%, rgba(4, 2, 8, 0.96) 100%);
+        z-index: 1; backdrop-filter: blur(10px);
+      }
+
       .sidebar {
-        width: 290px; background: rgba(10, 7, 20, 0.98); backdrop-filter: blur(30px);
-        border-left: 1px solid rgba(139, 92, 246, 0.3); padding: 20px 15px; display: flex;
+        width: 290px; background: rgba(8, 5, 18, 0.95); backdrop-filter: blur(30px);
+        border-left: 1px solid rgba(168, 85, 247, 0.35); padding: 20px 15px; display: flex;
         flex-direction: column; justify-content: space-between; position: fixed; right: 0; top: 0; bottom: 0; z-index: 100;
         box-shadow: -10px 0 40px rgba(0,0,0,0.9);
       }
       
-      .brand-box { text-align: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid rgba(139, 92, 246, 0.2); }
-      .brand-logo-icon { font-size: 38px; margin-bottom: 5px; text-shadow: 0 0 20px rgba(168,85,247,0.6); }
-      .brand-title { font-size: 20px; font-weight: 900; background: linear-gradient(135deg, #e9d5ff, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: 2px; }
+      .brand-box { text-align: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid rgba(168, 85, 247, 0.25); }
+      .brand-img { 
+        width: 100%; height: 120px; border-radius: 16px; 
+        border: 1px solid rgba(168, 85, 247, 0.6); 
+        box-shadow: 0 0 30px rgba(168, 85, 247, 0.4); 
+        object-fit: cover; margin-bottom: 12px;
+      }
+      .brand-title { font-size: 20px; font-weight: 900; background: linear-gradient(135deg, #f3e8ff, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: 2px; }
 
       .nav-group { margin-bottom: 20px; }
-      .nav-label { font-size: 11px; color: #a855f7; font-weight: 700; text-transform: uppercase; margin-bottom: 8px; padding-right: 12px; }
+      .nav-label { font-size: 11px; color: #c084fc; font-weight: 700; text-transform: uppercase; margin-bottom: 8px; padding-right: 12px; }
       
       .nav-item {
         display: flex; align-items: center; justify-content: space-between;
         padding: 13px 16px; border-radius: 14px; color: #94a3b8; text-decoration: none;
         font-weight: 600; font-size: 14px; margin-bottom: 6px; transition: all 0.3s ease;
       }
-      .nav-item:hover { background: rgba(124, 58, 237, 0.2); color: #fff; }
-      .nav-item.active { background: linear-gradient(135deg, rgba(124, 58, 237, 0.4), rgba(99, 102, 241, 0.3)); color: #fff; border: 1px solid rgba(139, 92, 246, 0.6); box-shadow: 0 0 20px rgba(124, 58, 237, 0.4); }
+      .nav-item:hover { background: rgba(168, 85, 247, 0.2); color: #fff; }
+      .nav-item.active { background: linear-gradient(135deg, rgba(168, 85, 247, 0.4), rgba(99, 102, 241, 0.3)); color: #fff; border: 1px solid rgba(168, 85, 247, 0.6); box-shadow: 0 0 20px rgba(168, 85, 247, 0.4); }
       
       .badge-check { background: rgba(34, 197, 94, 0.2); color: #4ade80; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; border: 1px solid rgba(34, 197, 94, 0.4); }
 
       .main-content { margin-right: 290px; flex: 1; padding: 35px; max-width: 1200px; position: relative; z-index: 10; }
       
       .glass-card {
-        background: rgba(16, 12, 28, 0.85); backdrop-filter: blur(25px);
-        border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 22px;
-        padding: 30px; margin-bottom: 25px; box-shadow: 0 15px 50px rgba(0,0,0,0.7);
+        background: rgba(14, 9, 26, 0.88); backdrop-filter: blur(25px);
+        border: 1px solid rgba(168, 85, 247, 0.3); border-radius: 22px;
+        padding: 30px; margin-bottom: 25px; box-shadow: 0 15px 50px rgba(0,0,0,0.8);
       }
 
       h1, h2, h3 { color: #fff; margin-top: 0; }
-      .purple-gradient { background: linear-gradient(135deg, #c084fc, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+      .purple-gradient { background: linear-gradient(135deg, #f3e8ff, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
       
       input, textarea, select {
-        width: 100%; padding: 14px 18px; border-radius: 14px; border: 1px solid rgba(139, 92, 246, 0.35);
-        background: rgba(8, 6, 16, 0.9); color: #fff; outline: none; margin-top: 8px; font-size: 15px; transition: 0.3s;
+        width: 100%; padding: 14px 18px; border-radius: 14px; border: 1px solid rgba(168, 85, 247, 0.35);
+        background: rgba(6, 4, 12, 0.95); color: #fff; outline: none; margin-top: 8px; font-size: 15px; transition: 0.3s;
       }
       select option { background: #0c0a14; color: #fff; }
       label { font-size: 14px; font-weight: 600; color: #cbd5e1; display: block; margin-top: 15px; }
 
       .btn {
-        background: linear-gradient(135deg, #7c3aed, #6366f1); color: #fff; border: none;
+        background: linear-gradient(135deg, #a855f7, #6366f1); color: #fff; border: none;
         padding: 15px 30px; border-radius: 14px; font-weight: 700; cursor: pointer; width: 100%; 
-        transition: all 0.3s ease; box-shadow: 0 4px 25px rgba(124, 58, 237, 0.4); margin-top: 20px; font-size: 16px;
+        transition: all 0.3s ease; box-shadow: 0 4px 25px rgba(168, 85, 247, 0.4); margin-top: 20px; font-size: 16px;
         text-align: center; text-decoration: none; display: inline-block;
       }
-      .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 30px rgba(124, 58, 237, 0.6); }
+      .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 30px rgba(168, 85, 247, 0.6); }
 
-      .toggle-box { display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.03); padding: 15px 20px; border-radius: 16px; border: 1px solid rgba(139,92,246,0.2); margin-top: 12px; }
+      .toggle-box { display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.03); padding: 15px 20px; border-radius: 16px; border: 1px solid rgba(168,85,247,0.2); margin-top: 12px; }
       .switch { position: relative; display: inline-block; width: 50px; height: 26px; }
       .switch input { opacity: 0; width: 0; height: 0; }
-      .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #1e1b4b; transition: .4s; border-radius: 34px; border: 1px solid rgba(139,92,246,0.3); }
+      .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #1e1b4b; transition: .4s; border-radius: 34px; border: 1px solid rgba(168,85,247,0.3); }
       .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
-      input:checked + .slider { background: #7c3aed; }
+      input:checked + .slider { background: #a855f7; }
       input:checked + .slider:before { transform: translateX(24px); }
     </style>
   </head>
@@ -149,7 +164,7 @@ const renderUltimateLayout = (activeTab, content) => `
     <div class="sidebar">
       <div>
         <div class="brand-box">
-          <div class="brand-logo-icon">🌌</div>
+          <img src="${VOID_IMG_URL}" class="brand-img" alt="VOID LOGO">
           <div class="brand-title">VOID COMMUNITY</div>
         </div>
         
@@ -201,16 +216,20 @@ app.get('/login', (req, res) => {
       <title>Void - تسجيل الدخول</title>
       <style>
         @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap');
-        body { background: #05040a; color: #fff; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: 'Cairo', sans-serif; }
-        .login-card { background: rgba(18, 14, 30, 0.95); backdrop-filter: blur(25px); border: 1px solid rgba(139, 92, 246, 0.4); padding: 40px; border-radius: 24px; text-align: center; width: 420px; box-shadow: 0 20px 60px rgba(0,0,0,0.9); }
-        .logo-icon { font-size: 50px; margin-bottom: 10px; text-shadow: 0 0 25px rgba(168,85,247,0.7); }
-        input { width: 100%; padding: 15px; border-radius: 14px; border: 1px solid rgba(139, 92, 246, 0.4); background: rgba(10, 8, 20, 0.9); color: #fff; text-align: center; font-size: 16px; margin-bottom: 20px; outline: none; }
-        button { background: linear-gradient(135deg, #7c3aed, #6366f1); color: #fff; border: none; padding: 15px; border-radius: 14px; width: 100%; font-weight: bold; font-size: 16px; cursor: pointer; box-shadow: 0 4px 20px rgba(124,58,237,0.4); }
+        body { 
+          background: #040208 url('${VOID_IMG_URL}') no-repeat center center fixed;
+          background-size: cover; color: #fff; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: 'Cairo', sans-serif; 
+        }
+        body::before { content: ''; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(4, 2, 8, 0.88); z-index: 1; backdrop-filter: blur(8px); }
+        .login-card { position: relative; z-index: 10; background: rgba(14, 9, 26, 0.95); backdrop-filter: blur(25px); border: 1px solid rgba(168, 85, 247, 0.4); padding: 40px; border-radius: 24px; text-align: center; width: 420px; box-shadow: 0 20px 60px rgba(0,0,0,0.9); }
+        .logo-banner { width: 100%; height: 160px; border-radius: 18px; border: 1px solid rgba(168, 85, 247, 0.6); box-shadow: 0 0 30px rgba(168, 85, 247, 0.5); margin-bottom: 20px; object-fit: cover; }
+        input { width: 100%; padding: 15px; border-radius: 14px; border: 1px solid rgba(168, 85, 247, 0.4); background: rgba(8, 5, 18, 0.95); color: #fff; text-align: center; font-size: 16px; margin-bottom: 20px; outline: none; }
+        button { background: linear-gradient(135deg, #a855f7, #6366f1); color: #fff; border: none; padding: 15px; border-radius: 14px; width: 100%; font-weight: bold; font-size: 16px; cursor: pointer; box-shadow: 0 4px 20px rgba(168,85,247,0.4); }
       </style>
     </head>
     <body>
       <div class="login-card">
-        <div class="logo-icon">🌌</div>
+        <img src="${VOID_IMG_URL}" class="logo-banner" alt="VOID LOGO">
         <h1 style="font-size: 26px; margin-bottom: 5px;" class="purple-gradient">VOID COMMUNITY</h1>
         <p style="color: #a78bfa; font-size: 13px; margin-bottom: 25px;">أدخل كلمة المرور للانتقال لربط الديسكورد</p>
         <form action="/login/pass" method="POST">
