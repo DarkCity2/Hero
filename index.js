@@ -43,7 +43,7 @@ let basesData = {
 };
 
 let serverSettings = {
-  ticketCategory: 'Tickets 🎫',
+  ticketCategoryId: '', 
   supportRole: 'Staff Moderator 🛠️',
   logChannel: 'ticket-logs 📜',
   maxTickets: 1,
@@ -73,11 +73,10 @@ const DASHBOARD_PASSWORD = process.env.DASHBOARD_PASSWORD || 'VD122';
 const TOKEN = process.env.TOKEN;
 const REDIRECT_URI = `${BASE_URL}/api/auth/callback`;
 
-// رابط الصورة المباشر لـ VOID
 const VOID_IMG_URL = 'https://i.ibb.co/L6S9bK9/IMG-6085.jpg';
 
-// ------------------- 3. تصميم اللوحة الأسطوري الفخم -------------------
-const renderUltimateLayout = (activeTab, content, user) => `
+// ------------------- 3. تصميم اللوحة -------------------
+const renderUltimateLayout = (activeTab, content) => `
   <!DOCTYPE html>
   <html lang="ar" dir="rtl">
   <head>
@@ -93,13 +92,11 @@ const renderUltimateLayout = (activeTab, content, user) => `
         color: #f8fafc; margin: 0; padding: 0; display: flex; min-height: 100vh; overflow-x: hidden; 
       }
 
-      /* طبقة إعتام مخصصة للتصميم */
       body::before {
         content: ''; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
         background: rgba(5, 3, 10, 0.88); z-index: 1; backdrop-filter: blur(12px);
       }
 
-      /* Sidebar الخرافي */
       .sidebar {
         width: 290px; background: rgba(10, 7, 20, 0.95); backdrop-filter: blur(30px);
         border-left: 1px solid rgba(139, 92, 246, 0.3); padding: 20px 15px; display: flex;
@@ -124,7 +121,6 @@ const renderUltimateLayout = (activeTab, content, user) => `
       
       .badge-check { background: rgba(34, 197, 94, 0.2); color: #4ade80; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; border: 1px solid rgba(34, 197, 94, 0.4); }
 
-      /* Main Content */
       .main-content { margin-right: 290px; flex: 1; padding: 35px; max-width: 1200px; position: relative; z-index: 10; }
       
       .glass-card {
@@ -205,7 +201,7 @@ const renderUltimateLayout = (activeTab, content, user) => `
   </html>
 `;
 
-// ------------------- 4. تسجيل الدخول + OAuth2 -------------------
+// ------------------- 4. المسارات والتوثيق -------------------
 app.get('/login', (req, res) => {
   res.send(`
     <!DOCTYPE html>
@@ -291,9 +287,7 @@ app.get('/logout', (req, res) => {
   res.redirect('/login');
 });
 
-// ------------------- 5. صفحات اللوحة الكاملة -------------------
-
-// أ) ألوان القواعد
+// ------------------- 5. صفحات اللوحة -------------------
 app.get('/', (req, res) => {
   if (!req.session.authenticated) return res.redirect('/login');
 
@@ -339,7 +333,7 @@ app.get('/', (req, res) => {
     </form>
   `;
 
-  res.send(renderUltimateLayout('colors', content, req.session.user));
+  res.send(renderUltimateLayout('colors', content));
 });
 
 app.post('/save-colors', (req, res) => {
@@ -351,21 +345,20 @@ app.post('/save-colors', (req, res) => {
   res.redirect('/');
 });
 
-// ب) التذاكر
 app.get('/tickets', (req, res) => {
   if (!req.session.authenticated) return res.redirect('/login');
   const content = `
     <div class="glass-card">
       <h1 class="purple-gradient" style="margin: 0; font-size: 24px;">🎫 إعدادات نظام التذاكر والدعم</h1>
-      <p style="color: #94a3b8; margin-top: 5px;">تخصيص رتب الدعم الفني، الكاتيجوري، وسجلات التذاكر.</p>
+      <p style="color: #94a3b8; margin-top: 5px;">تحديد كاتيجوري التذاكر، رتب الدعم الفني، وإعدادات الفتح.</p>
     </div>
     
     <form action="/save-tickets" method="POST">
       <div class="glass-card">
-        <label>اسم كاتيجوري التذاكر:</label>
-        <input type="text" name="ticketCategory" value="${serverSettings.ticketCategory}">
+        <label>معرف كاتيجوري التذاكر (Category ID):</label>
+        <input type="text" name="ticketCategoryId" value="${serverSettings.ticketCategoryId}" placeholder="مثال: 123456789012345678">
 
-        <label>رتبة الدعم الفني والإدارة:</label>
+        <label>اسم رتبة الدعم الفني العامة:</label>
         <input type="text" name="supportRole" value="${serverSettings.supportRole}">
 
         <label>اسم روم سجلات التذاكر (Logs):</label>
@@ -378,121 +371,33 @@ app.get('/tickets', (req, res) => {
       </div>
     </form>
   `;
-  res.send(renderUltimateLayout('tickets', content, req.session.user));
+  res.send(renderUltimateLayout('tickets', content));
 });
 
 app.post('/save-tickets', (req, res) => {
   if (!req.session.authenticated) return res.redirect('/login');
-  serverSettings.ticketCategory = req.body.ticketCategory;
+  serverSettings.ticketCategoryId = req.body.ticketCategoryId;
   serverSettings.supportRole = req.body.supportRole;
   serverSettings.logChannel = req.body.logChannel;
   serverSettings.maxTickets = req.body.maxTickets;
   res.redirect('/tickets');
 });
 
-// ج) إدارة السيرفر
 app.get('/moderation', (req, res) => {
   if (!req.session.authenticated) return res.redirect('/login');
-  const content = `
-    <div class="glass-card">
-      <h1 class="purple-gradient" style="margin:0; font-size:24px;">🔨 نظام إدارة السيرفر والعقوبات</h1>
-      <p style="color: #94a3b8; margin-top: 5px;">تخصيص الإجراءات الإدارية والسجلات في Void Community.</p>
-    </div>
-
-    <form action="/save-mod" method="POST">
-      <div class="glass-card">
-        <div class="toggle-box">
-          <div>
-            <strong>تفعيل الميوت الآلي للسبام</strong>
-            <div style="font-size:12px; color:#94a3b8;">إعطاء تايم أوت تلقائي عند تكرار الرسائل المزعجة.</div>
-          </div>
-          <label class="switch"><input type="checkbox" name="autoMuteSpam" ${serverSettings.autoMuteSpam ? 'checked' : ''}><span class="slider"></span></label>
-        </div>
-
-        <label>قناة سجلات الإدارة والعقوبات (Mod Logs):</label>
-        <input type="text" name="modLogsChannel" value="${serverSettings.modLogsChannel}">
-
-        <button type="submit" class="btn">💾 حفظ إعدادات الإدارة</button>
-      </div>
-    </form>
-  `;
-  res.send(renderUltimateLayout('moderation', content, req.session.user));
+  res.send(renderUltimateLayout('moderation', `<div class="glass-card"><h1 class="purple-gradient">🔨 إدارة السيرفر</h1></div>`));
 });
 
-app.post('/save-mod', (req, res) => {
-  if (!req.session.authenticated) return res.redirect('/login');
-  serverSettings.autoMuteSpam = !!req.body.autoMuteSpam;
-  serverSettings.modLogsChannel = req.body.modLogsChannel;
-  res.redirect('/moderation');
-});
-
-// د) السجلات (اللوقات)
 app.get('/logs', (req, res) => {
   if (!req.session.authenticated) return res.redirect('/login');
-  const content = `
-    <div class="glass-card">
-      <h1 class="purple-gradient" style="margin:0; font-size:24px;">📜 سجلات الأحداث الشاملة (Audit Logs)</h1>
-      <p style="color: #94a3b8; margin-top: 5px;">مراقبة كل تحركات السيرفر بحرفية عالية.</p>
-    </div>
-
-    <div class="glass-card">
-      <div class="toggle-box">
-        <div><strong>سجل حذف الرسائل</strong><div style="font-size:12px; color:#94a3b8;">إرسال نسخة من الرسائل المحذوفة مع اسم العضو.</div></div>
-        <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
-      </div>
-
-      <div class="toggle-box">
-        <div><strong>سجل تعديل الرسائل</strong><div style="font-size:12px; color:#94a3b8;">تتبع النص القبل والبعد عند التعديل.</div></div>
-        <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
-      </div>
-
-      <div class="toggle-box">
-        <div><strong>سجل دخول وخروج الأعضاء</strong><div style="font-size:12px; color:#94a3b8;">تسجيل انضمام ومغادرة الأعضاء ورتبهم.</div></div>
-        <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
-      </div>
-
-      <button onclick="alert('تم تحديث خيارات السجلات بنجاح!')" class="btn">💾 حفظ خيارات اللوقات</button>
-    </div>
-  `;
-  res.send(renderUltimateLayout('logs', content, req.session.user));
+  res.send(renderUltimateLayout('logs', `<div class="glass-card"><h1 class="purple-gradient">📜 سجلات الأحداث</h1></div>`));
 });
 
-// هـ) الحماية ومكافحة الهجمات
 app.get('/security', (req, res) => {
   if (!req.session.authenticated) return res.redirect('/login');
-  const content = `
-    <div class="glass-card">
-      <h1 class="purple-gradient" style="margin:0; font-size:24px;">🛡️ نظام الحماية ومكافحة الهجمات (Anti-Raid)</h1>
-      <p style="color: #94a3b8; margin-top: 5px;">حظر الروابط، البوتات الخبيثة، والسبام.</p>
-    </div>
-
-    <form action="/save-sec" method="POST">
-      <div class="glass-card">
-        <div class="toggle-box">
-          <div><strong>حظر الروابط المباشرة والسيرفرات</strong><div style="font-size:12px; color:#94a3b8;">حذف أي رابط دعوة خارجي فوراً.</div></div>
-          <label class="switch"><input type="checkbox" name="blockLinks" ${serverSettings.blockLinks ? 'checked' : ''}><span class="slider"></span></label>
-        </div>
-
-        <div class="toggle-box">
-          <div><strong>تفعيل نظام Anti-Raid</strong><div style="font-size:12px; color:#94a3b8;">حظر الحسابات الوهمية التي تدخل بشكل متزامن.</div></div>
-          <label class="switch"><input type="checkbox" name="antiRaid" ${serverSettings.antiRaid ? 'checked' : ''}><span class="slider"></span></label>
-        </div>
-
-        <button type="submit" class="btn">💾 حفظ إعدادات الحماية</button>
-      </div>
-    </form>
-  `;
-  res.send(renderUltimateLayout('security', content, req.session.user));
+  res.send(renderUltimateLayout('security', `<div class="glass-card"><h1 class="purple-gradient">🛡️ الحماية</h1></div>`));
 });
 
-app.post('/save-sec', (req, res) => {
-  if (!req.session.authenticated) return res.redirect('/login');
-  serverSettings.blockLinks = !!req.body.blockLinks;
-  serverSettings.antiRaid = !!req.body.antiRaid;
-  res.redirect('/security');
-});
-
-// نشر اللوحة
 app.post('/send-panel', async (req, res) => {
   if (!req.session.authenticated) return res.redirect('/login');
   try {
@@ -524,7 +429,7 @@ app.post('/send-panel', async (req, res) => {
 
 app.listen(PORT, () => console.log(`🌐 Dashboard Active on port ${PORT}`));
 
-// ------------------- 6. تشغيل بوت ديسكورد والتذاكر -------------------
+// ------------------- 6. تشغيل بوت ديسكورد بنظام صلاحيات الرتب الخاصة -------------------
 const client = new Client({
   intents: [
     I.Guilds, I.GuildMembers, I.GuildMessages, I.MessageContent,
@@ -537,7 +442,7 @@ const client = new Client({
 const userSessions = new Map();
 
 client.once('ready', () => {
-  console.log(`✅ [Void Community] البوت يعمل باسم: ${client.user.tag}`);
+  console.log(`✅ [Void Community] البوت تعمل باسم: ${client.user.tag}`);
 });
 
 client.on('interactionCreate', async interaction => {
@@ -604,26 +509,56 @@ client.on('interactionCreate', async interaction => {
   if (interaction.isButton()) {
     if (interaction.customId === 'btn_accept') {
       const session = userSessions.get(interaction.user.id);
-      const ch = await interaction.guild.channels.create({
+      const baseName = basesData[session?.baseKey]?.name || 'Base';
+
+      // إعداد صلاحيات الرومات المباشرة
+      const permissionOverwrites = [
+        { id: interaction.guild.id, deny: [PermissionFlagsBits.ViewChannel] }, // إخفاء عن الجميع
+        { id: interaction.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] } // صاحب التذكرة
+      ];
+
+      // البحث عن رتبة تجمل اسم القاعدة في السيرفر لفتح الروم لها حصرياً
+      const specificRole = interaction.guild.roles.cache.find(r => r.name.toLowerCase() === baseName.toLowerCase());
+      if (specificRole) {
+        permissionOverwrites.push({
+          id: specificRole.id,
+          allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages]
+        });
+      }
+
+      // البحث عن رتبة الدعم العامة
+      const supportRole = interaction.guild.roles.cache.find(r => r.name === serverSettings.supportRole);
+      if (supportRole) {
+        permissionOverwrites.push({
+          id: supportRole.id,
+          allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages]
+        });
+      }
+
+      const channelOptions = {
         name: `ticket-${session?.baseKey || 'color'}-${interaction.user.username}`.toLowerCase(),
         type: ChannelType.GuildText,
-        permissionOverwrites: [
-          { id: interaction.guild.id, deny: [PermissionFlagsBits.ViewChannel] },
-          { id: interaction.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] }
-        ]
-      });
+        permissionOverwrites: permissionOverwrites
+      };
+
+      if (serverSettings.ticketCategoryId) {
+        channelOptions.parent = serverSettings.ticketCategoryId;
+      }
+
+      const ch = await interaction.guild.channels.create(channelOptions);
 
       const embed = new EmbedBuilder()
-        .setTitle(`🎫 Void Community | طلب لون ${basesData[session?.baseKey]?.name || 'Base'}`)
+        .setTitle(`🎫 Void Community | طلب لون ${baseName}`)
         .addFields(
           { name: '👤 العضو', value: `<@${interaction.user.id}>`, inline: true },
           { name: '🛡️ الضمان', value: session ? session.guarantee : 'غير محدد', inline: true },
-          { name: '🔢 عدد النواقص', value: session ? session.missing : 'غير محدد', inline: true }
+          { name: '🔢 عدد النواقص', value: session ? session.missing : 'غير محدد', inline: true },
+          { name: '👑 الرتبة المخولة لرؤية التذكرة', value: specificRole ? `<@&${specificRole.id}>` : 'الإدارة العامة', inline: false }
         )
         .setColor('#57f287')
         .setFooter({ text: 'Void Community System' });
 
-      await ch.send({ content: `<@${interaction.user.id}>`, embeds: [embed], components: [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('close_ticket').setLabel('إغلاق التذكرة').setEmoji('🔒').setStyle(ButtonStyle.Danger))] });
+      await ch.send({ content: `<@${interaction.user.id}> ${specificRole ? `<@&${specificRole.id}>` : ''}`, embeds: [embed], components: [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('close_ticket').setLabel('إغلاق التذكرة').setEmoji('🔒').setStyle(ButtonStyle.Danger))] });
       await interaction.update({ content: `🎉 **تم قبول الطلب بنجاح!**\nتم فتح القناة الخاصة بك: ${ch}`, components: [] });
     }
 
