@@ -52,7 +52,6 @@ let serverSettings = {
   antiRaid: true
 };
 
-// تخزين بيانات التذاكر المفتوحة لمتابعة وقت الفتح والاستلام
 const ticketsDataMap = new Map();
 
 // ------------------- 2. إعدادات السيرفر و Express -------------------
@@ -373,7 +372,6 @@ const client = new Client({
 
 const userSessions = new Map();
 
-// دالة إرسال اللوقات
 async function sendLog(guild, embed, attachment = null) {
   if (!serverSettings.logChannel) return;
   try {
@@ -395,7 +393,6 @@ async function sendLog(guild, embed, attachment = null) {
   }
 }
 
-// دالة إنشاء ملف الترانسكريبت النصي
 async function createTranscriptBuffer(channel, closedByUser) {
   const fetchedMessages = await channel.messages.fetch({ limit: 100 });
   const sortedMessages = Array.from(fetchedMessages.values()).reverse();
@@ -430,7 +427,6 @@ client.once('ready', () => {
 });
 
 client.on('interactionCreate', async interaction => {
-  // 1. اختيار لون القاعدة
   if (interaction.isStringSelectMenu() && interaction.customId === 'select_base_color') {
     const selectedKey = interaction.values[0];
     const baseInfo = basesData[selectedKey] || { name: selectedKey };
@@ -449,7 +445,6 @@ client.on('interactionCreate', async interaction => {
     await interaction.showModal(modal);
   }
 
-  // 2. تعبئة الضمان
   if (interaction.isModalSubmit() && interaction.customId.startsWith('modal_info_')) {
     const baseKey = interaction.customId.replace('modal_info_', '');
     userSessions.set(interaction.user.id, {
@@ -473,7 +468,6 @@ client.on('interactionCreate', async interaction => {
     });
   }
 
-  // 3. اختيار طريقة الدفع
   if (interaction.isStringSelectMenu() && interaction.customId === 'select_payment') {
     const payType = interaction.values[0];
     const session = userSessions.get(interaction.user.id);
@@ -493,7 +487,6 @@ client.on('interactionCreate', async interaction => {
     });
   }
 
-  // 4. أزرار القبول/الرفض وإنشاء التذكرة الاحترافية
   if (interaction.isButton()) {
     if (interaction.customId === 'btn_accept') {
       const session = userSessions.get(interaction.user.id);
@@ -512,8 +505,12 @@ client.on('interactionCreate', async interaction => {
         });
       }
 
+      // تحديد اسم التذكرة بوضوح وبدون أخطاء برمجية
+      const prefixKey = session?.baseKey ? session.baseKey : 'color';
+      const channelName = `ticket-${prefixKey}-${interaction.user.username}`.toLowerCase();
+
       const channelOptions = {
-        name: `ticket-${session?.baseKey \vert{}\vert{} 'color'}-${interaction.user.username}`.toLowerCase(),
+        name: channelName,
         type: ChannelType.GuildText,
         permissionOverwrites: permissionOverwrites
       };
@@ -524,7 +521,6 @@ client.on('interactionCreate', async interaction => {
 
       const ch = await interaction.guild.channels.create(channelOptions);
 
-      // حفظ بيانات التذكرة
       const openTimestamp = `<t:${Math.floor(Date.now() / 1000)}:f>`;
       ticketsDataMap.set(ch.id, {
         openedBy: interaction.user.id,
@@ -533,7 +529,6 @@ client.on('interactionCreate', async interaction => {
         baseName: baseName
       });
 
-      // القائمة المنسدلة للتحكم بالتذكرة (Ticket Actions Menu)
       const actionMenu = new StringSelectMenuBuilder()
         .setCustomId('ticket_action_select')
         .setPlaceholder('Choose a Ticket Action ⚙️')
@@ -569,11 +564,9 @@ client.on('interactionCreate', async interaction => {
     }
   }
 
-  // 5. التعامل مع القائمة المنسدلة للتحكم الاحترافي بالتذكرة (Choose a Ticket Action)
   if (interaction.isStringSelectMenu() && interaction.customId === 'ticket_action_select') {
     const action = interaction.values[0];
 
-    // أ) Close with Reason
     if (action === 'close_with_reason') {
       const modal = new ModalBuilder()
         .setCustomId('modal_close_reason')
@@ -590,7 +583,6 @@ client.on('interactionCreate', async interaction => {
       await interaction.showModal(modal);
     }
 
-    // ب) Add User to Ticket
     if (action === 'add_user') {
       const userSelect = new UserSelectMenuBuilder()
         .setCustomId('select_user_to_add')
@@ -604,7 +596,6 @@ client.on('interactionCreate', async interaction => {
       });
     }
 
-    // ج) Member PM Reminder
     if (action === 'pm_reminder') {
       const ticketData = ticketsDataMap.get(interaction.channel.id);
       const ownerId = ticketData ? ticketData.openedBy : null;
@@ -621,7 +612,6 @@ client.on('interactionCreate', async interaction => {
       }
     }
 
-    // د) Request Ticket Copy
     if (action === 'request_copy') {
       await interaction.deferReply({ ephemeral: true });
       const { buffer } = await createTranscriptBuffer(interaction.channel, interaction.user);
@@ -630,7 +620,6 @@ client.on('interactionCreate', async interaction => {
     }
   }
 
-  // إضافة عضو بعد الاختيار
   if (interaction.isUserSelectMenu() && interaction.customId === 'select_user_to_add') {
     const targetUserId = interaction.values[0];
     await interaction.channel.permissionOverwrites.edit(targetUserId, {
@@ -640,7 +629,6 @@ client.on('interactionCreate', async interaction => {
     await interaction.reply({ content: `✅ **تمت إضافة العضو <@${targetUserId}> للتذكرة بنجاح!**` });
   }
 
-  // 6. تنفيذ الإغلاق المكتمل مع السبب والشكل الاحترافي المطابق للصورة
   if (interaction.isModalSubmit() && interaction.customId === 'modal_close_reason') {
     const reason = interaction.fields.getTextInputValue('close_reason_input');
     await interaction.reply('⏳ **جاري حفظ محادثات التذكرة وتنسيق اللوق وإغلاق القناة...**');
@@ -651,11 +639,9 @@ client.on('interactionCreate', async interaction => {
     const openTimeText = ticketData.openTime || `<t:${Math.floor(Date.now() / 1000)}:f>`;
     const closeTimeText = `<t:${Math.floor(Date.now() / 1000)}:f>`;
 
-    // استخراج محادثة التذكرة
     const { buffer, count } = await createTranscriptBuffer(interaction.channel, interaction.user);
     const attachment = new AttachmentBuilder(buffer, { name: `transcript-${interaction.channel.name}.txt` });
 
-    // تصميم إمبد الإغلاق الاحترافي
     const closedEmbed = new EmbedBuilder()
       .setAuthor({ name: interaction.guild.name, iconURL: interaction.guild.iconURL() })
       .setTitle('Ticket Closed 🔒')
