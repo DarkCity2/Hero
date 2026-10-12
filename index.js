@@ -43,7 +43,7 @@ let basesData = {
 let serverSettings = {
   ticketCategoryId: '',
   supportRole: 'Staff Moderator 🛠️',
-  logChannel: 'ticket-logs 📜',
+  logChannel: 'void-logs',
   maxTickets: 1,
   autoMuteSpam: true,
   blockLinks: true,
@@ -70,7 +70,7 @@ const DASHBOARD_PASSWORD = process.env.DASHBOARD_PASSWORD || 'VD122';
 const TOKEN = process.env.TOKEN;
 const REDIRECT_URI = `${BASE_URL}/api/auth/callback`;
 
-// ------------------- 3. تصميم واجهة اللوحة الفخم (Glassmorphic + Neon) -------------------
+// ------------------- 3. تصميم واجهة اللوحة الفخم -------------------
 const renderUltimateLayout = (activeTab, content) => `
   <!DOCTYPE html>
   <html lang="ar" dir="rtl">
@@ -81,10 +81,7 @@ const renderUltimateLayout = (activeTab, content) => `
       @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap');
       * { box-sizing: border-box; font-family: 'Cairo', sans-serif; }
       
-      body { 
-        background: #05030a;
-        color: #f8fafc; margin: 0; padding: 0; display: flex; min-height: 100vh; overflow-x: hidden; 
-      }
+      body { background: #05030a; color: #f8fafc; margin: 0; padding: 0; display: flex; min-height: 100vh; overflow-x: hidden; }
 
       .sidebar {
         width: 290px; background: rgba(10, 7, 20, 0.98); backdrop-filter: blur(30px);
@@ -246,25 +243,18 @@ app.get('/api/auth/callback', async (req, res) => {
     params.append('redirect_uri', REDIRECT_URI);
 
     const tokenResponse = await axios.post('https://discord.com/api/oauth2/token', params, {
-      headers: { 
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-      }
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': 'Mozilla/5.0' }
     });
 
     const userResponse = await axios.get('https://discord.com/api/users/@me', {
-      headers: { 
-        Authorization: `Bearer ${tokenResponse.data.access_token}`,
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-      }
+      headers: { Authorization: `Bearer ${tokenResponse.data.access_token}`, 'User-Agent': 'Mozilla/5.0' }
     });
 
     req.session.authenticated = true;
     req.session.user = userResponse.data;
     res.redirect('/');
   } catch (error) {
-    console.error('OAuth Error:', error.response?.data || error.message);
-    res.send('<h2 style="color:red; text-align:center; font-family:sans-serif; margin-top:50px;">❌ فشل الربط مع ديسكورد.<br>تأكد من تجديد الـ CLIENT_SECRET بـ Render.<br><br><a href="/login" style="color:#a78bfa;">إعادة المحاولة</a></h2>');
+    res.send('<h2 style="color:red; text-align:center; font-family:sans-serif; margin-top:50px;">❌ فشل الربط مع ديسكورد.<br><a href="/login" style="color:#a78bfa;">إعادة المحاولة</a></h2>');
   }
 });
 
@@ -273,7 +263,7 @@ app.get('/logout', (req, res) => {
   res.redirect('/login');
 });
 
-// ------------------- 5. صفحات لوحة التحكم المكتملة -------------------
+// ------------------- 5. صفحة ألوان القواعد -------------------
 app.get('/', (req, res) => {
   if (!req.session.authenticated) return res.redirect('/login');
 
@@ -331,12 +321,13 @@ app.post('/save-colors', (req, res) => {
   res.redirect('/');
 });
 
+// ------------------- 6. صفحة إعدادات التذاكر -------------------
 app.get('/tickets', (req, res) => {
   if (!req.session.authenticated) return res.redirect('/login');
   const content = `
     <div class="glass-card">
       <h1 class="purple-gradient" style="margin: 0; font-size: 24px;">🎫 إعدادات نظام التذاكر والدعم</h1>
-      <p style="color: #94a3b8; margin-top: 5px;">تحديد كاتيجوري التذاكر، رتب الدعم الفني، وإعدادات الفتح.</p>
+      <p style="color: #94a3b8; margin-top: 5px;">تحديد كاتيجوري التذاكر ورتب الدعم.</p>
     </div>
     
     <form action="/save-tickets" method="POST">
@@ -346,9 +337,6 @@ app.get('/tickets', (req, res) => {
 
         <label>اسم رتبة الدعم الفني العامة:</label>
         <input type="text" name="supportRole" value="${serverSettings.supportRole}">
-
-        <label>أقصى عدد تذاكر مفتوحة للعضو:</label>
-        <input type="number" name="maxTickets" value="${serverSettings.maxTickets}">
 
         <button type="submit" class="btn">💾 حفظ إعدادات التذاكر</button>
       </div>
@@ -361,10 +349,10 @@ app.post('/save-tickets', (req, res) => {
   if (!req.session.authenticated) return res.redirect('/login');
   serverSettings.ticketCategoryId = req.body.ticketCategoryId;
   serverSettings.supportRole = req.body.supportRole;
-  serverSettings.maxTickets = req.body.maxTickets;
   res.redirect('/tickets');
 });
 
+// ------------------- 7. صفحة إدارة السيرفر -------------------
 app.get('/moderation', (req, res) => {
   if (!req.session.authenticated) return res.redirect('/login');
   const content = `
@@ -375,7 +363,7 @@ app.get('/moderation', (req, res) => {
     <form action="/save-mod" method="POST">
       <div class="glass-card">
         <div class="toggle-box">
-          <div><strong>تفعيل الميوت الآلي للسبام</strong><div style="font-size:12px; color:#94a3b8;">إعطاء تايم أوت عند تكرار الرسائل المزعجة.</div></div>
+          <div><strong>تفعيل الميوت الآلي للسبام</strong><div style="font-size:12px; color:#94a3b8;">إعطاء تايم أوت عند تكرار الرسائل.</div></div>
           <label class="switch"><input type="checkbox" name="autoMuteSpam" ${serverSettings.autoMuteSpam ? 'checked' : ''}><span class="slider"></span></label>
         </div>
         <button type="submit" class="btn">💾 حفظ إعدادات الإدارة</button>
@@ -391,35 +379,45 @@ app.post('/save-mod', (req, res) => {
   res.redirect('/moderation');
 });
 
+// ------------------- 8. صفحة اللوقات والسجلات المتكاملة -------------------
 app.get('/logs', (req, res) => {
   if (!req.session.authenticated) return res.redirect('/login');
   const content = `
     <div class="glass-card">
-      <h1 class="purple-gradient" style="margin:0; font-size:24px;">📜 سجلات الأحداث الشاملة (Audit Logs)</h1>
-      <p style="color: #94a3b8; margin-top: 5px;">مراقبة تحركات وحذف الرسائل بالسيرفر.</p>
+      <h1 class="purple-gradient" style="margin:0; font-size:24px;">📜 إعدادات السجلات (Audit & Ticket Logs)</h1>
+      <p style="color: #94a3b8; margin-top: 5px;">تحديد روم اللوقات لتسجيل التذاكر وحذف الرسائل.</p>
     </div>
-    <div class="glass-card">
-      <div class="toggle-box">
-        <div><strong>سجل حذف وتعديل الرسائل</strong><div style="font-size:12px; color:#94a3b8;">تتبع رسائل الأعضاء المحذوفة.</div></div>
-        <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+    <form action="/save-logs" method="POST">
+      <div class="glass-card">
+        <label>اسم أو آيدي روم السجلات (Log Channel Name):</label>
+        <input type="text" name="logChannel" value="${serverSettings.logChannel}" placeholder="مثال: void-logs">
+        <div style="font-size: 11px; color: #a78bfa; margin-top: 5px;">* سيقوم البوت بإرسال لوق التذاكر وحذف الرسائل لهذا الروم تلقائياً.</div>
+        
+        <button type="submit" class="btn">💾 حفظ إعدادات اللوقات</button>
       </div>
-      <button onclick="alert('تم حفظ إعدادات السجلات!')" class="btn">💾 حفظ اللوقات</button>
-    </div>
+    </form>
   `;
   res.send(renderUltimateLayout('logs', content));
 });
 
+app.post('/save-logs', (req, res) => {
+  if (!req.session.authenticated) return res.redirect('/login');
+  if (req.body.logChannel) serverSettings.logChannel = req.body.logChannel;
+  res.redirect('/logs');
+});
+
+// ------------------- 9. صفحة الحماية -------------------
 app.get('/security', (req, res) => {
   if (!req.session.authenticated) return res.redirect('/login');
   const content = `
     <div class="glass-card">
-      <h1 class="purple-gradient" style="margin:0; font-size:24px;">🛡️ نظام الحماية ومكافحة الهجمات (Anti-Raid)</h1>
-      <p style="color: #94a3b8; margin-top: 5px;">حظر الروابط والحسابات الوهمية.</p>
+      <h1 class="purple-gradient" style="margin:0; font-size:24px;">🛡️ نظام الحماية ومكافحة الهجمات</h1>
+      <p style="color: #94a3b8; margin-top: 5px;">حظر الروابط والدعوات الخارجية.</p>
     </div>
     <form action="/save-sec" method="POST">
       <div class="glass-card">
         <div class="toggle-box">
-          <div><strong>حظر الروابط الخارجية والدعوات</strong><div style="font-size:12px; color:#94a3b8;">حذف أي رابط دعوة سيرفر فوراً.</div></div>
+          <div><strong>حظر الروابط الخارجية والدعوات</strong><div style="font-size:12px; color:#94a3b8;">حذف أي رابط دعوة فوراً.</div></div>
           <label class="switch"><input type="checkbox" name="blockLinks" ${serverSettings.blockLinks ? 'checked' : ''}><span class="slider"></span></label>
         </div>
         <button type="submit" class="btn">💾 حفظ إعدادات الحماية</button>
@@ -435,6 +433,7 @@ app.post('/save-sec', (req, res) => {
   res.redirect('/security');
 });
 
+// نشر لوحة الألوان
 app.post('/send-panel', async (req, res) => {
   if (!req.session.authenticated) return res.redirect('/login');
   try {
@@ -466,7 +465,7 @@ app.post('/send-panel', async (req, res) => {
 
 app.listen(PORT, () => console.log(`🌐 Dashboard Active on port ${PORT}`));
 
-// ------------------- 6. تشغيل بوت ديسكورد والتذاكر (نظام الرتب الخاصة) -------------------
+// ------------------- 10. بوت ديسكورد ونظام اللوقات المتكامل -------------------
 const client = new Client({
   intents: [
     I.Guilds, I.GuildMembers, I.GuildMessages, I.MessageContent,
@@ -478,8 +477,43 @@ const client = new Client({
 
 const userSessions = new Map();
 
+// دالة مساعدة لإرسال اللوقات إلى روم اللوق المحدد
+async function sendLog(guild, embed) {
+  if (!serverSettings.logChannel) return;
+  try {
+    let logCh = guild.channels.cache.find(c => c.name === serverSettings.logChannel || c.id === serverSettings.logChannel);
+    if (!logCh) {
+      logCh = await guild.channels.create({
+        name: serverSettings.logChannel.replace(/[^a-z0-9-]/gi, '-').toLowerCase(),
+        type: ChannelType.GuildText,
+        parent: serverSettings.ticketCategoryId || undefined
+      }).catch(() => null);
+    }
+    if (logCh) {
+      await logCh.send({ embeds: [embed] }).catch(() => {});
+    }
+  } catch (e) {
+    console.error('Log error:', e);
+  }
+}
+
 client.once('ready', () => {
   console.log(`✅ [Void Community] البوت يعمل باسم: ${client.user.tag}`);
+});
+
+// لوق حذف الرسائل
+client.on('messageDelete', async message => {
+  if (!message.guild || message.author?.bot) return;
+  const delEmbed = new EmbedBuilder()
+    .setTitle('🗑️ سجل حذف رسالة (Audit Log)')
+    .addFields(
+      { name: '👤 صاحب الرسالة', value: `<@${message.author.id}>`, inline: true },
+      { name: '📂 القناة', value: `<#${message.channel.id}>`, inline: true },
+      { name: '💬 المحتوى', value: message.content || '[رسالة تحتوي على مرفقات أو صور]', inline: false }
+    )
+    .setColor('#f97316')
+    .setTimestamp();
+  await sendLog(message.guild, delEmbed);
 });
 
 client.on('interactionCreate', async interaction => {
@@ -573,13 +607,27 @@ client.on('interactionCreate', async interaction => {
 
       const ch = await interaction.guild.channels.create(channelOptions);
 
+      // إرسال لوق التذكرة الجديد
+      const ticketLogEmbed = new EmbedBuilder()
+        .setTitle('🎫 سجل تذكرة جديدة (Ticket Log)')
+        .addFields(
+          { name: '👤 صاحب الطلب', value: `<@${interaction.user.id}>`, inline: true },
+          { name: '🎨 القاعدة المطلوبة', value: baseName, inline: true },
+          { name: '📂 القناة المفتوحة', value: `${ch}`, inline: false },
+          { name: '🛡️ الضمان والنواقص', value: `الضمان: **${session?.guarantee || 'غير محدد'}**\nالنواقص: **${session?.missing || 'غير محدد'}**`, inline: false },
+          { name: '👑 الرتبة المرتبطة', value: specificRole ? `<@&${specificRole.id}>` : 'لم يتم العثور على رتبة مطابقة للاسم', inline: false }
+        )
+        .setColor('#a855f7')
+        .setTimestamp();
+      await sendLog(interaction.guild, ticketLogEmbed);
+
       const embed = new EmbedBuilder()
         .setTitle(`🎫 Void Community | طلب لون ${baseName}`)
         .addFields(
           { name: '👤 العضو', value: `<@${interaction.user.id}>`, inline: true },
           { name: '🛡️ الضمان', value: session ? session.guarantee : 'غير محدد', inline: true },
           { name: '🔢 عدد النواقص', value: session ? session.missing : 'غير محدد', inline: true },
-          { name: '👑 الرتبة المخولة لرؤية التذكرة', value: specificRole ? `<@&${specificRole.id}>` : 'لم يتم العثور على رتبة مطابقة للاسم', inline: false }
+          { name: '👑 الرتبة المخولة لرؤية التذكرة', value: specificRole ? `<@&${specificRole.id}>` : 'الإدارة العامة', inline: false }
         )
         .setColor('#57f287')
         .setFooter({ text: 'Void Community System' });
@@ -590,7 +638,7 @@ client.on('interactionCreate', async interaction => {
         components: [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('close_ticket').setLabel('إغلاق التذكرة').setEmoji('🔒').setStyle(ButtonStyle.Danger))] 
       });
       
-      await interaction.update({ content: `🎉 **تم قبول الطلب بنجاح!**\nتم فتح القناة الخاصة بك داخل الكاتيجوري: ${ch}`, components: [] });
+      await interaction.update({ content: `🎉 **تم قبول الطلب بنجاح!**\nتم فتح القناة الخاصة بك: ${ch}`, components: [] });
     }
 
     if (interaction.customId === 'btn_reject') {
@@ -598,6 +646,13 @@ client.on('interactionCreate', async interaction => {
     }
 
     if (interaction.customId === 'close_ticket') {
+      const closeLogEmbed = new EmbedBuilder()
+        .setTitle('🔒 سجل إغلاق تذكرة (Ticket Closed)')
+        .setDescription(`تم إغلاق التذكرة **${interaction.channel.name}** بواسطة الإداري/العضو <@${interaction.user.id}>`)
+        .setColor('#ef4444')
+        .setTimestamp();
+      await sendLog(interaction.guild, closeLogEmbed);
+
       await interaction.reply('سيتم إغلاق التذكرة خلال 5 ثوانٍ...');
       setTimeout(() => interaction.channel.delete().catch(() => {}), 5000);
     }
