@@ -393,12 +393,11 @@ async function sendLog(guild, embed, attachment = null) {
   }
 }
 
-// دالة منسقة ونظيفة تماماً لملف الترانسكريبت
 async function createTranscriptBuffer(channel, closedByUser) {
   const fetchedMessages = await channel.messages.fetch({ limit: 100 });
   const sortedMessages = Array.from(fetchedMessages.values())
     .reverse()
-    .filter(msg => !msg.content.includes('جاري حفظ محادثات التذكرة')); // استبعاد رسالة النظام المؤقتة
+    .filter(msg => !msg.content.includes('جاري حفظ محادثات التذكرة'));
 
   let transcriptContent = `==================================================\n`;
   transcriptContent += `         VOID COMMUNITY - TICKET TRANSCRIPT\n`;
@@ -412,7 +411,6 @@ async function createTranscriptBuffer(channel, closedByUser) {
     const timeStr = msg.createdAt.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
     let content = msg.content;
 
-    // استخراج محتوى الإمبدات بشكل نظيف ومنمق
     if (msg.embeds.length > 0) {
       msg.embeds.forEach(e => {
         if (e.title) content += `\n[عنوان القائمة: ${e.title}]`;
@@ -601,31 +599,32 @@ client.on('interactionCreate', async interaction => {
     }
 
     if (action === 'add_user') {
+      await interaction.deferReply({ ephemeral: true });
       const userSelect = new UserSelectMenuBuilder()
         .setCustomId('select_user_to_add')
         .setPlaceholder('اختر العضو المراد إضافته للتذكرة...')
         .setMaxValues(1);
 
-      await interaction.reply({
+      await interaction.editReply({
         content: '👤 **اختر العضو الذي تريد إضافته إلى التذكرة:**',
-        components: [new ActionRowBuilder().addComponents(userSelect)],
-        ephemeral: true
+        components: [new ActionRowBuilder().addComponents(userSelect)]
       });
     }
 
     if (action === 'pm_reminder') {
+      await interaction.deferReply({ ephemeral: true });
       const ticketData = ticketsDataMap.get(interaction.channel.id);
       const ownerId = ticketData ? ticketData.openedBy : null;
       if (ownerId) {
         try {
           const ownerUser = await client.users.fetch(ownerId);
           await ownerUser.send(`🔔 **تذكير:** بخصوص تذكرتك المفتوحة بـ Void Community في روم: ${interaction.channel}`);
-          await interaction.reply({ content: '✅ **تم إرسال تذكير في الخاص لصاحب التذكرة بنجاح!**', ephemeral: true });
+          await interaction.editReply({ content: '✅ **تم إرسال تذكير في الخاص لصاحب التذكرة بنجاح!**' });
         } catch (e) {
-          await interaction.reply({ content: '❌ **تعذر إرسال التذكير، الخاص مغلق لدى العضو.**', ephemeral: true });
+          await interaction.editReply({ content: '❌ **تعذر إرسال التذكير، الخاص مغلق لدى العضو.**' });
         }
       } else {
-        await interaction.reply({ content: '❌ **لم يتم العثور على بيانات صاحب التذكرة.**', ephemeral: true });
+        await interaction.editReply({ content: '❌ **لم يتم العثور على بيانات صاحب التذكرة.**' });
       }
     }
 
