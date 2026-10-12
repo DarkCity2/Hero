@@ -13,7 +13,8 @@ const {
   PermissionFlagsBits,
   ModalBuilder,
   TextInputBuilder,
-  TextInputStyle 
+  TextInputStyle,
+  AttachmentBuilder
 } = require('discord.js');
 const express = require('express');
 const session = require('express-session');
@@ -385,13 +386,13 @@ app.get('/logs', (req, res) => {
   const content = `
     <div class="glass-card">
       <h1 class="purple-gradient" style="margin:0; font-size:24px;">📜 إعدادات السجلات (Audit & Ticket Logs)</h1>
-      <p style="color: #94a3b8; margin-top: 5px;">تحديد روم اللوقات لتسجيل التذاكر وحذف الرسائل.</p>
+      <p style="color: #94a3b8; margin-top: 5px;">تحديد روم اللوقات لتسجيل التذاكر وحفظ المحادثات بالكامل.</p>
     </div>
     <form action="/save-logs" method="POST">
       <div class="glass-card">
         <label>اسم أو آيدي روم السجلات (Log Channel Name):</label>
         <input type="text" name="logChannel" value="${serverSettings.logChannel}" placeholder="مثال: void-logs">
-        <div style="font-size: 11px; color: #a78bfa; margin-top: 5px;">* سيقوم البوت بإرسال لوق التذاكر وحذف الرسائل لهذا الروم تلقائياً.</div>
+        <div style="font-size: 11px; color: #a78bfa; margin-top: 5px;">* سيتم إرسال سجل التذاكر + ملف المحادثة الكاملة (Transcript) عند الإغلاق في هذا الروم.</div>
         
         <button type="submit" class="btn">💾 حفظ إعدادات اللوقات</button>
       </div>
@@ -465,7 +466,7 @@ app.post('/send-panel', async (req, res) => {
 
 app.listen(PORT, () => console.log(`🌐 Dashboard Active on port ${PORT}`));
 
-// ------------------- 10. بوت ديسكورد ونظام اللوقات المتكامل -------------------
+// ------------------- 10. بوت ديسكورد ونظام اللوقات المتكامل والترانسكريبت -------------------
 const client = new Client({
   intents: [
     I.Guilds, I.GuildMembers, I.GuildMessages, I.MessageContent,
@@ -477,8 +478,8 @@ const client = new Client({
 
 const userSessions = new Map();
 
-// دالة مساعدة لإرسال اللوقات إلى روم اللوق المحدد
-async function sendLog(guild, embed) {
+// دالة مساعدة لإرسال اللوقات مع إمكانية إرفاق ملف المحادثة (Transcript File)
+async function sendLog(guild, embed, attachment = null) {
   if (!serverSettings.logChannel) return;
   try {
     let logCh = guild.channels.cache.find(c => c.name === serverSettings.logChannel || c.id === serverSettings.logChannel);
@@ -490,7 +491,9 @@ async function sendLog(guild, embed) {
       }).catch(() => null);
     }
     if (logCh) {
-      await logCh.send({ embeds: [embed] }).catch(() => {});
+      const payload = { embeds: [embed] };
+      if (attachment) payload.files = [attachment];
+      await logCh.send(payload).catch(() => {});
     }
   } catch (e) {
     console.error('Log error:', e);
@@ -646,14 +649,55 @@ client.on('interactionCreate', async interaction => {
     }
 
     if (interaction.customId === 'close_ticket') {
-      const closeLogEmbed = new EmbedBuilder()
-        .setTitle('🔒 سجل إغلاق تذكرة (Ticket Closed)')
-        .setDescription(`تم إغلاق التذكرة **${interaction.channel.name}** بواسطة الإداري/العضو <@${interaction.user.id}>`)
-        .setColor('#ef4444')
-        .setTimestamp();
-      await sendLog(interaction.guild, closeLogEmbed);
+      await interaction.reply('⏳ جاري استخراج المحادثة بالكامل وإغلاق التذكرة خلال 5 ثوانٍ...');
 
-      await interaction.reply('سيتم إغلاق التذكرة خلال 5 ثوانٍ...');
+      try {
+        // 1. جلب كامل الرسائل من التذكرة (حتى 100 رسالة)
+        const fetchedMessages = await interaction.channel.messages.fetch({ limit: 100 });
+        const sortedMessages = Array.from(fetchedMessages.values()).reverse();
+
+        // 2. تنسيق نص الترانسكريبت بوضوح
+        let transcriptContent = `==================================================\n`;
+        transcriptContent += `  VOID COMMUNITY - TICKET TRANSCRIPT LOG\n`;
+        transcriptContent += `  اسم التذكرة: ${interaction.channel.name}\n`;
+        transcriptContent += `  بواسطة: ${interaction.user.tag} (${interaction.user.id})\n`;
+        transcriptContent += `  التاريخ والوقت: ${new Date().toLocaleString('ar-SA')}\n`;
+        transcriptContent += `==================================================\n\n`;
+
+        sortedMessages.forEach(msg => {
+          const timeStr = msg.createdAt.toLocaleTimeString('ar-SA');
+          let embedsText = '';
+          if (msg.embeds.length > 0) {
+            msg.embeds.forEach(e => {
+              if (e.title) embedsText += ` [إمبد: ${e.title}]`;
+              if (e.fields) e.fields.forEach(f => embedsText += ` (${f.name}: ${f.value})`);
+            });
+          }
+          transcriptContent += `[${timeStr}] ${msg.author.tag}: ${msg.content || embedsText}\n`;
+        });
+
+        // 3. إنشاء الملف المرفق
+        const buffer = Buffer.from(transcriptContent, 'utf-8');
+        const attachment = new AttachmentBuilder(buffer, { name: `transcript-${interaction.channel.name}.txt` });
+
+        // 4. إرسال الإمبد مع الملف إلى روم اللوقات
+        const closeLogEmbed = new EmbedBuilder()
+          .setTitle('🔒 سجل إغلاق تذكرة وحفظ المحادثة (Ticket Transcript)')
+          .addFields(
+            { name: '📂 اسم التذكرة', value: interaction.channel.name, inline: true },
+            { name: '👤 أغلق بواسطة', value: `<@${interaction.user.id}>`, inline: true },
+            { name: '📜 عدد الرسائل الموثقة', value: `${sortedMessages.length} رسالة`, inline: true }
+          )
+          .setColor('#ef4444')
+          .setFooter({ text: 'Void Community System - تم أرشفة محتوى القناة المرفق' })
+          .setTimestamp();
+
+        await sendLog(interaction.guild, closeLogEmbed, attachment);
+      } catch (err) {
+        console.error('Error creating transcript:', err);
+      }
+
+      // حذف التذكرة بعد 5 ثوانٍ
       setTimeout(() => interaction.channel.delete().catch(() => {}), 5000);
     }
   }
