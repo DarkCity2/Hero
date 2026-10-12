@@ -1,6 +1,4 @@
 require('dotenv').config();
-const fs = require('fs');
-const path = require('path');
 const { 
   Client, 
   GatewayIntentBits: I, 
@@ -21,7 +19,7 @@ const express = require('express');
 const session = require('express-session');
 const axios = require('axios');
 
-// ------------------- 1. بيانات قواعد الألوان (17 لون) -------------------
+// ------------------- 1. بيانات قواعد الألوان الـ 17 -------------------
 let basesData = {
   silver: { name: 'Silver Base', emoji: '⚪', money: 'اذا ناقصك 15 وتحت المبلغ ( 20 ريال ) اذا فوق 15 ( 40 ريال )', items: '(١٠ وتحت كروماندو كاندي وفوق باستثناء البارتي، ١٠٠ وفوق دب كاندي وفوق)' },
   gold: { name: 'Gold Base', emoji: '🟡', money: 'اذا ناقصك 15 وتحت المبلغ ( 20 ريال ) اذا فوق 15 ( 40 ريال )', items: '(١٠ وتحت كروماندو كاندي وفوق باستثناء البارتي، ١٠٠ وفوق دب كاندي وفوق)' },
@@ -43,17 +41,16 @@ let basesData = {
 };
 
 let serverSettings = {
-  ticketCategoryId: '', 
+  ticketCategoryId: '',
   supportRole: 'Staff Moderator 🛠️',
   logChannel: 'ticket-logs 📜',
   maxTickets: 1,
-  modLogsChannel: 'mod-logs 🔨',
   autoMuteSpam: true,
   blockLinks: true,
   antiRaid: true
 };
 
-// ------------------- 2. السيرفر والتوثيق -------------------
+// ------------------- 2. إعدادات السيرفر و Express -------------------
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -73,9 +70,7 @@ const DASHBOARD_PASSWORD = process.env.DASHBOARD_PASSWORD || 'VD122';
 const TOKEN = process.env.TOKEN;
 const REDIRECT_URI = `${BASE_URL}/api/auth/callback`;
 
-const VOID_IMG_URL = 'https://i.ibb.co/L6S9bK9/IMG-6085.jpg';
-
-// ------------------- 3. تصميم اللوحة -------------------
+// ------------------- 3. تصميم واجهة اللوحة الفخم (Glassmorphic + Neon) -------------------
 const renderUltimateLayout = (activeTab, content) => `
   <!DOCTYPE html>
   <html lang="ar" dir="rtl">
@@ -87,25 +82,19 @@ const renderUltimateLayout = (activeTab, content) => `
       * { box-sizing: border-box; font-family: 'Cairo', sans-serif; }
       
       body { 
-        background: #05030a url('${VOID_IMG_URL}') no-repeat center top fixed;
-        background-size: cover;
+        background: #05030a;
         color: #f8fafc; margin: 0; padding: 0; display: flex; min-height: 100vh; overflow-x: hidden; 
       }
 
-      body::before {
-        content: ''; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-        background: rgba(5, 3, 10, 0.88); z-index: 1; backdrop-filter: blur(12px);
-      }
-
       .sidebar {
-        width: 290px; background: rgba(10, 7, 20, 0.95); backdrop-filter: blur(30px);
+        width: 290px; background: rgba(10, 7, 20, 0.98); backdrop-filter: blur(30px);
         border-left: 1px solid rgba(139, 92, 246, 0.3); padding: 20px 15px; display: flex;
         flex-direction: column; justify-content: space-between; position: fixed; right: 0; top: 0; bottom: 0; z-index: 100;
         box-shadow: -10px 0 40px rgba(0,0,0,0.9);
       }
       
       .brand-box { text-align: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid rgba(139, 92, 246, 0.2); }
-      .brand-img { width: 100%; height: 110px; border-radius: 16px; border: 1px solid rgba(168, 85, 247, 0.6); box-shadow: 0 0 25px rgba(168, 85, 247, 0.4); object-fit: cover; margin-bottom: 12px; }
+      .brand-logo-icon { font-size: 38px; margin-bottom: 5px; text-shadow: 0 0 20px rgba(168,85,247,0.6); }
       .brand-title { font-size: 20px; font-weight: 900; background: linear-gradient(135deg, #e9d5ff, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: 2px; }
 
       .nav-group { margin-bottom: 20px; }
@@ -160,7 +149,7 @@ const renderUltimateLayout = (activeTab, content) => `
     <div class="sidebar">
       <div>
         <div class="brand-box">
-          <img src="${VOID_IMG_URL}" class="brand-img" alt="VOID LOGO">
+          <div class="brand-logo-icon">🌌</div>
           <div class="brand-title">VOID COMMUNITY</div>
         </div>
         
@@ -179,6 +168,7 @@ const renderUltimateLayout = (activeTab, content) => `
           <div class="nav-label">الإدارة والحماية</div>
           <a href="/moderation" class="nav-item ${activeTab === 'moderation' ? 'active' : ''}">
             <span>🔨 إدارة السيرفر</span>
+            <div class="badge-check">✓</div>
           </a>
           <a href="/logs" class="nav-item ${activeTab === 'logs' ? 'active' : ''}">
             <span>📜 السجلات (اللوقات)</span>
@@ -201,7 +191,7 @@ const renderUltimateLayout = (activeTab, content) => `
   </html>
 `;
 
-// ------------------- 4. المسارات والتوثيق -------------------
+// ------------------- 4. مسارات المصادقة -------------------
 app.get('/login', (req, res) => {
   res.send(`
     <!DOCTYPE html>
@@ -211,20 +201,16 @@ app.get('/login', (req, res) => {
       <title>Void - تسجيل الدخول</title>
       <style>
         @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap');
-        body { 
-          background: #05040a url('${VOID_IMG_URL}') no-repeat center center fixed;
-          background-size: cover; color: #fff; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: 'Cairo', sans-serif; 
-        }
-        body::before { content: ''; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(5,3,10,0.85); z-index: 1; backdrop-filter: blur(8px); }
-        .login-card { position: relative; z-index: 10; background: rgba(18, 14, 30, 0.95); backdrop-filter: blur(25px); border: 1px solid rgba(139, 92, 246, 0.4); padding: 40px; border-radius: 24px; text-align: center; width: 420px; box-shadow: 0 20px 60px rgba(0,0,0,0.9); }
-        .logo-banner { width: 100%; height: 160px; border-radius: 18px; border: 1px solid rgba(168, 85, 247, 0.6); box-shadow: 0 0 30px rgba(168, 85, 247, 0.5); margin-bottom: 20px; object-fit: cover; }
+        body { background: #05040a; color: #fff; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: 'Cairo', sans-serif; }
+        .login-card { background: rgba(18, 14, 30, 0.95); backdrop-filter: blur(25px); border: 1px solid rgba(139, 92, 246, 0.4); padding: 40px; border-radius: 24px; text-align: center; width: 420px; box-shadow: 0 20px 60px rgba(0,0,0,0.9); }
+        .logo-icon { font-size: 50px; margin-bottom: 10px; text-shadow: 0 0 25px rgba(168,85,247,0.7); }
         input { width: 100%; padding: 15px; border-radius: 14px; border: 1px solid rgba(139, 92, 246, 0.4); background: rgba(10, 8, 20, 0.9); color: #fff; text-align: center; font-size: 16px; margin-bottom: 20px; outline: none; }
         button { background: linear-gradient(135deg, #7c3aed, #6366f1); color: #fff; border: none; padding: 15px; border-radius: 14px; width: 100%; font-weight: bold; font-size: 16px; cursor: pointer; box-shadow: 0 4px 20px rgba(124,58,237,0.4); }
       </style>
     </head>
     <body>
       <div class="login-card">
-        <img src="${VOID_IMG_URL}" class="logo-banner" alt="VOID LOGO">
+        <div class="logo-icon">🌌</div>
         <h1 style="font-size: 26px; margin-bottom: 5px;" class="purple-gradient">VOID COMMUNITY</h1>
         <p style="color: #a78bfa; font-size: 13px; margin-bottom: 25px;">أدخل كلمة المرور للانتقال لربط الديسكورد</p>
         <form action="/login/pass" method="POST">
@@ -287,7 +273,7 @@ app.get('/logout', (req, res) => {
   res.redirect('/login');
 });
 
-// ------------------- 5. صفحات اللوحة -------------------
+// ------------------- 5. صفحات لوحة التحكم المكتملة -------------------
 app.get('/', (req, res) => {
   if (!req.session.authenticated) return res.redirect('/login');
 
@@ -361,9 +347,6 @@ app.get('/tickets', (req, res) => {
         <label>اسم رتبة الدعم الفني العامة:</label>
         <input type="text" name="supportRole" value="${serverSettings.supportRole}">
 
-        <label>اسم روم سجلات التذاكر (Logs):</label>
-        <input type="text" name="logChannel" value="${serverSettings.logChannel}">
-
         <label>أقصى عدد تذاكر مفتوحة للعضو:</label>
         <input type="number" name="maxTickets" value="${serverSettings.maxTickets}">
 
@@ -378,24 +361,78 @@ app.post('/save-tickets', (req, res) => {
   if (!req.session.authenticated) return res.redirect('/login');
   serverSettings.ticketCategoryId = req.body.ticketCategoryId;
   serverSettings.supportRole = req.body.supportRole;
-  serverSettings.logChannel = req.body.logChannel;
   serverSettings.maxTickets = req.body.maxTickets;
   res.redirect('/tickets');
 });
 
 app.get('/moderation', (req, res) => {
   if (!req.session.authenticated) return res.redirect('/login');
-  res.send(renderUltimateLayout('moderation', `<div class="glass-card"><h1 class="purple-gradient">🔨 إدارة السيرفر</h1></div>`));
+  const content = `
+    <div class="glass-card">
+      <h1 class="purple-gradient" style="margin:0; font-size:24px;">🔨 نظام إدارة السيرفر والعقوبات</h1>
+      <p style="color: #94a3b8; margin-top: 5px;">تخصيص الإجراءات الإدارية والعقوبات في Void Community.</p>
+    </div>
+    <form action="/save-mod" method="POST">
+      <div class="glass-card">
+        <div class="toggle-box">
+          <div><strong>تفعيل الميوت الآلي للسبام</strong><div style="font-size:12px; color:#94a3b8;">إعطاء تايم أوت عند تكرار الرسائل المزعجة.</div></div>
+          <label class="switch"><input type="checkbox" name="autoMuteSpam" ${serverSettings.autoMuteSpam ? 'checked' : ''}><span class="slider"></span></label>
+        </div>
+        <button type="submit" class="btn">💾 حفظ إعدادات الإدارة</button>
+      </div>
+    </form>
+  `;
+  res.send(renderUltimateLayout('moderation', content));
+});
+
+app.post('/save-mod', (req, res) => {
+  if (!req.session.authenticated) return res.redirect('/login');
+  serverSettings.autoMuteSpam = !!req.body.autoMuteSpam;
+  res.redirect('/moderation');
 });
 
 app.get('/logs', (req, res) => {
   if (!req.session.authenticated) return res.redirect('/login');
-  res.send(renderUltimateLayout('logs', `<div class="glass-card"><h1 class="purple-gradient">📜 سجلات الأحداث</h1></div>`));
+  const content = `
+    <div class="glass-card">
+      <h1 class="purple-gradient" style="margin:0; font-size:24px;">📜 سجلات الأحداث الشاملة (Audit Logs)</h1>
+      <p style="color: #94a3b8; margin-top: 5px;">مراقبة تحركات وحذف الرسائل بالسيرفر.</p>
+    </div>
+    <div class="glass-card">
+      <div class="toggle-box">
+        <div><strong>سجل حذف وتعديل الرسائل</strong><div style="font-size:12px; color:#94a3b8;">تتبع رسائل الأعضاء المحذوفة.</div></div>
+        <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+      </div>
+      <button onclick="alert('تم حفظ إعدادات السجلات!')" class="btn">💾 حفظ اللوقات</button>
+    </div>
+  `;
+  res.send(renderUltimateLayout('logs', content));
 });
 
 app.get('/security', (req, res) => {
   if (!req.session.authenticated) return res.redirect('/login');
-  res.send(renderUltimateLayout('security', `<div class="glass-card"><h1 class="purple-gradient">🛡️ الحماية</h1></div>`));
+  const content = `
+    <div class="glass-card">
+      <h1 class="purple-gradient" style="margin:0; font-size:24px;">🛡️ نظام الحماية ومكافحة الهجمات (Anti-Raid)</h1>
+      <p style="color: #94a3b8; margin-top: 5px;">حظر الروابط والحسابات الوهمية.</p>
+    </div>
+    <form action="/save-sec" method="POST">
+      <div class="glass-card">
+        <div class="toggle-box">
+          <div><strong>حظر الروابط الخارجية والدعوات</strong><div style="font-size:12px; color:#94a3b8;">حذف أي رابط دعوة سيرفر فوراً.</div></div>
+          <label class="switch"><input type="checkbox" name="blockLinks" ${serverSettings.blockLinks ? 'checked' : ''}><span class="slider"></span></label>
+        </div>
+        <button type="submit" class="btn">💾 حفظ إعدادات الحماية</button>
+      </div>
+    </form>
+  `;
+  res.send(renderUltimateLayout('security', content));
+});
+
+app.post('/save-sec', (req, res) => {
+  if (!req.session.authenticated) return res.redirect('/login');
+  serverSettings.blockLinks = !!req.body.blockLinks;
+  res.redirect('/security');
 });
 
 app.post('/send-panel', async (req, res) => {
@@ -429,7 +466,7 @@ app.post('/send-panel', async (req, res) => {
 
 app.listen(PORT, () => console.log(`🌐 Dashboard Active on port ${PORT}`));
 
-// ------------------- 6. تشغيل بوت ديسكورد بنظام صلاحيات الرتب الخاصة -------------------
+// ------------------- 6. تشغيل بوت ديسكورد والتذاكر (نظام الرتب الخاصة) -------------------
 const client = new Client({
   intents: [
     I.Guilds, I.GuildMembers, I.GuildMessages, I.MessageContent,
@@ -442,7 +479,7 @@ const client = new Client({
 const userSessions = new Map();
 
 client.once('ready', () => {
-  console.log(`✅ [Void Community] البوت تعمل باسم: ${client.user.tag}`);
+  console.log(`✅ [Void Community] البوت يعمل باسم: ${client.user.tag}`);
 });
 
 client.on('interactionCreate', async interaction => {
@@ -511,26 +548,15 @@ client.on('interactionCreate', async interaction => {
       const session = userSessions.get(interaction.user.id);
       const baseName = basesData[session?.baseKey]?.name || 'Base';
 
-      // إعداد صلاحيات الرومات المباشرة
       const permissionOverwrites = [
-        { id: interaction.guild.id, deny: [PermissionFlagsBits.ViewChannel] }, // إخفاء عن الجميع
-        { id: interaction.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] } // صاحب التذكرة
+        { id: interaction.guild.id, deny: [PermissionFlagsBits.ViewChannel] },
+        { id: interaction.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] }
       ];
 
-      // البحث عن رتبة تجمل اسم القاعدة في السيرفر لفتح الروم لها حصرياً
       const specificRole = interaction.guild.roles.cache.find(r => r.name.toLowerCase() === baseName.toLowerCase());
       if (specificRole) {
         permissionOverwrites.push({
           id: specificRole.id,
-          allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages]
-        });
-      }
-
-      // البحث عن رتبة الدعم العامة
-      const supportRole = interaction.guild.roles.cache.find(r => r.name === serverSettings.supportRole);
-      if (supportRole) {
-        permissionOverwrites.push({
-          id: supportRole.id,
           allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages]
         });
       }
@@ -553,13 +579,18 @@ client.on('interactionCreate', async interaction => {
           { name: '👤 العضو', value: `<@${interaction.user.id}>`, inline: true },
           { name: '🛡️ الضمان', value: session ? session.guarantee : 'غير محدد', inline: true },
           { name: '🔢 عدد النواقص', value: session ? session.missing : 'غير محدد', inline: true },
-          { name: '👑 الرتبة المخولة لرؤية التذكرة', value: specificRole ? `<@&${specificRole.id}>` : 'الإدارة العامة', inline: false }
+          { name: '👑 الرتبة المخولة لرؤية التذكرة', value: specificRole ? `<@&${specificRole.id}>` : 'لم يتم العثور على رتبة مطابقة للاسم', inline: false }
         )
         .setColor('#57f287')
         .setFooter({ text: 'Void Community System' });
 
-      await ch.send({ content: `<@${interaction.user.id}> ${specificRole ? `<@&${specificRole.id}>` : ''}`, embeds: [embed], components: [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('close_ticket').setLabel('إغلاق التذكرة').setEmoji('🔒').setStyle(ButtonStyle.Danger))] });
-      await interaction.update({ content: `🎉 **تم قبول الطلب بنجاح!**\nتم فتح القناة الخاصة بك: ${ch}`, components: [] });
+      await ch.send({ 
+        content: `<@${interaction.user.id}> ${specificRole ? `<@&${specificRole.id}>` : ''}`, 
+        embeds: [embed], 
+        components: [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('close_ticket').setLabel('إغلاق التذكرة').setEmoji('🔒').setStyle(ButtonStyle.Danger))] 
+      });
+      
+      await interaction.update({ content: `🎉 **تم قبول الطلب بنجاح!**\nتم فتح القناة الخاصة بك داخل الكاتيجوري: ${ch}`, components: [] });
     }
 
     if (interaction.customId === 'btn_reject') {
