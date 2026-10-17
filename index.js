@@ -20,7 +20,7 @@ const {
 const express = require('express');
 const session = require('express-session');
 
-// ------------------- 1. بيانات قواعد الألوان بنظام الشرائح (Tier Ranges) -------------------
+// ------------------- 1. بيانات قواعد الألوان بنظام شرائح المادي والأغراض -------------------
 let basesData = {
   silver: { 
     name: 'Silver Base', emoji: '⚪', 
@@ -29,7 +29,10 @@ let basesData = {
       { maxQty: 40, price: '40 ريال' },
       { maxQty: 999, price: '60 ريال' }
     ],
-    items: '(١٠ وتحت كروماندو كاندي وفوق باستثناء البارتي، ١٠٠ وفوق دب كاندي وفوق)' 
+    itemTiers: [
+      { maxQty: 10, items: 'كروماندو كاندي وفوق باستثناء البارتي' },
+      { maxQty: 999, items: 'دب كاندي وفوق' }
+    ]
   },
   gold: { 
     name: 'Gold Base', emoji: '🟡', 
@@ -38,23 +41,26 @@ let basesData = {
       { maxQty: 40, price: '40 ريال' },
       { maxQty: 999, price: '60 ريال' }
     ],
-    items: '(١٠ وتحت كروماندو كاندي وفوق باستثناء البارتي، ١٠٠ وفوق دب كاندي وفوق)' 
+    itemTiers: [
+      { maxQty: 10, items: 'كروماندو كاندي وفوق باستثناء البارتي' },
+      { maxQty: 999, items: 'دب كاندي وفوق' }
+    ]
   },
-  crystal: { name: 'Crystal Base', emoji: '💎', tiers: [{ maxQty: 20, price: '25 ريال' }, { maxQty: 40, price: '50 ريال' }], items: 'شروط الأغراض المحددة مسبقاً' },
-  bloodmoon: { name: 'BloodMoon Base', emoji: '🌑', tiers: [{ maxQty: 20, price: '30 ريال' }, { maxQty: 40, price: '60 ريال' }], items: 'شروط الأغراض المحددة مسبقاً' },
-  rainbow: { name: 'Rainbow Base GoUp', emoji: '🌈', tiers: [{ maxQty: 20, price: '30 ريال' }, { maxQty: 40, price: '60 ريال' }], items: 'شروط الأغراض المحددة مسبقاً' },
-  candy: { name: 'Candy Base GoUp', emoji: '🍬', tiers: [{ maxQty: 20, price: '30 ريال' }, { maxQty: 40, price: '60 ريال' }], items: 'شروط الأغراض المحددة مسبقاً' },
-  cyber: { name: 'Cyber Base GoUp', emoji: '🤖', tiers: [{ maxQty: 20, price: '30 ريال' }, { maxQty: 40, price: '60 ريال' }], items: 'شروط الأغراض المحددة مسبقاً' },
-  party: { name: 'Party Base GoUp', emoji: '🎉', tiers: [{ maxQty: 20, price: '30 ريال' }, { maxQty: 40, price: '60 ريال' }], items: 'شروط الأغراض المحددة مسبقاً' },
-  bw: { name: 'Black & White Base GoUp', emoji: '⬛', tiers: [{ maxQty: 20, price: '30 ريال' }, { maxQty: 40, price: '60 ريال' }], items: 'شروط الأغراض المحددة مسبقاً' },
-  aqua: { name: 'Aqua Base GoUp', emoji: '💧', tiers: [{ maxQty: 20, price: '30 ريال' }, { maxQty: 40, price: '60 ريال' }], items: 'شروط الأغراض المحددة مسبقاً' },
-  lava: { name: 'Lava Base GoUp', emoji: '🌋', tiers: [{ maxQty: 20, price: '30 ريال' }, { maxQty: 40, price: '60 ريال' }], items: 'شروط الأغراض المحددة مسبقاً' },
-  football: { name: 'Football Base GoUp', emoji: '⚽', tiers: [{ maxQty: 20, price: '30 ريال' }, { maxQty: 40, price: '60 ريال' }], items: 'شروط الأغراض المحددة مسبقاً' },
-  summer: { name: 'Summer Base GoUp', emoji: '☀️', tiers: [{ maxQty: 20, price: '30 ريال' }, { maxQty: 40, price: '60 ريال' }], items: 'شروط الأغراض المحددة مسبقاً' },
-  dreamy: { name: 'Dreamy Base GoUp', emoji: '☁️', tiers: [{ maxQty: 20, price: '30 ريال' }, { maxQty: 40, price: '60 ريال' }], items: 'شروط الأغراض المحددة مسبقاً' },
-  galaxy: { name: 'Galaxy Base', emoji: '🌌', tiers: [{ maxQty: 20, price: '30 ريال' }, { maxQty: 40, price: '60 ريال' }], items: 'شروط الأغراض المحددة مسبقاً' },
-  radioactive: { name: 'Radioactive Base', emoji: '☢️', tiers: [{ maxQty: 20, price: '30 ريال' }, { maxQty: 40, price: '60 ريال' }], items: 'شروط الأغراض المحددة مسبقاً' },
-  halloween: { name: 'Halloween Base', emoji: '🎃', tiers: [{ maxQty: 20, price: '30 ريال' }, { maxQty: 40, price: '60 ريال' }], items: 'شروط الأغراض المحددة مسبقاً' }
+  crystal: { name: 'Crystal Base', emoji: '💎', tiers: [{ maxQty: 20, price: '25 ريال' }, { maxQty: 40, price: '50 ريال' }], itemTiers: [{ maxQty: 999, items: 'شروط الأغراض المحددة مسبقاً' }] },
+  bloodmoon: { name: 'BloodMoon Base', emoji: '🌑', tiers: [{ maxQty: 20, price: '30 ريال' }, { maxQty: 40, price: '60 ريال' }], itemTiers: [{ maxQty: 999, items: 'شروط الأغراض المحددة مسبقاً' }] },
+  rainbow: { name: 'Rainbow Base GoUp', emoji: '🌈', tiers: [{ maxQty: 20, price: '30 ريال' }, { maxQty: 40, price: '60 ريال' }], itemTiers: [{ maxQty: 999, items: 'شروط الأغراض المحددة مسبقاً' }] },
+  candy: { name: 'Candy Base GoUp', emoji: '🍬', tiers: [{ maxQty: 20, price: '30 ريال' }, { maxQty: 40, price: '60 ريال' }], itemTiers: [{ maxQty: 999, items: 'شروط الأغراض المحددة مسبقاً' }] },
+  cyber: { name: 'Cyber Base GoUp', emoji: '🤖', tiers: [{ maxQty: 20, price: '30 ريال' }, { maxQty: 40, price: '60 ريال' }], itemTiers: [{ maxQty: 999, items: 'شروط الأغراض المحددة مسبقاً' }] },
+  party: { name: 'Party Base GoUp', emoji: '🎉', tiers: [{ maxQty: 20, price: '30 ريال' }, { maxQty: 40, price: '60 ريال' }], itemTiers: [{ maxQty: 999, items: 'شروط الأغراض المحددة مسبقاً' }] },
+  bw: { name: 'Black & White Base GoUp', emoji: '⬛', tiers: [{ maxQty: 20, price: '30 ريال' }, { maxQty: 40, price: '60 ريال' }], itemTiers: [{ maxQty: 999, items: 'شروط الأغراض المحددة مسبقاً' }] },
+  aqua: { name: 'Aqua Base GoUp', emoji: '💧', tiers: [{ maxQty: 20, price: '30 ريال' }, { maxQty: 40, price: '60 ريال' }], itemTiers: [{ maxQty: 999, items: 'شروط الأغراض المحددة مسبقاً' }] },
+  lava: { name: 'Lava Base GoUp', emoji: '🌋', tiers: [{ maxQty: 20, price: '30 ريال' }, { maxQty: 40, price: '60 ريال' }], itemTiers: [{ maxQty: 999, items: 'شروط الأغراض المحددة مسبقاً' }] },
+  football: { name: 'Football Base GoUp', emoji: '⚽', tiers: [{ maxQty: 20, price: '30 ريال' }, { maxQty: 40, price: '60 ريال' }], itemTiers: [{ maxQty: 999, items: 'شروط الأغراض المحددة مسبقاً' }] },
+  summer: { name: 'Summer Base GoUp', emoji: '☀️', tiers: [{ maxQty: 20, price: '30 ريال' }, { maxQty: 40, price: '60 ريال' }], itemTiers: [{ maxQty: 999, items: 'شروط الأغراض المحددة مسبقاً' }] },
+  dreamy: { name: 'Dreamy Base GoUp', emoji: '☁️', tiers: [{ maxQty: 20, price: '30 ريال' }, { maxQty: 40, price: '60 ريال' }], itemTiers: [{ maxQty: 999, items: 'شروط الأغراض المحددة مسبقاً' }] },
+  galaxy: { name: 'Galaxy Base', emoji: '🌌', tiers: [{ maxQty: 20, price: '30 ريال' }, { maxQty: 40, price: '60 ريال' }], itemTiers: [{ maxQty: 999, items: 'شروط الأغراض المحددة مسبقاً' }] },
+  radioactive: { name: 'Radioactive Base', emoji: '☢️', tiers: [{ maxQty: 20, price: '30 ريال' }, { maxQty: 40, price: '60 ريال' }], itemTiers: [{ maxQty: 999, items: 'شروط الأغراض المحددة مسبقاً' }] },
+  halloween: { name: 'Halloween Base', emoji: '🎃', tiers: [{ maxQty: 20, price: '30 ريال' }, { maxQty: 40, price: '60 ريال' }], itemTiers: [{ maxQty: 999, items: 'شروط الأغراض المحددة مسبقاً' }] }
 };
 
 let serverSettings = {
@@ -71,28 +77,30 @@ function addDashboardLog(category, action, details) {
   if (dashboardLogs.length > 250) dashboardLogs.pop();
 }
 
-// دالة فحص الشريحة التي يقع فيها الرقم
+// دالة المطابقة لشرائح الأسعار
 function getTierPrice(tiersArray, userQuantity) {
   if (!tiersArray || tiersArray.length === 0) return { price: 'غير محدد', tierText: 'غير محدد' };
-  
-  // ترتيب الشرائح تصاعدياً حسب الحد
   const sorted = [...tiersArray].sort((a, b) => a.maxQty - b.maxQty);
-  
   for (let tier of sorted) {
     if (userQuantity <= tier.maxQty) {
-      return {
-        price: tier.price,
-        tierText: `${tier.maxQty} وتحت`
-      };
+      return { price: tier.price, tierText: `${tier.maxQty} وتحت` };
     }
   }
-
-  // إذا كان الرقم أكبر من كل الشرائح المسجلة
   const lastTier = sorted[sorted.length - 1];
-  return {
-    price: lastTier.price,
-    tierText: `فوق ${lastTier.maxQty}`
-  };
+  return { price: lastTier.price, tierText: `فوق ${lastTier.maxQty}` };
+}
+
+// دالة المطابقة لشرائح الأغراض
+function getTierItems(itemTiersArray, userQuantity) {
+  if (!itemTiersArray || itemTiersArray.length === 0) return { items: 'غير محدد', tierText: 'غير محدد' };
+  const sorted = [...itemTiersArray].sort((a, b) => a.maxQty - b.maxQty);
+  for (let tier of sorted) {
+    if (userQuantity <= tier.maxQty) {
+      return { items: tier.items, tierText: `${tier.maxQty} وتحت` };
+    }
+  }
+  const lastTier = sorted[sorted.length - 1];
+  return { items: lastTier.items, tierText: `فوق ${lastTier.maxQty}` };
 }
 
 // ------------------- 2. إعدادات Express -------------------
@@ -101,7 +109,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'void_range_tier_pricing_2026',
+  secret: process.env.SESSION_SECRET || 'void_full_tier_pricing_2026',
   resave: false,
   saveUninitialized: false,
   cookie: { maxAge: 3600000 * 24 }
@@ -178,7 +186,7 @@ const renderUltimateLayout = (activeTab, content) => {
       .purple-gradient { background: linear-gradient(135deg, #ffffff, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
       
       .tier-row { display: flex; gap: 10px; align-items: center; margin-bottom: 8px; background: rgba(10, 12, 18, 0.5); padding: 8px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.05); }
-      .tier-row input[type="number"] { width: 130px; text-align: center; }
+      .tier-row input[type="number"] { width: 120px; text-align: center; }
       .tier-row input[type="text"] { flex: 1; }
       .tier-label { font-size: 12px; font-weight: 800; color: #a855f7; white-space: nowrap; }
       
@@ -209,9 +217,22 @@ const renderUltimateLayout = (activeTab, content) => {
         const div = document.createElement('div');
         div.className = 'tier-row';
         div.innerHTML = \`
-          <input type="number" name="\${baseKey}_maxQty[]" placeholder="الحد (مثال: 20)" required>
+          <input type="number" name="\${baseKey}_maxQty[]" placeholder="العدد" required>
           <span class="tier-label">وتحت ⟵</span>
           <input type="text" name="\${baseKey}_price[]" placeholder="السعر (مثال: 20 ريال)" required>
+          <button type="button" class="btn-del" onclick="this.parentElement.remove()">🗑️</button>
+        \`;
+        container.appendChild(div);
+      }
+
+      function addItemTierRow(baseKey) {
+        const container = document.getElementById('item-tier-container-' + baseKey);
+        const div = document.createElement('div');
+        div.className = 'tier-row';
+        div.innerHTML = \`
+          <input type="number" name="\${baseKey}_itemMaxQty[]" placeholder="العدد" required>
+          <span class="tier-label">وتحت ⟵</span>
+          <input type="text" name="\${baseKey}_itemText[]" placeholder="شروط الأغراض (مثال: كروماندو كاندي وفوق)" required>
           <button type="button" class="btn-del" onclick="this.parentElement.remove()">🗑️</button>
         \`;
         container.appendChild(div);
@@ -366,12 +387,12 @@ app.get('/', (req, res) => {
   } catch (e) {}
 
   const content = `
-    <div class="glass-card" style="display: flex; justify-content: space-between; align-items: center;">
+    <div class="glass-card" style="display: flex; justify-content: space-between; align- items: center;">
       <div>
-        <h1 class="purple-gradient" style="margin: 0; font-size: 18px;">🎨 شرائح أسعار النواقص (20 وتحت / 40 وتحت)</h1>
-        <p style="color: #9ca3af; margin: 4px 0 0 0; font-size: 12px;">مرحباً، ${req.session.user?.username || 'المسؤول'} 👋 | يمكنك إضافة وتحديد أي عدد وتحته سعر مخصص.</p>
+        <h1 class="purple-gradient" style="margin: 0; font-size: 18px;">🎨 شرائح أسعار النواقص والمقابل بالأغراض (17 قاعدة)</h1>
+        <p style="color: #9ca3af; margin: 4px 0 0 0; font-size: 12px;">مرحباً، ${req.session.user?.username || 'المسؤول'} 👋 | يمكنك إضافة وتعديل شرائح المادي والأغراض لكل قاعدة بسهولة.</p>
       </div>
-      <span style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); padding: 5px 12px; border-radius: 20px; font-weight: 700; font-size: 11px;">🟢 التسعير بالشرائح نشط</span>
+      <span style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); padding: 5px 12px; border-radius: 20px; font-weight: 700; font-size: 11px;">🟢 النظام المزدوج الشامل</span>
     </div>
 
     <div class="glass-card">
@@ -384,14 +405,15 @@ app.get('/', (req, res) => {
     </div>
 
     <form action="/save-colors" method="POST">
-      <h2 style="font-size: 15px; margin-bottom: 12px;" class="purple-gradient">⚡ إعدادات شرائح السعر لكل قاعدة (17 قاعدة)</h2>
+      <h2 style="font-size: 15px; margin-bottom: 12px;" class="purple-gradient">⚡ إعدادات شرائح السعر والأغراض لكل قاعدة</h2>
       ${Object.keys(basesData).map(key => `
         <div class="glass-card" style="padding: 18px;">
           <h3 style="margin: 0 0 10px 0; color: #a855f7; font-size: 15px;">${basesData[key].emoji}${basesData[key].name}</h3>
           
-          <label style="margin-bottom: 8px;">💰 شرائح تسعير النواقص (مثال: 20 وتحت ⟵ 20 ريال):</label>
+          <!-- شرائح السعر المادي -->
+          <label style="margin-bottom: 8px;">💰 شرائح تسعير النواقص (المقابل المادي):</label>
           <div id="tier-container-${key}">
-            ${basesData[key].tiers.map(t => `
+            ${(basesData[key].tiers || []).map(t => `
               <div class="tier-row">
                 <input type="number" name="${key}_maxQty[]" value="${t.maxQty}" placeholder="العدد" required>
                 <span class="tier-label">وتحت ⟵</span>
@@ -402,8 +424,19 @@ app.get('/', (req, res) => {
           </div>
           <button type="button" class="btn-add" onclick="addTierRow('${key}')">➕ إضافة شريحة سعر جديدة</button>
 
-          <label style="margin-top: 15px;">🎁 المقابل بالأغراض:</label>
-          <textarea name="${key}_items" rows="2">${basesData[key].items}</textarea>
+          <!-- شرائح المقابل بالأغراض -->
+          <label style="margin-top: 18px; margin-bottom: 8px;">🎁 شرائح تسعير النواقص (المقابل بالأغراض):</label>
+          <div id="item-tier-container-${key}">
+            ${(basesData[key].itemTiers || []).map(it => `
+              <div class="tier-row">
+                <input type="number" name="${key}_itemMaxQty[]" value="${it.maxQty}" placeholder="العدد" required>
+                <span class="tier-label">وتحت ⟵</span>
+                <input type="text" name="${key}_itemText[]" value="${it.items}" placeholder="شروط الأغراض" required>
+                <button type="button" class="btn-del" onclick="this.parentElement.remove()">🗑️</button>
+              </div>
+            `).join('')}
+          </div>
+          <button type="button" class="btn-add" style="background: rgba(168, 85, 247, 0.2); color: #d8b4fe; border-color: rgba(168, 85, 247, 0.3);" onclick="addItemTierRow('${key}')">➕ إضافة شريحة أغراض جديدة</button>
         </div>
       `).join('')}
       <button type="submit" class="btn" style="position: sticky; bottom: 20px; z-index: 10;">💾 حفظ كافة التعديلات والشرائح</button>
@@ -416,9 +449,9 @@ app.get('/', (req, res) => {
 app.post('/save-colors', (req, res) => {
   if (!req.session.authenticated) return res.redirect('/login');
   Object.keys(basesData).forEach(key => {
+    // 1. معالجة شرائح المادي
     const maxQtys = req.body[`${key}_maxQty[]`];
     const prices = req.body[`${key}_price[]`];
-    
     let newTiers = [];
     if (Array.isArray(maxQtys)) {
       for (let i = 0; i < maxQtys.length; i++) {
@@ -429,12 +462,25 @@ app.post('/save-colors', (req, res) => {
     } else if (maxQtys && prices) {
       newTiers.push({ maxQty: Number(maxQtys), price: prices });
     }
-
     basesData[key].tiers = newTiers;
-    if (req.body[`${key}_items`]) basesData[key].items = req.body[`${key}_items`];
+
+    // 2. معالجة شرائح الأغراض
+    const itemMaxQtys = req.body[`${key}_itemMaxQty[]`];
+    const itemTexts = req.body[`${key}_itemText[]`];
+    let newItemTiers = [];
+    if (Array.isArray(itemMaxQtys)) {
+      for (let i = 0; i < itemMaxQtys.length; i++) {
+        if (itemMaxQtys[i] && itemTexts[i]) {
+          newItemTiers.push({ maxQty: Number(itemMaxQtys[i]), items: itemTexts[i] });
+        }
+      }
+    } else if (itemMaxQtys && itemTexts) {
+      newItemTiers.push({ maxQty: Number(itemMaxQtys), items: itemTexts });
+    }
+    basesData[key].itemTiers = newItemTiers;
   });
 
-  addDashboardLog('badge-role', 'تحديث القواعد', `تم تحديث شرائح الأسعار بواسطة @${req.session.user?.username}`);
+  addDashboardLog('badge-role', 'تحديث القواعد', `تم تحديث شرائح الأسعار والأغراض بواسطة @${req.session.user?.username}`);
   res.redirect('/');
 });
 
@@ -616,7 +662,7 @@ app.post('/send-panel', async (req, res) => {
 
 app.listen(PORT, () => console.log(`🌐 Dashboard Active on port ${PORT}`));
 
-// ------------------- 7. بوت ديسكورد والمطابقة الحسابية للشرائح -------------------
+// ------------------- 7. بوت ديسكورد والمطابقة الحسابية المزدوجة -------------------
 const client = new Client({
   intents: [
     I.Guilds, I.GuildMembers, I.GuildMessages, I.MessageContent,
@@ -769,7 +815,7 @@ client.on('interactionCreate', async interaction => {
       .setPlaceholder('اختر نوع المقابل')
       .addOptions([
         { label: 'مقابل مادي (حساب الشريحة تلقائياً)', value: 'money', description: 'عرض السعر حسب شريحة نواقصك', emoji: '💰' },
-        { label: 'أغراض داخل اللعبة', value: 'items', description: 'عرض الأغراض المحددة مسبقاً لهذا اللون', emoji: '🎁' }
+        { label: 'أغراض داخل اللعبة (حساب الشريحة تلقائياً)', value: 'items', description: 'عرض الأغراض حسب شريحة نواقصك', emoji: '🎁' }
       ]);
 
     await interaction.reply({
@@ -784,14 +830,16 @@ client.on('interactionCreate', async interaction => {
     const session = userSessions.get(interaction.user.id);
     if (!session) return interaction.reply({ content: '❌ انتهت الجلسة، يرجى البدء من جديد.', ephemeral: true });
 
-    const baseConfig = basesData[session.baseKey] || { name: session.baseKey, tiers: [], items: 'غير محدد' };
+    const baseConfig = basesData[session.baseKey] || { name: session.baseKey, tiers: [], itemTiers: [] };
     
-    // مطابقة الشريحة
-    const { price, tierText } = getTierPrice(baseConfig.tiers, session.missingNum);
-
-    let textDetails = payType === 'money' 
-      ? `💰 **المقابل المادي للون ${baseConfig.name}:**\n💵 **السعر المطلوب لعدد (${session.missingNum}) نواقص:** ${price}\n*(شريحة ${tierText})*` 
-      : `🎁 **مقابل الأغراض للون ${baseConfig.name}:**\n${baseConfig.items}`;
+    let textDetails = '';
+    if (payType === 'money') {
+      const { price, tierText } = getTierPrice(baseConfig.tiers, session.missingNum);
+      textDetails = `💰 **المقابل المادي للون ${baseConfig.name}:**\n💵 **السعر المطلوب لعدد (${session.missingNum}) نواقص:** ${price}\n*(شريحة ${tierText})*`;
+    } else {
+      const { items, tierText } = getTierItems(baseConfig.itemTiers, session.missingNum);
+      textDetails = `🎁 **مقابل الأغراض للون ${baseConfig.name}:**\n📦 **الأغراض المطلوبة لعدد (${session.missingNum}) نواقص:** ${items}\n*(شريحة ${tierText})*`;
+    }
 
     const btns = new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId('btn_accept').setLabel('قبول').setEmoji('✅').setStyle(ButtonStyle.Success),
