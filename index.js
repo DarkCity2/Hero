@@ -15,8 +15,7 @@ const {
   TextInputBuilder,
   TextInputStyle,
   AttachmentBuilder,
-  UserSelectMenuBuilder,
-  AuditLogEvent
+  UserSelectMenuBuilder
 } = require('discord.js');
 const express = require('express');
 const session = require('express-session');
@@ -44,19 +43,16 @@ let basesData = {
 
 let serverSettings = {
   ticketCategories: '',
-  ownerRoleName: 'Owner',
-  antiSpam: true,
-  blockLinks: false,
-  antiRaid: true
+  ownerRoleName: 'Owner'
 };
 
 const ticketsDataMap = new Map();
-const dashboardLogs = []; // قائمة السجلات الشاملة
+const dashboardLogs = [];
 
 function addDashboardLog(category, action, details) {
   const time = new Date().toLocaleString('ar-SA', { timeZone: 'Asia/Riyadh' });
   dashboardLogs.unshift({ category, action, details, time });
-  if (dashboardLogs.length > 250) dashboardLogs.pop(); // الاحتفاظ بآخر 250 سجل
+  if (dashboardLogs.length > 250) dashboardLogs.pop();
 }
 
 // ------------------- 2. إعدادات Express -------------------
@@ -65,7 +61,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'void_community_ultra_epic_2026',
+  secret: process.env.SESSION_SECRET || 'void_nextgen_revolution_2026',
   resave: false,
   saveUninitialized: false,
   cookie: { maxAge: 3600000 * 24 }
@@ -79,15 +75,15 @@ const DASHBOARD_PASSWORD = process.env.DASHBOARD_PASSWORD || 'VD122';
 const TOKEN = process.env.TOKEN;
 const REDIRECT_URI = `${BASE_URL}/api/auth/callback`;
 
-// تصميم اللوحة الأسطوري المتطور الفاخر
+// تصميم التصميم الجديد المذهل (Next-Gen Dark Cyber Glass UI)
 const renderUltimateLayout = (activeTab, content) => {
   let memberCount = 0;
-  let guildName = 'Void Community';
+  let botIconUrl = 'https://cdn.discordapp.com/embed/avatars/0.png';
   try {
     const firstGuild = client.guilds.cache.first();
-    if (firstGuild) {
-      memberCount = firstGuild.memberCount;
-      guildName = firstGuild.name;
+    if (firstGuild) memberCount = firstGuild.memberCount;
+    if (client.user && client.user.displayAvatarURL()) {
+      botIconUrl = client.user.displayAvatarURL({ extension: 'png', size: 256 });
     }
   } catch(e){}
 
@@ -97,111 +93,250 @@ const renderUltimateLayout = (activeTab, content) => {
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Void Community • Ultimate Master Dashboard</title>
+    <title>Void • Command Center</title>
     <style>
-      @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap');
-      * { box-sizing: border-box; font-family: 'Cairo', sans-serif; }
-      body { background: #020106; color: #f1f5f9; margin: 0; padding: 0; display: flex; min-height: 100vh; overflow-x: hidden; }
+      @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Cairo:wght@400;600;700;800;900&display=swap');
       
+      * { box-sizing: border-box; font-family: 'Cairo', 'Plus Jakarta Sans', sans-serif; transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); }
+      
+      body {
+        background: #090a0f;
+        color: #f3f4f6;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        min-height: 100vh;
+        overflow-x: hidden;
+      }
+      
+      /* خلفية سايبر المستقبلية ناعمة وشبكية احترافية */
       body::before {
-        content: ''; position: fixed; top: -50%; left: -50%; width: 200%; height: 200%;
-        background: radial-gradient(circle at 75% 15%, rgba(139, 92, 246, 0.12), transparent 45%),
-                    radial-gradient(circle at 15% 85%, rgba(99, 102, 241, 0.10), transparent 45%);
+        content: ''; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: 
+          radial-gradient(circle at 15% 15%, rgba(99, 102, 241, 0.08), transparent 45%),
+          radial-gradient(circle at 85% 85%, rgba(168, 85, 247, 0.08), transparent 45%),
+          linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+        background-size: 100% 100%, 100% 100%, 40px 40px, 40px 40px;
         z-index: 1; pointer-events: none;
       }
 
-      .sidebar { width: 310px; background: rgba(7, 4, 16, 0.96); backdrop-filter: blur(40px); border-left: 1px solid rgba(139, 92, 246, 0.3); padding: 25px 20px; display: flex; flex-direction: column; justify-content: space-between; position: fixed; right: 0; top: 0; bottom: 0; z-index: 100; box-shadow: -15px 0 60px rgba(0,0,0,0.95); }
-      .brand-box { text-align: center; margin-bottom: 25px; padding-bottom: 20px; border-bottom: 1px solid rgba(139, 92, 246, 0.2); }
-      .brand-logo-icon { font-size: 45px; margin-bottom: 6px; filter: drop-shadow(0 0 25px rgba(168,85,247,0.9)); }
-      .brand-title { font-size: 22px; font-weight: 900; background: linear-gradient(135deg, #f3e8ff, #a855f7, #6366f1); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: 2px; }
-      
-      .nav-group { margin-bottom: 22px; }
-      .nav-label { font-size: 11px; color: #a855f7; font-weight: 800; text-transform: uppercase; margin-bottom: 10px; padding-right: 12px; letter-spacing: 1.2px; }
-      .nav-item { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-radius: 16px; color: #94a3b8; text-decoration: none; font-weight: 700; font-size: 14px; margin-bottom: 8px; transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1); border: 1px solid transparent; }
-      .nav-item:hover { background: rgba(124, 58, 237, 0.18); color: #fff; border-color: rgba(139, 92, 246, 0.35); transform: translateX(-4px); }
-      .nav-item.active { background: linear-gradient(135deg, rgba(124, 58, 237, 0.4), rgba(99, 102, 241, 0.3)); color: #fff; border: 1px solid rgba(139, 92, 246, 0.7); box-shadow: 0 0 30px rgba(124, 58, 237, 0.4); }
-      
-      .badge-live { background: rgba(34, 197, 94, 0.15); color: #4ade80; padding: 4px 12px; border-radius: 20px; font-size: 11px; border: 1px solid rgba(34, 197, 94, 0.4); font-weight: 800; animation: pulse 2s infinite; }
-      @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+      /* القائمة الجانبية المودرن النحيفة */
+      .sidebar {
+        width: 250px;
+        background: rgba(13, 15, 23, 0.85);
+        backdrop-filter: blur(30px);
+        border-left: 1px solid rgba(255, 255, 255, 0.08);
+        padding: 24px 16px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        position: fixed;
+        right: 0; top: 0; bottom: 0;
+        z-index: 100;
+        box-shadow: -10px 0 40px rgba(0,0,0,0.6);
+      }
 
-      .main-content { margin-right: 310px; flex: 1; padding: 40px; max-width: 1320px; position: relative; z-index: 10; }
-      
-      /* إحصائيات علوية حية */
-      .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 30px; }
-      .stat-card { background: rgba(13, 9, 24, 0.85); backdrop-filter: blur(25px); border: 1px solid rgba(139, 92, 246, 0.25); padding: 22px; border-radius: 20px; text-align: center; transition: 0.3s; }
-      .stat-card:hover { border-color: #a855f7; transform: translateY(-3px); box-shadow: 0 10px 30px rgba(124, 58, 237, 0.2); }
-      .stat-num { font-size: 28px; font-weight: 900; color: #a855f7; margin-top: 5px; }
-      .stat-title { font-size: 13px; color: #94a3b8; font-weight: 700; }
+      .brand-box {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding-bottom: 20px;
+        margin-bottom: 20px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      }
 
-      .glass-card { background: rgba(13, 9, 24, 0.88); backdrop-filter: blur(35px); border: 1px solid rgba(139, 92, 246, 0.25); border-radius: 26px; padding: 35px; margin-bottom: 30px; box-shadow: 0 20px 60px rgba(0,0,0,0.85); transition: 0.3s; }
-      .glass-card:hover { border-color: rgba(139, 92, 246, 0.5); box-shadow: 0 25px 70px rgba(124, 58, 237, 0.2); }
+      .brand-avatar {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        box-shadow: 0 0 20px rgba(99, 102, 241, 0.35);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+      }
+
+      .brand-title {
+        font-size: 16px;
+        font-weight: 900;
+        background: linear-gradient(135deg, #ffffff, #a855f7);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        letter-spacing: 0.5px;
+      }
+
+      .brand-sub { font-size: 11px; color: #6b7280; font-weight: 600; }
       
-      h1, h2, h3 { color: #fff; margin-top: 0; }
-      .purple-gradient { background: linear-gradient(135deg, #f3e8ff, #c084fc, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+      .nav-group { margin-bottom: 20px; }
+      .nav-label { font-size: 10px; color: #6366f1; font-weight: 800; text-transform: uppercase; margin-bottom: 10px; padding-right: 8px; letter-spacing: 1.2px; }
       
-      input, textarea, select { width: 100%; padding: 16px 20px; border-radius: 16px; border: 1px solid rgba(139, 92, 246, 0.3); background: rgba(5, 3, 12, 0.95); color: #fff; outline: none; margin-top: 10px; font-size: 15px; transition: all 0.3s ease; }
-      input:focus, textarea:focus, select:focus { border-color: #a855f7; box-shadow: 0 0 25px rgba(168, 85, 247, 0.35); background: rgba(9, 6, 20, 0.95); }
-      select option { background: #0c0a14; color: #fff; }
-      label { font-size: 14px; font-weight: 700; color: #cbd5e1; display: block; margin-top: 18px; letter-spacing: 0.5px; }
+      .nav-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 14px;
+        border-radius: 10px;
+        color: #9ca3af;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 13px;
+        margin-bottom: 4px;
+        border: 1px solid transparent;
+      }
+
+      .nav-item:hover {
+        background: rgba(255, 255, 255, 0.04);
+        color: #f3f4f6;
+      }
+
+      .nav-item.active {
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.18), rgba(168, 85, 247, 0.12));
+        color: #ffffff;
+        border: 1px solid rgba(99, 102, 241, 0.4);
+        box-shadow: 0 0 15px rgba(99, 102, 241, 0.15);
+      }
+
+      .badge-live {
+        background: rgba(16, 185, 129, 0.15);
+        color: #34d399;
+        padding: 2px 8px;
+        border-radius: 20px;
+        font-size: 10px;
+        border: 1px solid rgba(16, 185, 129, 0.3);
+        font-weight: 800;
+      }
+
+      .main-content { margin-right: 250px; flex: 1; padding: 32px 40px; max-width: 1350px; position: relative; z-index: 10; }
       
-      .btn { background: linear-gradient(135deg, #7c3aed, #6366f1); color: #fff; border: none; padding: 16px 32px; border-radius: 16px; font-weight: 800; cursor: pointer; width: 100%; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 6px 30px rgba(124, 58, 237, 0.45); margin-top: 25px; font-size: 16px; text-align: center; text-decoration: none; display: inline-block; }
-      .btn:hover { transform: translateY(-3px); box-shadow: 0 10px 40px rgba(124, 58, 237, 0.7); filter: brightness(1.1); }
+      /* كروت الإحصائيات العلوية بتصميم مدمج وأنيق */
+      .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+      .stat-card {
+        background: rgba(17, 20, 31, 0.6);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        padding: 18px 20px;
+        border-radius: 14px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .stat-card:hover { border-color: rgba(99, 102, 241, 0.3); transform: translateY(-2px); }
+      .stat-num { font-size: 24px; font-weight: 800; color: #ffffff; letter-spacing: -0.5px; }
+      .stat-title { font-size: 12px; color: #9ca3af; font-weight: 600; margin-bottom: 2px; }
+
+      .glass-card {
+        background: rgba(17, 20, 31, 0.55);
+        backdrop-filter: blur(25px);
+        border: 1px solid rgba(255, 255, 255, 0.07);
+        border-radius: 16px;
+        padding: 24px 28px;
+        margin-bottom: 20px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+      }
       
-      /* جدول اللوقات الشامل والفاخر */
-      .logs-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-      .logs-table th, .logs-table td { padding: 16px 20px; text-align: right; border-bottom: 1px solid rgba(139, 92, 246, 0.15); font-size: 14px; }
-      .logs-table th { color: #c084fc; font-weight: 800; background: rgba(124, 58, 237, 0.12); }
-      .logs-table tr:hover { background: rgba(124, 58, 237, 0.08); }
-      .log-badge { padding: 5px 14px; border-radius: 20px; font-size: 12px; font-weight: 800; display: inline-block; }
+      h1, h2, h3 { color: #fff; margin-top: 0; font-weight: 800; }
+      .purple-gradient { background: linear-gradient(135deg, #ffffff, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
       
-      /* ألوان شارات اللوقات حسب الفئة */
-      .badge-role { background: rgba(168, 85, 247, 0.2); color: #e9d5ff; border: 1px solid rgba(168, 85, 247, 0.4); }
-      .badge-msg { background: rgba(234, 179, 8, 0.2); color: #fef08a; border: 1px solid rgba(234, 179, 8, 0.4); }
-      .badge-voice { background: rgba(59, 130, 246, 0.2); color: #93c5fd; border: 1px solid rgba(59, 130, 246, 0.4); }
-      .badge-ticket { background: rgba(34, 197, 94, 0.2); color: #86efac; border: 1px solid rgba(34, 197, 94, 0.4); }
-      .badge-ban { background: rgba(239, 68, 68, 0.2); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.4); }
-      .badge-member { background: rgba(14, 165, 233, 0.2); color: #7dd3fc; border: 1px solid rgba(14, 165, 233, 0.4); }
+      input, textarea, select {
+        width: 100%;
+        padding: 11px 15px;
+        border-radius: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(10, 12, 18, 0.8);
+        color: #f3f4f6;
+        outline: none;
+        margin-top: 8px;
+        font-size: 13px;
+      }
+      input:focus, textarea:focus, select:focus { border-color: #6366f1; box-shadow: 0 0 15px rgba(99, 102, 241, 0.25); background: rgba(13, 16, 25, 0.95); }
+      select option { background: #0f1118; color: #fff; }
+      label { font-size: 12px; font-weight: 700; color: #d1d5db; display: block; margin-top: 14px; }
+      
+      .btn {
+        background: linear-gradient(135deg, #4f46e5, #7c3aed);
+        color: #fff;
+        border: none;
+        padding: 11px 22px;
+        border-radius: 10px;
+        font-weight: 700;
+        cursor: pointer;
+        width: 100%;
+        box-shadow: 0 4px 15px rgba(79, 70, 229, 0.3);
+        margin-top: 18px;
+        font-size: 13px;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+      }
+      .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(79, 70, 229, 0.5); filter: brightness(1.1); }
+      
+      /* جدول السجلات الجديد عالي الدقة والمودرن */
+      .logs-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+      .logs-table th, .logs-table td { padding: 12px 16px; text-align: right; border-bottom: 1px solid rgba(255, 255, 255, 0.05); font-size: 13px; }
+      .logs-table th { color: #9ca3af; font-weight: 700; background: rgba(255, 255, 255, 0.02); font-size: 12px; }
+      .logs-table tr:hover { background: rgba(255, 255, 255, 0.02); }
+      .log-badge { padding: 3px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; display: inline-block; }
+      
+      .badge-role { background: rgba(168, 85, 247, 0.12); color: #d8b4fe; border: 1px solid rgba(168, 85, 247, 0.25); }
+      .badge-msg { background: rgba(245, 158, 11, 0.12); color: #fcd34d; border: 1px solid rgba(245, 158, 11, 0.25); }
+      .badge-voice { background: rgba(59, 130, 246, 0.12); color: #93c5fd; border: 1px solid rgba(59, 130, 246, 0.25); }
+      .badge-ticket { background: rgba(16, 185, 129, 0.12); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.25); }
+      .badge-ban { background: rgba(239, 68, 68, 0.12); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.25); }
+      .badge-member { background: rgba(14, 165, 233, 0.12); color: #7dd3fc; border: 1px solid rgba(14, 165, 233, 0.25); }
     </style>
   </head>
   <body>
     <div class="sidebar">
       <div>
         <div class="brand-box">
-          <div class="brand-logo-icon">🌌</div>
-          <div class="brand-title">VOID COMMUNITY</div>
+          <img src="${botIconUrl}" class="brand-avatar" alt="Logo">
+          <div>
+            <div class="brand-title">VOID BOT</div>
+            <div class="brand-sub">Community Dashboard</div>
+          </div>
         </div>
         <div class="nav-group">
-          <div class="nav-label">التحكم والتهيئة</div>
+          <div class="nav-label">التهيئة والتحكم</div>
           <a href="/" class="nav-item ${activeTab === 'colors' ? 'active' : ''}"><span>🎨 ألوان القواعد (17)</span></a>
-          <a href="/tickets" class="nav-item ${activeTab === 'tickets' ? 'active' : ''}"><span>🎫 التذاكر والكاتيجوري</span></a>
+          <a href="/tickets" class="nav-item ${activeTab === 'tickets' ? 'active' : ''}"><span>🎫 نظام التذاكر</span></a>
         </div>
         <div class="nav-group">
-          <div class="nav-label">المركز الرئيسي والمراقبة</div>
-          <a href="/logs" class="nav-item ${activeTab === 'logs' ? 'active' : ''}"><span>📜 سجلات ديسكورد الشاملة</span><div class="badge-live">LIVE</div></a>
-          <a href="/moderation" class="nav-item ${activeTab === 'moderation' ? 'active' : ''}"><span>🔨 أدوات الإدارة السريعة</span></a>
-          <a href="/security" class="nav-item ${activeTab === 'security' ? 'active' : ''}"><span>🛡️ مركز الحماية والأمان</span></a>
+          <div class="nav-label">المراقبة المباشرة</div>
+          <a href="/logs" class="nav-item ${activeTab === 'logs' ? 'active' : ''}"><span>📜 سجلات الأحداث</span><div class="badge-live">LIVE</div></a>
+          <a href="/moderation" class="nav-item ${activeTab === 'moderation' ? 'active' : ''}"><span>🔨 أدوات الإدارة</span></a>
+          <a href="/security" class="nav-item ${activeTab === 'security' ? 'active' : ''}"><span>🛡️ درع الحماية</span></a>
         </div>
       </div>
-      <a href="/logout" class="btn" style="background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); color: #f87171; margin-top: 0; box-shadow: none;">🚪 تسجيل الخروج</a>
+      <a href="/logout" class="btn" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.25); color: #fca5a5; margin-top: 0; font-size: 12px; padding: 8px; box-shadow: none;">🚪 خروج</a>
     </div>
 
     <div class="main-content">
       <div class="stats-grid">
         <div class="stat-card">
-          <div class="stat-title">👥 أعضاء السيرفر</div>
-          <div class="stat-num">${memberCount}</div>
+          <div>
+            <div class="stat-title">الأعضاء</div>
+            <div class="stat-num">${memberCount}</div>
+          </div>
+          <div style="font-size:20px;">👥</div>
         </div>
         <div class="stat-card">
-          <div class="stat-title">🎨 قواعد الألوان المتاحة</div>
-          <div class="stat-num">17</div>
+          <div>
+            <div class="stat-title">القواعد</div>
+            <div class="stat-num">17</div>
+          </div>
+          <div style="font-size:20px;">🎨</div>
         </div>
         <div class="stat-card">
-          <div class="stat-title">🎫 التذاكر المفتوحة حالياً</div>
-          <div class="stat-num">${ticketsDataMap.size}</div>
+          <div>
+            <div class="stat-title">تذاكر نشطة</div>
+            <div class="stat-num">${ticketsDataMap.size}</div>
+          </div>
+          <div style="font-size:20px;">🎫</div>
         </div>
         <div class="stat-card">
-          <div class="stat-title">📜 السجلات المحفوظة</div>
-          <div class="stat-num">${dashboardLogs.length}</div>
+          <div>
+            <div class="stat-title">سجلات مسجلة</div>
+            <div class="stat-num">${dashboardLogs.length}</div>
+          </div>
+          <div style="font-size:20px;">📜</div>
         </div>
       </div>
       ${content}
@@ -211,32 +346,99 @@ const renderUltimateLayout = (activeTab, content) => {
   `;
 };
 
+// واجهة الدخول الجديدة الاحترافية المذهلة
 app.get('/login', (req, res) => {
+  let botIconUrl = 'https://cdn.discordapp.com/embed/avatars/0.png';
+  try {
+    if (client.user && client.user.displayAvatarURL()) {
+      botIconUrl = client.user.displayAvatarURL({ extension: 'png', size: 256 });
+    }
+  } catch(e){}
+
   res.send(`
     <!DOCTYPE html>
     <html lang="ar" dir="rtl">
     <head>
       <meta charset="UTF-8">
-      <title>Void • Admin Center Login</title>
+      <title>Void • Admin Portal</title>
       <style>
-        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap');
-        body { background: #020106; color: #fff; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: 'Cairo', sans-serif; }
-        .login-card { background: rgba(13, 9, 24, 0.92); backdrop-filter: blur(40px); border: 1px solid rgba(139, 92, 246, 0.35); padding: 50px; border-radius: 30px; text-align: center; width: 450px; box-shadow: 0 25px 75px rgba(0,0,0,0.95); }
-        .logo-icon { font-size: 60px; margin-bottom: 12px; filter: drop-shadow(0 0 30px rgba(168,85,247,0.9)); }
-        input { width: 100%; padding: 16px; border-radius: 16px; border: 1px solid rgba(139, 92, 246, 0.4); background: rgba(5, 3, 12, 0.95); color: #fff; text-align: center; font-size: 16px; margin-bottom: 25px; outline: none; }
-        input:focus { border-color: #a855f7; box-shadow: 0 0 25px rgba(168,85,247,0.4); }
-        button { background: linear-gradient(135deg, #7c3aed, #6366f1); color: #fff; border: none; padding: 16px; border-radius: 16px; width: 100%; font-weight: 800; font-size: 16px; cursor: pointer; box-shadow: 0 6px 30px rgba(124,58,237,0.55); transition: 0.3s; }
-        button:hover { transform: translateY(-2px); box-shadow: 0 10px 40px rgba(124,58,237,0.75); }
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800&display=swap');
+        body {
+          background: #090a0f;
+          color: #fff;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          height: 100vh;
+          margin: 0;
+          font-family: 'Cairo', sans-serif;
+        }
+
+        body::before {
+          content: ''; position: fixed; width: 100%; height: 100%;
+          background: radial-gradient(circle at center, rgba(99, 102, 241, 0.12), transparent 60%);
+          z-index: 1; pointer-events: none;
+        }
+
+        .login-card {
+          background: rgba(15, 18, 28, 0.85);
+          backdrop-filter: blur(40px);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          padding: 38px 32px;
+          border-radius: 20px;
+          text-align: center;
+          width: 350px;
+          box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+          position: relative;
+          z-index: 10;
+        }
+
+        .brand-avatar {
+          width: 75px;
+          height: 75px;
+          border-radius: 18px;
+          box-shadow: 0 0 30px rgba(99, 102, 241, 0.4);
+          margin-bottom: 14px;
+          border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        input {
+          width: 100%;
+          padding: 11px 14px;
+          border-radius: 10px;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          background: rgba(8, 10, 16, 0.9);
+          color: #fff;
+          text-align: center;
+          font-size: 13px;
+          margin-bottom: 16px;
+          outline: none;
+        }
+        input:focus { border-color: #6366f1; box-shadow: 0 0 15px rgba(99, 102, 241, 0.3); }
+
+        button {
+          background: linear-gradient(135deg, #4f46e5, #7c3aed);
+          color: #fff;
+          border: none;
+          padding: 11px;
+          border-radius: 10px;
+          width: 100%;
+          font-weight: 700;
+          font-size: 13px;
+          cursor: pointer;
+          box-shadow: 0 4px 15px rgba(79, 70, 229, 0.3);
+        }
+        button:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(79, 70, 229, 0.5); }
       </style>
     </head>
     <body>
       <div class="login-card">
-        <div class="logo-icon">🌌</div>
-        <h1 style="font-size: 28px; margin-bottom: 8px;" class="purple-gradient">VOID COMMUNITY</h1>
-        <p style="color: #a78bfa; font-size: 13px; margin-bottom: 30px;">أدخل كلمة المرور السرية للمصادقة وتفعيل اللوحة</p>
+        <img src="${botIconUrl}" class="brand-avatar" alt="Server Logo">
+        <h1 style="font-size: 20px; margin-bottom: 4px;" class="purple-gradient">VOID COMMUNITY</h1>
+        <p style="color: #9ca3af; font-size: 12px; margin-bottom: 20px;">تسجيل الدخول إلى لوحة التحكم الإدارية</p>
         <form action="/login/pass" method="POST">
           <input type="password" name="password" placeholder="كلمة المرور" required autofocus>
-          <button type="submit">دخول وتوثيق التوقيع الرقمي</button>
+          <button type="submit">دخول ونقل لديسكورد</button>
         </form>
       </div>
     </body>
@@ -281,7 +483,7 @@ app.get(['/auth/callback', '/api/auth/callback'], async (req, res) => {
     req.session.user = userData;
     res.redirect('/');
   } catch (error) {
-    res.send('<h2 style="color:red; text-align:center; font-family:sans-serif; margin-top:50px;">❌ فشل الربط والمصادقة.<br><a href="/login" style="color:#a78bfa;">إعادة المحاولة</a></h2>');
+    res.send('<h2 style="color:red; text-align:center; font-family:sans-serif; margin-top:50px;">❌ فشل المصادقة مع ديسكورد.<br><a href="/login" style="color:#a78bfa;">إعادة المحاولة</a></h2>');
   }
 });
 
@@ -303,35 +505,35 @@ app.get('/', (req, res) => {
   } catch (e) {}
 
   const content = `
-    <div class="glass-card" style="display: flex; justify-content: space-between; align-items: center; background: linear-gradient(135deg, rgba(13,9,24,0.95), rgba(124,58,237,0.2));">
+    <div class="glass-card" style="display: flex; justify-content: space-between; align-items: center;">
       <div>
-        <h1 class="purple-gradient" style="margin: 0; font-size: 26px; font-weight: 900;">🎨 إدارة ألوان القواعد (17 قاعدة)</h1>
-        <p style="color: #94a3b8; margin: 8px 0 0 0; font-size: 15px;">أهلاً بك، ${req.session.user?.username || 'المسؤول'} 👋 | تحديث الأسعار والمقابل فوراً لنظام التذاكر.</p>
+        <h1 class="purple-gradient" style="margin: 0; font-size: 18px;">🎨 أسعار وشروط القواعد (17 قاعدة)</h1>
+        <p style="color: #9ca3af; margin: 4px 0 0 0; font-size: 12px;">أهلاً بك، ${req.session.user?.username || 'المسؤول'} 👋 | تحديث ونشر اللوحة في القنوات.</p>
       </div>
-      <span style="background: rgba(34,197,94,0.2); color: #4ade80; border: 1px solid rgba(34,197,94,0.4); padding: 10px 20px; border-radius: 30px; font-weight: 800; font-size: 14px;">🟢 النظام نشط ومزامن</span>
+      <span style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); padding: 5px 12px; border-radius: 20px; font-weight: 700; font-size: 11px;">🟢 مزامن ونشط</span>
     </div>
 
     <div class="glass-card">
-      <h2 style="font-size: 19px;" class="purple-gradient">📢 إرسال لوحة الألوان الفخمة إلى ديسكورد</h2>
+      <h2 style="font-size: 15px;" class="purple-gradient">📢 نشر لوحة الألوان إلى ديسكورد</h2>
       <form action="/send-panel" method="POST">
-        <label>اختر الروم المخصص لنشر اللوحة:</label>
+        <label>اختر القناة المخصصة:</label>
         <select name="channel_id" required>${channelOptionsHTML}</select>
         <button type="submit" class="btn">🚀 نشر لوحة الألوان الآن</button>
       </form>
     </div>
 
     <form action="/save-colors" method="POST">
-      <h2 style="font-size: 19px; margin-bottom: 20px;" class="purple-gradient">⚡ تعديل أسعار وشروط الـ 17 قاعدة</h2>
+      <h2 style="font-size: 15px; margin-bottom: 12px;" class="purple-gradient">⚡ تعديل أسعار وشروط الـ 17 قاعدة</h2>
       ${Object.keys(basesData).map(key => `
-        <div class="glass-card" style="padding: 25px;">
-          <h3 style="margin: 0 0 14px 0; color: #c084fc; font-size: 18px; font-weight: 800;">${basesData[key].emoji}${basesData[key].name}</h3>
+        <div class="glass-card" style="padding: 16px;">
+          <h3 style="margin: 0 0 8px 0; color: #a855f7; font-size: 14px;">${basesData[key].emoji}${basesData[key].name}</h3>
           <label>💰 المقابل المادي:</label>
           <textarea name="${key}_money" rows="2">${basesData[key].money}</textarea>
           <label>🎁 المقابل بالأغراض:</label>
           <textarea name="${key}_items" rows="2">${basesData[key].items}</textarea>
         </div>
       `).join('')}
-      <button type="submit" class="btn" style="position: sticky; bottom: 30px; z-index: 10; font-size: 18px;">💾 حفظ كافة التعديلات والتحديث الفوري</button>
+      <button type="submit" class="btn" style="position: sticky; bottom: 20px; z-index: 10;">💾 حفظ كافة التعديلات والتحديث الفوري</button>
     </form>
   `;
 
@@ -344,27 +546,27 @@ app.post('/save-colors', (req, res) => {
     if (req.body[`${key}_money`]) basesData[key].money = req.body[`${key}_money`];
     if (req.body[`${key}_items`]) basesData[key].items = req.body[`${key}_items`];
   });
-  addDashboardLog('badge-role', 'تحديث القواعد', `تم تحديث أسعار وشروط القواعد بواسطة @${req.session.user?.username}`);
+  addDashboardLog('badge-role', 'تحديث القواعد', `تم تحديث شروط وأسعار القواعد بواسطة @${req.session.user?.username}`);
   res.redirect('/');
 });
 
 app.get('/tickets', (req, res) => {
   if (!req.session.authenticated) return res.redirect('/login');
   const content = `
-    <div class="glass-card" style="background: linear-gradient(135deg, rgba(13,9,24,0.95), rgba(124,58,237,0.2));">
-      <h1 class="purple-gradient" style="margin: 0; font-size: 26px; font-weight: 900;">🎫 إعدادات الكاتيجوري ورتب التحكم</h1>
-      <p style="color: #94a3b8; margin-top: 8px; font-size: 15px;">ربط التذاكر بالكاتيجوري ورتبة الـ Owner لإدارة الخيارات.</p>
+    <div class="glass-card">
+      <h1 class="purple-gradient" style="margin: 0; font-size: 18px;">🎫 إعدادات نظام التذاكر والكاتيجوري</h1>
+      <p style="color: #9ca3af; margin-top: 4px; font-size: 12px;">تحديد الفئات المخصصة للتذاكر ورتبة التحكم.</p>
     </div>
     
     <form action="/save-tickets" method="POST">
       <div class="glass-card">
-        <label>معرفات كاتيجوري التذاكر (Category IDs - يدعم أكثر من آيدي مفصول بفاصلة):</label>
+        <label>معرفات كاتيجوري التذاكر (Category IDs - مفصولة بفاصلة):</label>
         <input type="text" name="ticketCategories" value="${serverSettings.ticketCategories}" placeholder="مثال: 123456789012345678, 987654321098765432">
 
-        <label>اسم رتبة الـ Owner المسؤول عن التحكم:</label>
+        <label>اسم رتبة الـ Owner المسؤول عن خيارات الإدارة:</label>
         <input type="text" name="ownerRoleName" value="${serverSettings.ownerRoleName}" placeholder="Owner">
 
-        <button type="submit" class="btn" style="font-size: 18px;">💾 حفظ الإعدادات</button>
+        <button type="submit" class="btn">💾 حفظ الإعدادات</button>
       </div>
     </form>
   `;
@@ -375,34 +577,33 @@ app.post('/save-tickets', (req, res) => {
   if (!req.session.authenticated) return res.redirect('/login');
   if (req.body.ticketCategories !== undefined) serverSettings.ticketCategories = req.body.ticketCategories;
   if (req.body.ownerRoleName) serverSettings.ownerRoleName = req.body.ownerRoleName;
-  addDashboardLog('badge-ticket', 'إعدادات التذاكر', `تم تحديث الكاتيجوري ورتب التحكم بواسطة @${req.session.user?.username}`);
+  addDashboardLog('badge-ticket', 'تحديث التذاكر', `تم تحديث إعدادات التذاكر بواسطة @${req.session.user?.username}`);
   res.redirect('/tickets');
 });
 
-// صفحة اللوقات الأسطورية الشاملة بالداشبورد
 app.get('/logs', (req, res) => {
   if (!req.session.authenticated) return res.redirect('/login');
 
   const logsRows = dashboardLogs.length === 0 
-    ? `<tr><td colspan="4" style="text-align: center; color: #94a3b8; padding: 35px; font-size: 16px;">لا توجد سجلات مسجلة حتى الآن. ستظهر جميع أحداث الديسكورد والتذاكر هنا تلقائياً مباشرة!</td></tr>`
+    ? `<tr><td colspan="4" style="text-align: center; color: #9ca3af; padding: 20px;">لا توجد سجلات مسجلة حتى الآن. ستظهر الأحداث هنا فوراً.</td></tr>`
     : dashboardLogs.map(log => `
       <tr>
-        <td style="font-weight: 800; color: #c084fc;">${log.action}</td>
-        <td style="line-height: 1.6;">${log.details}</td>
+        <td style="font-weight: 700; color: #ffffff;">${log.action}</td>
+        <td style="color: #d1d5db;">${log.details}</td>
         <td><span class="log-badge ${log.category}">${log.category.replace('badge-', '').toUpperCase()}</span></td>
-        <td style="color: #94a3b8; font-size: 13px; white-space: nowrap;">${log.time}</td>
+        <td style="color: #6b7280; font-size: 11px; white-space: nowrap;">${log.time}</td>
       </tr>
     `).join('');
 
   const content = `
-    <div class="glass-card" style="background: linear-gradient(135deg, rgba(13,9,24,0.95), rgba(124,58,237,0.25));">
-      <h1 class="purple-gradient" style="margin: 0; font-size: 26px; font-weight: 900;">📜 سجلات ديسكورد الشاملة (Universal Live Logs)</h1>
-      <p style="color: #94a3b8; margin-top: 8px; font-size: 15px;">مركز مراقبة حقيقي يسجل: إزالة/إضافة الرتب، التذاكر، إغلاق القنوات، الحذف، التعديل، والمكالمات الصوتية مباشرة هنا حصرياً!</p>
+    <div class="glass-card">
+      <h1 class="purple-gradient" style="margin: 0; font-size: 18px;">📜 سجلات الأحداث الشاملة (Live Logs)</h1>
+      <p style="color: #9ca3af; margin-top: 4px; font-size: 12px;">تسجيل لحظي وحي لجميع الأحداث من رتب، تذاكر، ورسائل بدون استخدام ديسكورد.</p>
     </div>
 
     <div class="glass-card">
-      <h2 style="font-size: 20px;" class="purple-gradient">🔍 الأحداث المباشرة المسجلة (${dashboardLogs.length})</h2>
-      <div style="overflow-x: auto; margin-top: 20px;">
+      <h2 style="font-size: 15px;" class="purple-gradient">🔍 الأحداث المباشرة (${dashboardLogs.length})</h2>
+      <div style="overflow-x: auto; margin-top: 10px;">
         <table class="logs-table">
           <thead>
             <tr>
@@ -422,11 +623,10 @@ app.get('/logs', (req, res) => {
   res.send(renderUltimateLayout('logs', content));
 });
 
-// أدوات الإدارة السريعة
 app.get('/moderation', (req, res) => {
   if (!req.session.authenticated) return res.redirect('/login');
   
-  let channelOptionsHTML = '<option value="" disabled selected>اختر الروم لنشر الإعلان...</option>';
+  let channelOptionsHTML = '<option value="" disabled selected>اختر القناة لنشر الإعلان...</option>';
   try {
     client.guilds.cache.forEach(guild => {
       guild.channels.cache.filter(c => c.type === ChannelType.GuildText).forEach(channel => {
@@ -437,20 +637,20 @@ app.get('/moderation', (req, res) => {
 
   const content = `
     <div class="glass-card">
-      <h1 class="purple-gradient" style="margin:0; font-size:26px;">🔨 أدوات الإدارة السريعة والإعلانات</h1>
-      <p style="color:#94a3b8; margin-top:8px;">إرسال إعلانات رسمية أو التحكم بالأعضاء بآيدي العضو.</p>
+      <h1 class="purple-gradient" style="margin:0; font-size:18px;">🔨 أدوات الإدارة السريعة</h1>
+      <p style="color:#9ca3af; margin-top:4px; font-size:12px;">إرسال إعلانات رسمية من لوحة التحكم.</p>
     </div>
 
     <div class="glass-card">
-      <h2 style="font-size: 19px;" class="purple-gradient">📣 إرسال إعلان رسمي للسيرفر</h2>
+      <h2 style="font-size: 15px;" class="purple-gradient">📣 إرسال إعلان رسمي للسيرفر</h2>
       <form action="/send-announcement" method="POST">
-        <label>اختر الروم:</label>
+        <label>اختر القناة:</label>
         <select name="channel_id" required>${channelOptionsHTML}</select>
         <label>عنوان الإعلان:</label>
-        <input type="text" name="title" placeholder="مثال: إعلان هويتي الجديد" required>
+        <input type="text" name="title" placeholder="العنوان" required>
         <label>محتوى الإعلان:</label>
-        <textarea name="message" rows="4" placeholder="اكتب نص الإعلان هنا..." required></textarea>
-        <button type="submit" class="btn">🚀 إرسال الإعلان الآن</button>
+        <textarea name="message" rows="3" placeholder="نص الإعلان..." required></textarea>
+        <button type="submit" class="btn">🚀 إرسال الإعلان</button>
       </form>
     </div>
   `;
@@ -464,7 +664,7 @@ app.post('/send-announcement', async (req, res) => {
     const embed = new EmbedBuilder()
       .setTitle(`📢 ${req.body.title}`)
       .setDescription(req.body.message)
-      .setColor('#7c3aed')
+      .setColor('#6366f1')
       .setFooter({ text: 'Void Community Official Announcement' })
       .setTimestamp();
 
@@ -476,21 +676,20 @@ app.post('/send-announcement', async (req, res) => {
   }
 });
 
-// مركز الحماية
 app.get('/security', (req, res) => {
   if (!req.session.authenticated) return res.redirect('/login');
   const content = `
     <div class="glass-card">
-      <h1 class="purple-gradient" style="margin:0; font-size:26px;">🛡️ مركز الحماية والأمان المتقدم</h1>
-      <p style="color:#94a3b8; margin-top:8px;">تفعيل وتعطيل أنظمة الحماية التلقائية للسيرفر.</p>
+      <h1 class="purple-gradient" style="margin:0; font-size:18px;">🛡️ مركز الحماية والأمان</h1>
+      <p style="color:#9ca3af; margin-top:4px; font-size:12px;">مراقبة درع الحماية التلقائي للبوت.</p>
     </div>
 
     <div class="glass-card">
-      <h2 style="font-size:19px;" class="purple-gradient">⚡ خيارات الحماية الحالية</h2>
-      <div style="margin-top: 20px;">
-        <p style="font-size: 16px; font-weight:700;">• الحماية من التكرار والسبام (Anti-Spam): <span style="color:#4ade80;">مفعلة تلقائياً</span></p>
-        <p style="font-size: 16px; font-weight:700;">• الحماية من الهجمات (Anti-Raid): <span style="color:#4ade80;">مفعلة تلقائياً</span></p>
-        <p style="font-size: 16px; font-weight:700;">• منع روابط الديسكورد والخارجية: <span style="color:#a855f7;">نشطة</span></p>
+      <h2 style="font-size:15px;" class="purple-gradient">⚡ خيارات الحماية الحالية</h2>
+      <div style="margin-top: 12px; font-size: 12px;">
+        <p>• الحماية من التكرار والسبام (Anti-Spam): <span style="color:#34d399; font-weight:700;">مفعلة</span></p>
+        <p>• الحماية من الهجمات (Anti-Raid): <span style="color:#34d399; font-weight:700;">مفعلة</span></p>
+        <p>• منع روابط الديسكورد والخارجية: <span style="color:#a855f7; font-weight:700;">نشطة</span></p>
       </div>
     </div>
   `;
@@ -516,7 +715,7 @@ app.post('/send-panel', async (req, res) => {
     const embed = new EmbedBuilder()
       .setTitle('🎨 Void Community | نظام ألوان ماب النطة')
       .setDescription('اختر القاعدة التي تريد طلبها من القائمة المنسدلة أدناه لتقديم بياناتك ونوع المقابل بكل سهولة:')
-      .setColor('#7c3aed')
+      .setColor('#6366f1')
       .setFooter({ text: 'Void Community • Advanced Ticket System' });
 
     await channel.send({ embeds: [embed], components: [new ActionRowBuilder().addComponents(selectMenu)] });
@@ -527,7 +726,7 @@ app.post('/send-panel', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => console.log(`🌐 Ultimate Dashboard Active on port ${PORT}`));
+app.listen(PORT, () => console.log(`🌐 Dashboard Active on port ${PORT}`));
 
 // ------------------- 7. بوت ديسكورد والمراقبة الشاملة -------------------
 const client = new Client({
@@ -588,12 +787,10 @@ async function createTranscriptBuffer(channel, closedByUser) {
 
 client.once('ready', () => {
   console.log(`✅ [Void Community] Bot Ready as: ${client.user.tag}`);
-  addDashboardLog('badge-role', 'تشغيل البوت', `تم تشغيل بوت ديسكورد بنجاح باسم ${client.user.tag}`);
+  addDashboardLog('badge-role', 'تشغيل البوت', `تم تشغيل البوت بنجاح باسم ${client.user.tag}`);
 });
 
-// ------------------- سجلات الديسكورد الشاملة حظياً -------------------
-
-// 1. لوقات تعديل إزالة/إضافة الرتب
+// سجلات الأحداث المباشرة
 client.on('guildMemberUpdate', (oldMember, newMember) => {
   const addedRoles = newMember.roles.cache.filter(role => !oldMember.roles.cache.has(role.id));
   const removedRoles = oldMember.roles.cache.filter(role => !newMember.roles.cache.has(role.id));
@@ -607,16 +804,14 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
   });
 });
 
-// 2. لوقات حذف الرسائل
 client.on('messageDelete', message => {
   if (message.author?.bot) return;
   const authorName = message.author ? `@${message.author.username}` : 'عضو غير معروف';
   const contentStr = message.content ? `"${message.content}"` : 'وسائط / إمبد';
   const channelName = message.channel ? `#${message.channel.name}` : 'روم غير معروف';
-  addDashboardLog('badge-msg', 'حذف رسالة', `تم حذف رسالة للعضو ${authorName} في القناة ${channelName}: ${contentStr}`);
+  addDashboardLog('badge-msg', 'حذف رسالة', `حذف رسالة للعضو ${authorName} في القناة ${channelName}: ${contentStr}`);
 });
 
-// 3. لوقات تعديل الرسائل
 client.on('messageUpdate', (oldMessage, newMessage) => {
   if (oldMessage.author?.bot) return;
   if (oldMessage.content === newMessage.content) return;
@@ -624,7 +819,6 @@ client.on('messageUpdate', (oldMessage, newMessage) => {
   addDashboardLog('badge-msg', 'تعديل رسالة', `العضو ${authorName} عدّل رسالته من: "${oldMessage.content}" إلى: "${newMessage.content}"`);
 });
 
-// 4. لوقات المكالمات الصوتية
 client.on('voiceStateUpdate', (oldState, newState) => {
   const memberName = `@${newState.member.user.username}`;
   if (!oldState.channelId && newState.channelId) {
@@ -636,7 +830,6 @@ client.on('voiceStateUpdate', (oldState, newState) => {
   }
 });
 
-// 5. لوقات الحظر وفك الحظر
 client.on('guildBanAdd', ban => {
   addDashboardLog('badge-ban', 'حظر عضو (Ban)', `تم حظر العضو @${ban.user.username} من السيرفر.`);
 });
@@ -645,7 +838,6 @@ client.on('guildBanRemove', ban => {
   addDashboardLog('badge-ban', 'فك حظر (Unban)', `تم فك الحظر عن العضو @${ban.user.username}`);
 });
 
-// 6. لوقات الانضمام والمغادرة
 client.on('guildMemberAdd', member => {
   addDashboardLog('badge-member', 'انضمام عضو', `العضو @${member.user.username} انضم إلى السيرفر.`);
 });
@@ -654,7 +846,7 @@ client.on('guildMemberRemove', member => {
   addDashboardLog('badge-member', 'مغادرة عضو', `العضو @${member.user.username} غادر السيرفر.`);
 });
 
-// ------------------- التفاعلات والتذاكر -------------------
+// التفاعلات والتذاكر
 client.on('interactionCreate', async interaction => {
   if (interaction.isStringSelectMenu() && interaction.customId === 'select_base_color') {
     const selectedKey = interaction.values[0];
@@ -780,7 +972,7 @@ client.on('interactionCreate', async interaction => {
           { name: '🔢 عدد النواقص', value: session ? session.missing : 'غير محدد', inline: true },
           { name: '👑 الرتبة المخولة', value: specificRole ? `<@&${specificRole.id}>` : 'الإدارة العامة', inline: false }
         )
-        .setColor('#7c3aed')
+        .setColor('#6366f1')
         .setFooter({ text: 'Void Community • Advanced Ticket System' })
         .setTimestamp();
 
@@ -799,7 +991,7 @@ client.on('interactionCreate', async interaction => {
     }
   }
 
-  // ------------------- فحص الصلاحيات الصارم -------------------
+  // فحص الصلاحيات الصارم
   if (interaction.isStringSelectMenu() && interaction.customId === 'ticket_action_select') {
     const action = interaction.values[0];
     const member = interaction.member;
@@ -893,7 +1085,6 @@ client.on('interactionCreate', async interaction => {
 
     const { count } = await createTranscriptBuffer(interaction.channel, interaction.user);
 
-    // تسجيل إغلاق التذكرة باللوحة حصرياً
     addDashboardLog('badge-ticket', 'إغلاق تذكرة', `التذكرة #${interaction.channel.name} أُغلقت بواسطة @${interaction.user.username} | السبب: ${reason} | عدد الرسائل: ${count}`);
 
     setTimeout(() => {
