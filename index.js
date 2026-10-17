@@ -20,7 +20,7 @@ const {
 const express = require('express');
 const session = require('express-session');
 
-// ------------------- 1. بيانات قواعد الألوان الـ 17 المخصصة لكل رقم -------------------
+// ------------------- 1. بيانات قواعد الألوان الـ 17 المخصصة -------------------
 let basesData = {
   silver: { 
     name: 'Silver Base', emoji: '⚪', 
@@ -67,7 +67,6 @@ function addDashboardLog(category, action, details) {
   if (dashboardLogs.length > 250) dashboardLogs.pop();
 }
 
-// دالة تحليل النص واستخراج سعر الرقم الدقيق
 function getPriceForQuantity(priceMapText, quantity) {
   const lines = priceMapText.split('\n');
   const priceMap = {};
@@ -85,12 +84,10 @@ function getPriceForQuantity(priceMapText, quantity) {
     }
   });
 
-  // إذا كان الرقم موجود بالظبط
   if (priceMap[quantity]) {
     return priceMap[quantity];
   }
 
-  // البحث عن أقرب رقم أقل منه أو أكبر
   const keys = Object.keys(priceMap).map(Number).sort((a, b) => a - b);
   for (let i = keys.length - 1; i >= 0; i--) {
     if (quantity >= keys[i]) {
@@ -121,7 +118,6 @@ const DASHBOARD_PASSWORD = process.env.DASHBOARD_PASSWORD || 'VD122';
 const TOKEN = process.env.TOKEN;
 const REDIRECT_URI = `${BASE_URL}/api/auth/callback`;
 
-// تصميم اللوحة العصري الشفاف والمريح
 const renderUltimateLayout = (activeTab, content) => {
   let memberCount = 0;
   let botIconUrl = 'https://cdn.discordapp.com/embed/avatars/0.png';
@@ -354,7 +350,7 @@ app.get('/', (req, res) => {
     <div class="glass-card" style="display: flex; justify-content: space-between; align-items: center;">
       <div>
         <h1 class="purple-gradient" style="margin: 0; font-size: 18px;">🎨 جدول الأسعار المخصص لكل عدد (17 قاعدة)</h1>
-        <p style="color: #9ca3af; margin: 4px 0 0 0; font-size: 12px;">مرحباً، ${req.session.user?.username || 'المسؤول'} 👋 | اكتب كل عدد وأمامها السعر المالي بكل سهولة (مثل: 1: 10 ريال).</p>
+        <p style="color: #9ca3af; margin: 4px 0 0 0; font-size: 12px;">مرحباً، ${req.session.user?.username || 'المسؤول'} 👋 | يمكنك إدخال وتثبيت أعداد النواقص والسعر المقابل لها بكل سهولة.</p>
       </div>
       <span style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); padding: 5px 12px; border-radius: 20px; font-weight: 700; font-size: 11px;">🟢 الحساب الدقيق مفعل</span>
     </div>
@@ -638,7 +634,6 @@ client.once('ready', () => {
   addDashboardLog('badge-role', 'تشغيل البوت', `تم تشغيل البوت بنجاح باسم ${client.user.tag}`);
 });
 
-// سجلات الأحداث المباشرة
 client.on('guildMemberUpdate', (oldMember, newMember) => {
   const addedRoles = newMember.roles.cache.filter(role => !oldMember.roles.cache.has(role.id));
   const removedRoles = oldMember.roles.cache.filter(role => !newMember.roles.cache.has(role.id));
@@ -694,7 +689,6 @@ client.on('guildMemberRemove', member => {
   addDashboardLog('badge-member', 'مغادرة عضو', `العضو @${member.user.username} غادر السيرفر.`);
 });
 
-// التفاعلات والتذاكر مع المطابقة المباشرة للسعر
 client.on('interactionCreate', async interaction => {
   if (interaction.isStringSelectMenu() && interaction.customId === 'select_base_color') {
     const selectedKey = interaction.values[0];
@@ -748,7 +742,6 @@ client.on('interactionCreate', async interaction => {
 
     const baseConfig = basesData[session.baseKey] || { name: session.baseKey, priceMapText: '', items: 'غير محدد' };
     
-    // مطابقة ودعم السعر الخاص بالعدد المدخل مباشرة
     const exactPrice = getPriceForQuantity(baseConfig.priceMapText, session.missingNum);
 
     let textDetails = payType === 'money' 
@@ -849,7 +842,6 @@ client.on('interactionCreate', async interaction => {
     }
   }
 
-  // فحص الصلاحيات الصارم
   if (interaction.isStringSelectMenu() && interaction.customId === 'ticket_action_select') {
     const action = interaction.values[0];
     const member = interaction.member;
