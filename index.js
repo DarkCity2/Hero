@@ -20,7 +20,7 @@ const {
 const express = require('express');
 const session = require('express-session');
 
-// ------------------- 1. بيانات قواعد الألوان بنظام شرائح المادي والأغراض -------------------
+// ------------------- 1. بيانات قواعد الألوان بنظام الشرائح المزدوجة -------------------
 let basesData = {
   silver: { 
     name: 'Silver Base', emoji: '⚪', 
@@ -69,15 +69,28 @@ let serverSettings = {
 };
 
 const ticketsDataMap = new Map();
-const dashboardLogs = [];
 
-function addDashboardLog(category, action, details) {
+// سجلات منفصلة لكل تصنيف لضمان الترتيب والتصميم الجامد
+const logsStore = {
+  roles: [],
+  messages: [],
+  voice: [],
+  tickets: [],
+  channels: [],
+  members: [],
+  bans: []
+};
+
+function addLog(category, action, details) {
   const time = new Date().toLocaleString('ar-SA', { timeZone: 'Asia/Riyadh' });
-  dashboardLogs.unshift({ category, action, details, time });
-  if (dashboardLogs.length > 250) dashboardLogs.pop();
+  const logItem = { action, details, time };
+  
+  if (logsStore[category]) {
+    logsStore[category].unshift(logItem);
+    if (logsStore[category].length > 100) logsStore[category].pop();
+  }
 }
 
-// دالة المطابقة لشرائح الأسعار
 function getTierPrice(tiersArray, userQuantity) {
   if (!tiersArray || tiersArray.length === 0) return { price: 'غير محدد', tierText: 'غير محدد' };
   const sorted = [...tiersArray].sort((a, b) => a.maxQty - b.maxQty);
@@ -90,7 +103,6 @@ function getTierPrice(tiersArray, userQuantity) {
   return { price: lastTier.price, tierText: `فوق ${lastTier.maxQty}` };
 }
 
-// دالة المطابقة لشرائح الأغراض
 function getTierItems(itemTiersArray, userQuantity) {
   if (!itemTiersArray || itemTiersArray.length === 0) return { items: 'غير محدد', tierText: 'غير محدد' };
   const sorted = [...itemTiersArray].sort((a, b) => a.maxQty - b.maxQty);
@@ -109,7 +121,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'void_full_tier_pricing_2026',
+  secret: process.env.SESSION_SECRET || 'void_ultimate_logs_2026',
   resave: false,
   saveUninitialized: false,
   cookie: { maxAge: 3600000 * 24 }
@@ -133,6 +145,8 @@ const renderUltimateLayout = (activeTab, content) => {
       botIconUrl = client.user.displayAvatarURL({ extension: 'png', size: 256 });
     }
   } catch(e){}
+
+  let totalLogsCount = Object.values(logsStore).reduce((acc, arr) => acc + arr.length, 0);
 
   return `
   <!DOCTYPE html>
@@ -201,27 +215,30 @@ const renderUltimateLayout = (activeTab, content) => {
       .btn { background: linear-gradient(135deg, #4f46e5, #7c3aed); color: #fff; border: none; padding: 11px 22px; border-radius: 10px; font-weight: 700; cursor: pointer; width: 100%; box-shadow: 0 4px 15px rgba(79, 70, 229, 0.3); margin-top: 16px; font-size: 13px; text-align: center; text-decoration: none; display: inline-block; }
       .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(79, 70, 229, 0.5); }
 
-      .logs-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+      .logs-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
       .logs-table th, .logs-table td { padding: 12px 16px; text-align: right; border-bottom: 1px solid rgba(255, 255, 255, 0.05); font-size: 13px; }
       .logs-table th { color: #9ca3af; font-weight: 700; background: rgba(255, 255, 255, 0.02); }
-      .log-badge { padding: 3px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; display: inline-block; }
       
-      .badge-role { background: rgba(168, 85, 247, 0.12); color: #d8b4fe; border: 1px solid rgba(168, 85, 247, 0.25); }
-      .badge-msg { background: rgba(245, 158, 11, 0.12); color: #fcd34d; border: 1px solid rgba(245, 158, 11, 0.25); }
-      .badge-voice { background: rgba(59, 130, 246, 0.12); color: #93c5fd; border: 1px solid rgba(59, 130, 246, 0.25); }
-      .badge-ticket { background: rgba(16, 185, 129, 0.12); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.25); }
+      .log-badge { padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 800; display: inline-block; }
+      .badge-roles { background: rgba(168, 85, 247, 0.15); color: #d8b4fe; border: 1px solid rgba(168, 85, 247, 0.3); }
+      .badge-messages { background: rgba(245, 158, 11, 0.15); color: #fcd34d; border: 1px solid rgba(245, 158, 11, 0.3); }
+      .badge-voice { background: rgba(59, 130, 246, 0.15); color: #93c5fd; border: 1px solid rgba(59, 130, 246, 0.3); }
+      .badge-tickets { background: rgba(16, 185, 129, 0.15); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.3); }
+      .badge-channels { background: rgba(236, 72, 153, 0.15); color: #f472b6; border: 1px solid rgba(236, 72, 153, 0.3); }
+      .badge-members { background: rgba(6, 182, 212, 0.15); color: #67e8f9; border: 1px solid rgba(6, 182, 212, 0.3); }
+      .badge-bans { background: rgba(239, 68, 68, 0.15); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.3); }
     </style>
     <script>
       function addTierRow(baseKey) {
         const container = document.getElementById('tier-container-' + baseKey);
         const div = document.createElement('div');
         div.className = 'tier-row';
-        div.innerHTML = \`
-          <input type="number" name="\${baseKey}_maxQty[]" placeholder="العدد" required>
+        div.innerHTML = `
+          <input type="number" name="${baseKey}_maxQty[]" placeholder="العدد" required>
           <span class="tier-label">وتحت ⟵</span>
-          <input type="text" name="\${baseKey}_price[]" placeholder="السعر (مثال: 20 ريال)" required>
+          <input type="text" name="${baseKey}_price[]" placeholder="السعر (مثال: 20 ريال)" required>
           <button type="button" class="btn-del" onclick="this.parentElement.remove()">🗑️</button>
-        \`;
+        `;
         container.appendChild(div);
       }
 
@@ -229,12 +246,12 @@ const renderUltimateLayout = (activeTab, content) => {
         const container = document.getElementById('item-tier-container-' + baseKey);
         const div = document.createElement('div');
         div.className = 'tier-row';
-        div.innerHTML = \`
-          <input type="number" name="\${baseKey}_itemMaxQty[]" placeholder="العدد" required>
+        div.innerHTML = `
+          <input type="number" name="${baseKey}_itemMaxQty[]" placeholder="العدد" required>
           <span class="tier-label">وتحت ⟵</span>
-          <input type="text" name="\${baseKey}_itemText[]" placeholder="شروط الأغراض (مثال: كروماندو كاندي وفوق)" required>
+          <input type="text" name="${baseKey}_itemText[]" placeholder="شروط الأغراض" required>
           <button type="button" class="btn-del" onclick="this.parentElement.remove()">🗑️</button>
-        \`;
+        `;
         container.appendChild(div);
       }
     </script>
@@ -279,7 +296,7 @@ const renderUltimateLayout = (activeTab, content) => {
           <div style="font-size:20px;">🎫</div>
         </div>
         <div class="stat-card">
-          <div><div class="stat-title">سجلات مسجلة</div><div class="stat-num">${dashboardLogs.length}</div></div>
+          <div><div class="stat-title">إجمالي السجلات</div><div class="stat-num">${totalLogsCount}</div></div>
           <div style="font-size:20px;">📜</div>
         </div>
       </div>
@@ -387,7 +404,7 @@ app.get('/', (req, res) => {
   } catch (e) {}
 
   const content = `
-    <div class="glass-card" style="display: flex; justify-content: space-between; align- items: center;">
+    <div class="glass-card" style="display: flex; justify-content: space-between; align-items: center;">
       <div>
         <h1 class="purple-gradient" style="margin: 0; font-size: 18px;">🎨 شرائح أسعار النواقص والمقابل بالأغراض (17 قاعدة)</h1>
         <p style="color: #9ca3af; margin: 4px 0 0 0; font-size: 12px;">مرحباً، ${req.session.user?.username || 'المسؤول'} 👋 | يمكنك إضافة وتعديل شرائح المادي والأغراض لكل قاعدة بسهولة.</p>
@@ -410,7 +427,6 @@ app.get('/', (req, res) => {
         <div class="glass-card" style="padding: 18px;">
           <h3 style="margin: 0 0 10px 0; color: #a855f7; font-size: 15px;">${basesData[key].emoji}${basesData[key].name}</h3>
           
-          <!-- شرائح السعر المادي -->
           <label style="margin-bottom: 8px;">💰 شرائح تسعير النواقص (المقابل المادي):</label>
           <div id="tier-container-${key}">
             ${(basesData[key].tiers || []).map(t => `
@@ -424,7 +440,6 @@ app.get('/', (req, res) => {
           </div>
           <button type="button" class="btn-add" onclick="addTierRow('${key}')">➕ إضافة شريحة سعر جديدة</button>
 
-          <!-- شرائح المقابل بالأغراض -->
           <label style="margin-top: 18px; margin-bottom: 8px;">🎁 شرائح تسعير النواقص (المقابل بالأغراض):</label>
           <div id="item-tier-container-${key}">
             ${(basesData[key].itemTiers || []).map(it => `
@@ -449,7 +464,6 @@ app.get('/', (req, res) => {
 app.post('/save-colors', (req, res) => {
   if (!req.session.authenticated) return res.redirect('/login');
   Object.keys(basesData).forEach(key => {
-    // 1. معالجة شرائح المادي
     const maxQtys = req.body[`${key}_maxQty[]`];
     const prices = req.body[`${key}_price[]`];
     let newTiers = [];
@@ -464,7 +478,6 @@ app.post('/save-colors', (req, res) => {
     }
     basesData[key].tiers = newTiers;
 
-    // 2. معالجة شرائح الأغراض
     const itemMaxQtys = req.body[`${key}_itemMaxQty[]`];
     const itemTexts = req.body[`${key}_itemText[]`];
     let newItemTiers = [];
@@ -480,7 +493,7 @@ app.post('/save-colors', (req, res) => {
     basesData[key].itemTiers = newItemTiers;
   });
 
-  addDashboardLog('badge-role', 'تحديث القواعد', `تم تحديث شرائح الأسعار والأغراض بواسطة @${req.session.user?.username}`);
+  addLog('roles', 'تحديث القواعد', `تم تحديث شرائح الأسعار والأغراض بواسطة @${req.session.user?.username}`);
   res.redirect('/');
 });
 
@@ -511,49 +524,64 @@ app.post('/save-tickets', (req, res) => {
   if (!req.session.authenticated) return res.redirect('/login');
   if (req.body.ticketCategories !== undefined) serverSettings.ticketCategories = req.body.ticketCategories;
   if (req.body.ownerRoleName) serverSettings.ownerRoleName = req.body.ownerRoleName;
-  addDashboardLog('badge-ticket', 'تحديث التذاكر', `تم تحديث إعدادات التذاكر بواسطة @${req.session.user?.username}`);
+  addLog('tickets', 'تحديث التذاكر', `تم تحديث إعدادات التذاكر بواسطة @${req.session.user?.username}`);
   res.redirect('/tickets');
 });
 
-app.get('/logs', (req, res) => {
-  if (!req.session.authenticated) return res.redirect('/login');
-
-  const logsRows = dashboardLogs.length === 0 
-    ? `<tr><td colspan="4" style="text-align: center; color: #9ca3af; padding: 20px;">لا توجد سجلات مسجلة حتى الآن. ستظهر الأحداث هنا فوراً.</td></tr>`
-    : dashboardLogs.map(log => `
+// دالة لتوليد جدول السجلات داخل الكارد بتصميم جامد
+const renderLogTableSection = (title, badgeClass, logsArray) => {
+  const rows = logsArray.length === 0 
+    ? `<tr><td colspan="3" style="text-align: center; color: #6b7280; padding: 15px; font-size: 12px;">لا توجد أحداث مسجلة في هذا القسم حتى الآن.</td></tr>`
+    : logsArray.map(log => `
       <tr>
-        <td style="font-weight: 700; color: #ffffff;">${log.action}</td>
-        <td style="color: #d1d5db;">${log.details}</td>
-        <td><span class="log-badge ${log.category}">${log.category.replace('badge-', '').toUpperCase()}</span></td>
-        <td style="color: #6b7280; font-size: 11px; white-space: nowrap;">${log.time}</td>
+        <td style="font-weight: 700; color: #ffffff; width: 35%;">${log.action}</td>
+        <td style="color: #d1d5db; width: 45%;">${log.details}</td>
+        <td style="color: #6b7280; font-size: 11px; white-space: nowrap; text-align: left; width: 20%;">${log.time}</td>
       </tr>
     `).join('');
 
-  const content = `
+  return `
     <div class="glass-card">
-      <h1 class="purple-gradient" style="margin: 0; font-size: 18px;">📜 سجلات الأحداث الشاملة (Live Logs)</h1>
-      <p style="color: #9ca3af; margin-top: 4px; font-size: 12px;">تسجيل لحظي وحي لجميع الأحداث من رتب، تذاكر، ورسائل بدون استخدام ديسكورد.</p>
-    </div>
-
-    <div class="glass-card">
-      <h2 style="font-size: 15px;" class="purple-gradient">🔍 الأحداث المباشرة (${dashboardLogs.length})</h2>
-      <div style="overflow-x: auto; margin-top: 10px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+        <h3 style="margin: 0; font-size: 15px;" class="purple-gradient">${title}</h3>
+        <span class="log-badge ${badgeClass}">${logsArray.length} سجل</span>
+      </div>
+      <div style="overflow-x: auto;">
         <table class="logs-table">
           <thead>
             <tr>
-              <th>حدث السجل</th>
+              <th>الحدث</th>
               <th>التفاصيل الكاملة</th>
-              <th>التصنيف</th>
-              <th>التوقيت</th>
+              <th style="text-align: left;">التوقيت</th>
             </tr>
           </thead>
           <tbody>
-            ${logsRows}
+            ${rows}
           </tbody>
         </table>
       </div>
     </div>
   `;
+};
+
+app.get('/logs', (req, res) => {
+  if (!req.session.authenticated) return res.redirect('/login');
+
+  const content = `
+    <div class="glass-card">
+      <h1 class="purple-gradient" style="margin: 0; font-size: 18px;">📜 سجلات الأحداث الشاملة الكاملة (Live Logs)</h1>
+      <p style="color: #9ca3af; margin-top: 4px; font-size: 12px;">مراقبة حية ولحظية لكل شاردة وواردة في السيرفر (رومات، رتب، أعضاء، تذاكر، رسائل، وصوت).</p>
+    </div>
+
+    ${renderLogTableSection('👑 سجلات الرتب (Roles)', 'badge-roles', logsStore.roles)}
+    ${renderLogTableSection('💬 سجلات الرسائل (Messages)', 'badge-messages', logsStore.messages)}
+    ${renderLogTableSection('🎙️ سجلات الرومات الصوتية (Voice)', 'badge-voice', logsStore.voice)}
+    ${renderLogTableSection('🎫 سجلات التذاكر (Tickets)', 'badge-tickets', logsStore.tickets)}
+    ${renderLogTableSection('📁 سجلات الرومات الكتابية والصوتية (Channels - إنشاء/حذف/تعديل)', 'badge-channels', logsStore.channels)}
+    ${renderLogTableSection('👥 سجلات الأعضاء (Members - انضمام/مغادرة)', 'badge-members', logsStore.members)}
+    ${renderLogTableSection('🔨 سجلات الحظر (Bans)', 'badge-bans', logsStore.bans)}
+  `;
+
   res.send(renderUltimateLayout('logs', content));
 });
 
@@ -603,7 +631,7 @@ app.post('/send-announcement', async (req, res) => {
       .setTimestamp();
 
     await channel.send({ embeds: [embed] });
-    addDashboardLog('badge-msg', 'إعلان رسمي', `تم إرسال إعلان بعنوان "${req.body.title}" في الروم #${channel.name}`);
+    addLog('messages', 'إعلان رسمي', `تم إرسال إعلان بعنوان "${req.body.title}" في الروم #${channel.name}`);
     res.redirect('/moderation');
   } catch(e) {
     res.send(`<h2 style="color:red; text-align:center; margin-top:50px;">❌ خطأ: ${e.message}<br><br><a href="/moderation">العودة</a></h2>`);
@@ -653,7 +681,7 @@ app.post('/send-panel', async (req, res) => {
       .setFooter({ text: 'Void Community • Advanced Ticket System' });
 
     await channel.send({ embeds: [embed], components: [new ActionRowBuilder().addComponents(selectMenu)] });
-    addDashboardLog('badge-ticket', 'نشر لوحة الألوان', `تم نشر لوحة الألوان بنجاح في القناة: #${channel.name}`);
+    addLog('tickets', 'نشر لوحة الألوان', `تم نشر لوحة الألوان بنجاح في القناة: #${channel.name}`);
     res.redirect('/');
   } catch (err) {
     res.send(`<h2 style="color:red; text-align:center; margin-top:50px;">❌ خطأ أثناء النشر: ${err.message}<br><br><a href="/">العودة للوحة</a></h2>`);
@@ -662,7 +690,7 @@ app.post('/send-panel', async (req, res) => {
 
 app.listen(PORT, () => console.log(`🌐 Dashboard Active on port ${PORT}`));
 
-// ------------------- 7. بوت ديسكورد والمطابقة الحسابية المزدوجة -------------------
+// ------------------- 7. بوت ديسكورد والمراقبة الشاملة والكاملة -------------------
 const client = new Client({
   intents: [
     I.Guilds, I.GuildMembers, I.GuildMessages, I.MessageContent,
@@ -721,64 +749,90 @@ async function createTranscriptBuffer(channel, closedByUser) {
 
 client.once('ready', () => {
   console.log(`✅ [Void Community] Bot Ready as: ${client.user.tag}`);
-  addDashboardLog('badge-role', 'تشغيل البوت', `تم تشغيل البوت بنجاح باسم ${client.user.tag}`);
+  addLog('roles', 'تشغيل البوت', `تم تشغيل البوت بنجاح باسم ${client.user.tag}`);
 });
 
+// 1. مراقبة الرتب (إضافة / إزالة)
 client.on('guildMemberUpdate', (oldMember, newMember) => {
   const addedRoles = newMember.roles.cache.filter(role => !oldMember.roles.cache.has(role.id));
   const removedRoles = oldMember.roles.cache.filter(role => !newMember.roles.cache.has(role.id));
 
   addedRoles.forEach(role => {
-    addDashboardLog('badge-role', 'إضافة رتبة', `تم إعطاء الرتبة [${role.name}] للعضو @${newMember.user.username}`);
+    addLog('roles', 'إضافة رتبة لعضو', `تم إعطاء الرتبة [${role.name}] للعضو @${newMember.user.username}`);
   });
 
   removedRoles.forEach(role => {
-    addDashboardLog('badge-role', 'إزالة رتبة', `تم إزالة الرتبة [${role.name}] من العضو @${newMember.user.username}`);
+    addLog('roles', 'إزالة رتبة من عضو', `تم إزالة الرتبة [${role.name}] من العضو @${newMember.user.username}`);
   });
 });
 
+// 2. مراقبة الرسائل (حذف / تعديل)
 client.on('messageDelete', message => {
   if (message.author?.bot) return;
   const authorName = message.author ? `@${message.author.username}` : 'عضو غير معروف';
   const contentStr = message.content ? `"${message.content}"` : 'وسائط / إمبد';
   const channelName = message.channel ? `#${message.channel.name}` : 'روم غير معروف';
-  addDashboardLog('badge-msg', 'حذف رسالة', `حذف رسالة للعضو ${authorName} في القناة ${channelName}: ${contentStr}`);
+  addLog('messages', 'حذف رسالة', `حذف رسالة للعضو ${authorName} في القناة ${channelName}: ${contentStr}`);
 });
 
 client.on('messageUpdate', (oldMessage, newMessage) => {
   if (oldMessage.author?.bot) return;
   if (oldMessage.content === newMessage.content) return;
   const authorName = oldMessage.author ? `@${oldMessage.author.username}` : 'عضو';
-  addDashboardLog('badge-msg', 'تعديل رسالة', `العضو ${authorName} عدّل رسالته من: "${oldMessage.content}" إلى: "${newMessage.content}"`);
+  const channelName = oldMessage.channel ? `#${oldMessage.channel.name}` : 'روم';
+  addLog('messages', 'تعديل رسالة', `العضو ${authorName} في ${channelName} عدّل رسالته من: "${oldMessage.content}" إلى: "${newMessage.content}"`);
 });
 
+// 3. مراقبة الصوت (دخول / خروج / تنقل)
 client.on('voiceStateUpdate', (oldState, newState) => {
   const memberName = `@${newState.member.user.username}`;
   if (!oldState.channelId && newState.channelId) {
-    addDashboardLog('badge-voice', 'دخول صوتي', `انضم العضو ${memberName} إلى الروم الصوتي #${newState.channel.name}`);
+    addLog('voice', 'دخول روم صوتي', `انضم العضو ${memberName} إلى الروم الصوتي #${newState.channel.name}`);
   } else if (oldState.channelId && !newState.channelId) {
-    addDashboardLog('badge-voice', 'خروج صوتي', `غادر العضو ${memberName} الروم الصوتي #${oldState.channel.name}`);
+    addLog('voice', 'خروج روم صوتي', `غادر العضو ${memberName} الروم الصوتي #${oldState.channel.name}`);
   } else if (oldState.channelId !== newState.channelId) {
-    addDashboardLog('badge-voice', 'تنقل صوتي', `انتقل العضو ${memberName} من #${oldState.channel.name} إلى #${newState.channel.name}`);
+    addLog('voice', 'تنقل بين الرومات الصوتية', `انتقل العضو ${memberName} من #${oldState.channel?.name || 'روم'} إلى #${newState.channel.name}`);
   }
 });
 
-client.on('guildBanAdd', ban => {
-  addDashboardLog('badge-ban', 'حظر عضو (Ban)', `تم حظر العضو @${ban.user.username} من السيرفر.`);
+// 4. مراقبة الرومات (إنشاء / حذف / تعديل)
+client.on('channelCreate', channel => {
+  const chName = channel.name ? `#${channel.name}` : 'روم';
+  const chType = channel.type === ChannelType.GuildText ? 'كتابي' : channel.type === ChannelType.GuildVoice ? 'صوتي' : 'كاتيجوري';
+  addLog('channels', 'إنشاء روم جديد', `تم إنشاء روم ${chType} جديد باسم: ${chName}`);
 });
 
-client.on('guildBanRemove', ban => {
-  addDashboardLog('badge-ban', 'فك حظر (Unban)', `تم فك الحظر عن العضو @${ban.user.username}`);
+client.on('channelDelete', channel => {
+  const chName = channel.name ? `#${channel.name}` : 'روم';
+  const chType = channel.type === ChannelType.GuildText ? 'كتابي' : channel.type === ChannelType.GuildVoice ? 'صوتي' : 'كاتيجوري';
+  addLog('channels', 'حذف روم', `تم حذف روم ${chType}: ${chName}`);
 });
 
+client.on('channelUpdate', (oldChannel, newChannel) => {
+  if (oldChannel.name !== newChannel.name) {
+    addLog('channels', 'تعديل روم', `تم تغيير اسم الروم من #${oldChannel.name} إلى #${newChannel.name}`);
+  }
+});
+
+// 5. مراقبة الأعضاء (انضمام / مغادرة)
 client.on('guildMemberAdd', member => {
-  addDashboardLog('badge-member', 'انضمام عضو', `العضو @${member.user.username} انضم إلى السيرفر.`);
+  addLog('members', 'انضمام عضو', `العضو @${member.user.username} انضم إلى السيرفر.`);
 });
 
 client.on('guildMemberRemove', member => {
-  addDashboardLog('badge-member', 'مغادرة عضو', `العضو @${member.user.username} غادر السيرفر.`);
+  addLog('members', 'مغادرة عضو', `العضو @${member.user.username} غادر السيرفر.`);
 });
 
+// 6. مراقبة الحظر (Ban / Unban)
+client.on('guildBanAdd', ban => {
+  addLog('bans', 'حظر عضو (Ban)', `تم حظر العضو @${ban.user.username} من السيرفر.`);
+});
+
+client.on('guildBanRemove', ban => {
+  addLog('bans', 'فك حظر (Unban)', `تم فك الحظر عن العضو @${ban.user.username}`);
+});
+
+// 7. تفاعلات التذاكر والأزرار
 client.on('interactionCreate', async interaction => {
   if (interaction.isStringSelectMenu() && interaction.customId === 'select_base_color') {
     const selectedKey = interaction.values[0];
@@ -926,7 +980,7 @@ client.on('interactionCreate', async interaction => {
         components: [new ActionRowBuilder().addComponents(actionMenu)] 
       });
 
-      addDashboardLog('badge-ticket', 'فتح تذكرة', `تم فتح تذكرة لون ${baseName} بواسطة @${interaction.user.username}`);
+      addLog('tickets', 'فتح تذكرة', `تم فتح تذكرة لون ${baseName} بواسطة @${interaction.user.username}`);
       await interaction.update({ content: `🎉 **تم قبول الطلب بنجاح!**\nتم فتح القناة الخاصة بك: ${ch}`, components: [] });
     }
 
@@ -1018,7 +1072,7 @@ client.on('interactionCreate', async interaction => {
       ViewChannel: true,
       SendMessages: true
     });
-    addDashboardLog('badge-ticket', 'إضافة عضو لتذكرة', `تم إضافة العضو <@${targetUserId}> إلى التذكرة #${interaction.channel.name}`);
+    addLog('tickets', 'إضافة عضو لتذكرة', `تم إضافة العضو <@${targetUserId}> إلى التذكرة #${interaction.channel.name}`);
     await interaction.reply({ content: `✅ **تمت إضافة العضو <@${targetUserId}> للتذكرة بنجاح!**` });
   }
 
@@ -1028,7 +1082,7 @@ client.on('interactionCreate', async interaction => {
 
     const { count } = await createTranscriptBuffer(interaction.channel, interaction.user);
 
-    addDashboardLog('badge-ticket', 'إغلاق تذكرة', `التذكرة #${interaction.channel.name} أُغلقت بواسطة @${interaction.user.username} | السبب: ${reason} | عدد الرسائل: ${count}`);
+    addLog('tickets', 'إغلاق تذكرة', `التذكرة #${interaction.channel.name} أُغلقت بواسطة @${interaction.user.username} | السبب: ${reason} | عدد الرسائل: ${count}`);
 
     setTimeout(() => {
       ticketsDataMap.delete(interaction.channel.id);
