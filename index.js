@@ -19,7 +19,6 @@ const {
 } = require('discord.js');
 const express = require('express');
 const session = require('express-session');
-const axios = require('axios');
 
 // ------------------- 1. بيانات قواعد الألوان الـ 17 -------------------
 let basesData = {
@@ -45,6 +44,7 @@ let basesData = {
 let serverSettings = {
   ticketCategoryId: '',
   supportRole: 'Staff Moderator 🛠️',
+  ownerRoleName: 'Owner',
   logChannel: 'void-logs',
   maxTickets: 1,
   autoMuteSpam: true,
@@ -54,7 +54,7 @@ let serverSettings = {
 
 const ticketsDataMap = new Map();
 
-// ------------------- 2. إعدادات السيرفر و Express -------------------
+// ------------------- 2. إعدادات Express -------------------
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -74,7 +74,6 @@ const DASHBOARD_PASSWORD = process.env.DASHBOARD_PASSWORD || 'VD122';
 const TOKEN = process.env.TOKEN;
 const REDIRECT_URI = `${BASE_URL}/api/auth/callback`;
 
-// ------------------- 3. تصميم واجهة اللوحة -------------------
 const renderUltimateLayout = (activeTab, content) => `
   <!DOCTYPE html>
   <html lang="ar" dir="rtl">
@@ -132,7 +131,6 @@ const renderUltimateLayout = (activeTab, content) => `
   </html>
 `;
 
-// ------------------- 4. مسارات المصادقة -------------------
 app.get('/login', (req, res) => {
   res.send(`
     <!DOCTYPE html>
@@ -174,7 +172,7 @@ app.post('/login/pass', (req, res) => {
   }
 });
 
-app.get('/api/auth/callback', async (req, res) => {
+app.get(['/auth/callback', '/api/auth/callback'], async (req, res) => {
   const code = req.query.code;
   if (!code) return res.redirect('/login');
   try {
@@ -185,16 +183,20 @@ app.get('/api/auth/callback', async (req, res) => {
     params.append('code', code);
     params.append('redirect_uri', REDIRECT_URI);
 
-    const tokenResponse = await axios.post('https://discord.com/api/oauth2/token', params, {
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': 'Mozilla/5.0' }
+    const tokenRes = await fetch('https://discord.com/api/oauth2/token', {
+      method: 'POST',
+      body: params,
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
     });
+    const tokenData = await tokenRes.json();
 
-    const userResponse = await axios.get('https://discord.com/api/users/@me', {
-      headers: { Authorization: `Bearer ${tokenResponse.data.access_token}`, 'User-Agent': 'Mozilla/5.0' }
+    const userRes = await fetch('https://discord.com/api/users/@me', {
+      headers: { Authorization: `Bearer ${tokenData.access_token}` }
     });
+    const userData = await userRes.json();
 
     req.session.authenticated = true;
-    req.session.user = userResponse.data;
+    req.session.user = userData;
     res.redirect('/');
   } catch (error) {
     res.send('<h2 style="color:red; text-align:center; font-family:sans-serif; margin-top:50px;">❌ فشل الربط مع ديسكورد.<br><a href="/login" style="color:#a78bfa;">إعادة المحاولة</a></h2>');
@@ -206,7 +208,6 @@ app.get('/logout', (req, res) => {
   res.redirect('/login');
 });
 
-// ------------------- 5. صفحة ألوان القواعد -------------------
 app.get('/', (req, res) => {
   if (!req.session.authenticated) return res.redirect('/login');
 
@@ -264,13 +265,12 @@ app.post('/save-colors', (req, res) => {
   res.redirect('/');
 });
 
-// ------------------- 6. صفحة التذاكر والسجلات -------------------
 app.get('/tickets', (req, res) => {
   if (!req.session.authenticated) return res.redirect('/login');
   const content = `
     <div class="glass-card">
       <h1 class="purple-gradient" style="margin: 0; font-size: 24px;">🎫 إعدادات نظام التذاكر والدعم</h1>
-      <p style="color: #94a3b8; margin-top: 5px;">تحديد كاتيجوري التذاكر ورتب الدعم.</p>
+      <p style="color: #94a3b8; margin-top: 5px;">تحديد كاتيجوري التذاكر ورتب الدعم والـ Owner.</p>
     </div>
     
     <form action="/save-tickets" method="POST">
@@ -278,8 +278,8 @@ app.get('/tickets', (req, res) => {
         <label>معرف كاتيجوري التذاكر (Category ID):</label>
         <input type="text" name="ticketCategoryId" value="${serverSettings.ticketCategoryId}" placeholder="مثال: 123456789012345678">
 
-        <label>اسم رتبة الدعم الفني العامة:</label>
-        <input type="text" name="supportRole" value="${serverSettings.supportRole}">
+        <label>اسم رتبة الـ Owner المسؤول عن باقي الخيارات:</label>
+        <input type="text" name="ownerRoleName" value="${serverSettings.ownerRoleName}" placeholder="Owner">
 
         <button type="submit" class="btn">💾 حفظ إعدادات التذاكر</button>
       </div>
@@ -291,7 +291,7 @@ app.get('/tickets', (req, res) => {
 app.post('/save-tickets', (req, res) => {
   if (!req.session.authenticated) return res.redirect('/login');
   serverSettings.ticketCategoryId = req.body.ticketCategoryId;
-  serverSettings.supportRole = req.body.supportRole;
+  if (req.body.ownerRoleName) serverSettings.ownerRoleName = req.body.ownerRoleName;
   res.redirect('/tickets');
 });
 
@@ -360,7 +360,7 @@ app.post('/send-panel', async (req, res) => {
 
 app.listen(PORT, () => console.log(`🌐 Dashboard Active on port ${PORT}`));
 
-// ------------------- 7. بوت ديسكورد ونظام التذاكر الاحترافي -------------------
+// ------------------- 7. بوت ديسكورد -------------------
 const client = new Client({
   intents: [
     I.Guilds, I.GuildMembers, I.GuildMessages, I.MessageContent,
@@ -402,18 +402,18 @@ async function createTranscriptBuffer(channel, closedByUser) {
   let transcriptContent = `==================================================\n`;
   transcriptContent += `         VOID COMMUNITY - TICKET TRANSCRIPT\n`;
   transcriptContent += `==================================================\n`;
-  transcriptContent += `📂 اسم التذكرة: ${channel.name}\n`;
-  transcriptContent += `👤 أغلقت بواسطة: ${closedByUser.username}\n`;
-  transcriptContent += `📅 تاريخ الأرشفة: ${new Date().toLocaleString('ar-SA')}\n`;
+  transcriptContent += `Ticket Name: ${channel.name}\n`;
+  transcriptContent += `Closed By: ${closedByUser.tag}\n`;
+  transcriptContent += `Archive Date: ${new Date().toUTCString()}\n`;
   transcriptContent += `==================================================\n\n`;
 
   sortedMessages.forEach(msg => {
-    const timeStr = msg.createdAt.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
+    const timeStr = msg.createdAt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
     let content = msg.content;
 
     if (msg.embeds.length > 0) {
       msg.embeds.forEach(e => {
-        if (e.title) content += `\n[عنوان القائمة: ${e.title}]`;
+        if (e.title) content += `\n[Embed Title: ${e.title}]`;
         if (e.description) content += `\n${e.description}`;
         if (e.fields) {
           e.fields.forEach(f => {
@@ -424,12 +424,12 @@ async function createTranscriptBuffer(channel, closedByUser) {
     }
 
     if (content.trim()) {
-      transcriptContent += `[${timeStr}] ${msg.author.username}:${content.trim()}\n`;
+      transcriptContent += `[${timeStr}] ${msg.author.tag}:${content.trim()}\n`;
     }
   });
 
   transcriptContent += `\n==================================================\n`;
-  transcriptContent += ` نهاية السجل - Void Community Bot\n`;
+  transcriptContent += ` End of Transcript - Void Community Bot\n`;
   transcriptContent += `==================================================`;
 
   return {
@@ -526,7 +526,7 @@ client.on('interactionCreate', async interaction => {
 
       const channelOptions = {
         name: channelName,
-        type: ChannelType.GuildText,
+        type: ChannelType.GuildType ?? ChannelType.GuildText,
         permissionOverwrites: permissionOverwrites
       };
 
@@ -579,10 +579,28 @@ client.on('interactionCreate', async interaction => {
     }
   }
 
+  // ------------------- فحص الصلاحيات الصارم بالرتب -------------------
   if (interaction.isStringSelectMenu() && interaction.customId === 'ticket_action_select') {
     const action = interaction.values[0];
+    const member = interaction.member;
+    const ticketData = ticketsDataMap.get(interaction.channel.id) || {};
+    const baseName = ticketData.baseName || '';
+
+    // التحقق الصارم من الرتب والأدمن
+    const isServerAdministrator = member.permissions.has(PermissionFlagsBits.Administrator);
+    const hasBaseRole = member.roles.cache.some(r => r.name.toLowerCase() === baseName.toLowerCase());
+    const hasOwnerRole = member.roles.cache.some(r => r.name.toLowerCase() === serverSettings.ownerRoleName.toLowerCase());
+
+    // منع أي عضو لا يملك رتبة القاعدة ولا Owner ولا أدمن من تنفيذ أي شيء
+    if (!hasBaseRole && !hasOwnerRole && !isServerAdministrator) {
+      return interaction.reply({ content: '❌ **عذراً، هذه القائمة مخصصة فقط لمسؤولي التذاكر وأصحاب الرتب!**', ephemeral: true });
+    }
 
     if (action === 'close_with_reason') {
+      if (!hasBaseRole && !hasOwnerRole && !isServerAdministrator) {
+        return interaction.reply({ content: '❌ **عذراً، هذا الخيار مخصص فقط لأصحاب رتبة القاعدة أو الـ Owner!**', ephemeral: true });
+      }
+
       const modal = new ModalBuilder()
         .setCustomId('modal_close_reason')
         .setTitle('Close Ticket with Reason');
@@ -595,44 +613,49 @@ client.on('interactionCreate', async interaction => {
         .setRequired(true);
 
       modal.addComponents(new ActionRowBuilder().addComponents(reasonInput));
-      await interaction.showModal(modal);
+      return await interaction.showModal(modal);
     }
 
-    if (action === 'add_user') {
-      await interaction.deferReply({ ephemeral: true });
-      const userSelect = new UserSelectMenuBuilder()
-        .setCustomId('select_user_to_add')
-        .setPlaceholder('اختر العضو المراد إضافته للتذكرة...')
-        .setMaxValues(1);
-
-      await interaction.editReply({
-        content: '👤 **اختر العضو الذي تريد إضافته إلى التذكرة:**',
-        components: [new ActionRowBuilder().addComponents(userSelect)]
-      });
-    }
-
-    if (action === 'pm_reminder') {
-      await interaction.deferReply({ ephemeral: true });
-      const ticketData = ticketsDataMap.get(interaction.channel.id);
-      const ownerId = ticketData ? ticketData.openedBy : null;
-      if (ownerId) {
-        try {
-          const ownerUser = await client.users.fetch(ownerId);
-          await ownerUser.send(`🔔 **تذكير:** بخصوص تذكرتك المفتوحة بـ Void Community في روم: ${interaction.channel}`);
-          await interaction.editReply({ content: '✅ **تم إرسال تذكير في الخاص لصاحب التذكرة بنجاح!**' });
-        } catch (e) {
-          await interaction.editReply({ content: '❌ **تعذر إرسال التذكير، الخاص مغلق لدى العضو.**' });
-        }
-      } else {
-        await interaction.editReply({ content: '❌ **لم يتم العثور على بيانات صاحب التذكرة.**' });
+    if (['add_user', 'pm_reminder', 'request_copy'].includes(action)) {
+      if (!hasOwnerRole && !isServerAdministrator) {
+        return interaction.reply({ content: '❌ **عذراً، هذه الخيارات مخصصة حصرياً لرتبة الـ Owner فقط!**', ephemeral: true });
       }
-    }
 
-    if (action === 'request_copy') {
-      await interaction.deferReply({ ephemeral: true });
-      const { buffer } = await createTranscriptBuffer(interaction.channel, interaction.user);
-      const attachment = new AttachmentBuilder(buffer, { name: `copy-${interaction.channel.name}.txt` });
-      await interaction.editReply({ content: '📄 **تفضل هذه نسخة كاملة من محادثات التذكرة:**', files: [attachment] });
+      if (action === 'add_user') {
+        await interaction.deferReply({ ephemeral: true });
+        const userSelect = new UserSelectMenuBuilder()
+          .setCustomId('select_user_to_add')
+          .setPlaceholder('اختر العضو المراد إضافته للتذكرة...')
+          .setMaxValues(1);
+
+        return await interaction.editReply({
+          content: '👤 **اختر العضو الذي تريد إضافته إلى التذكرة:**',
+          components: [new ActionRowBuilder().addComponents(userSelect)]
+        });
+      }
+
+      if (action === 'pm_reminder') {
+        await interaction.deferReply({ ephemeral: true });
+        const ownerId = ticketData.openedBy;
+        if (ownerId) {
+          try {
+            const ownerUser = await client.users.fetch(ownerId);
+            await ownerUser.send(`🔔 **تذكير:** بخصوص تذكرتك المفتوحة بـ Void Community في روم: ${interaction.channel}`);
+            return await interaction.editReply({ content: '✅ **تم إرسال تذكير في الخاص لصاحب التذكرة بنجاح!**' });
+          } catch (e) {
+            return await interaction.editReply({ content: '❌ **تعذر إرسال التذكير، الخاص مغلق لدى العضو.**' });
+          }
+        } else {
+          return await interaction.editReply({ content: '❌ **لم يتم العثور على بيانات صاحب التذكرة.**' });
+        }
+      }
+
+      if (action === 'request_copy') {
+        await interaction.deferReply({ ephemeral: true });
+        const { buffer } = await createTranscriptBuffer(interaction.channel, interaction.user);
+        const attachment = new AttachmentBuilder(buffer, { name: `copy-${interaction.channel.name}.txt` });
+        return await interaction.editReply({ content: '📄 **تفضل هذه نسخة كاملة من محادثات التذكرة:**', files: [attachment] });
+      }
     }
   }
 
@@ -661,7 +684,6 @@ client.on('interactionCreate', async interaction => {
     const closedEmbed = new EmbedBuilder()
       .setAuthor({ name: interaction.guild.name, iconURL: interaction.guild.iconURL() })
       .setTitle('Ticket Closed 🔒')
-      .setThumbnail('https://cdn-icons-png.flaticon.com/512/2991/2991106.png')
       .addFields(
         { name: 'Opened By', value: openedByMention, inline: true },
         { name: 'Claimed By', value: claimedByText, inline: true },
