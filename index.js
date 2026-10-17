@@ -20,25 +20,25 @@ const {
 const express = require('express');
 const session = require('express-session');
 
-// ------------------- 1. بيانات قواعد الألوان الـ 17 -------------------
+// ------------------- 1. بيانات قواعد الألوان الـ 17 الديناميكية -------------------
 let basesData = {
-  silver: { name: 'Silver Base', emoji: '⚪', money: 'اذا ناقصك 15 وتحت المبلغ ( 20 ريال ) اذا فوق 15 ( 40 ريال )', items: '(١٠ وتحت كروماندو كاندي وفوق باستثناء البارتي، ١٠٠ وفوق دب كاندي وفوق)' },
-  gold: { name: 'Gold Base', emoji: '🟡', money: 'اذا ناقصك 15 وتحت المبلغ ( 20 ريال ) اذا فوق 15 ( 40 ريال )', items: '(١٠ وتحت كروماندو كاندي وفوق باستثناء البارتي، ١٠٠ وفوق دب كاندي وفوق)' },
-  crystal: { name: 'Crystal Base', emoji: '💎', money: 'اذا ناقصك 15 وتحت المبلغ ( 25 ريال ) اذا فوق 15 ( 50 ريال )', items: 'شروط الأغراض المحددة مسبقاً' },
-  bloodmoon: { name: 'BloodMoon Base', emoji: '🌑', money: 'اذا ناقصك 15 وتحت المبلغ ( 30 ريال ) اذا فوق 15 ( 60 ريال )', items: 'شروط الأغراض المحددة مسبقاً' },
-  rainbow: { name: 'Rainbow Base GoUp', emoji: '🌈', money: 'اذا ناقصك 15 وتحت المبلغ ( 30 ريال ) اذا فوق 15 ( 60 ريال )', items: 'شروط الأغراض المحددة مسبقاً' },
-  candy: { name: 'Candy Base GoUp', emoji: '🍬', money: 'اذا ناقصك 15 وتحت المبلغ ( 30 ريال ) اذا فوق 15 ( 60 ريال )', items: 'شروط الأغراض المحددة مسبقاً' },
-  cyber: { name: 'Cyber Base GoUp', emoji: '🤖', money: 'اذا ناقصك 15 وتحت المبلغ ( 30 ريال ) اذا فوق 15 ( 60 ريال )', items: 'شروط الأغراض المحددة مسبقاً' },
-  party: { name: 'Party Base GoUp', emoji: '🎉', money: 'اذا ناقصك 15 وتحت المبلغ ( 30 ريال ) اذا فوق 15 ( 60 ريال )', items: 'شروط الأغراض المحددة مسبقاً' },
-  bw: { name: 'Black & White Base GoUp', emoji: '⬛', money: 'اذا ناقصك 15 وتحت المبلغ ( 30 ريال ) اذا فوق 15 ( 60 ريال )', items: 'شروط الأغراض المحددة مسبقاً' },
-  aqua: { name: 'Aqua Base GoUp', emoji: '💧', money: 'اذا ناقصك 15 وتحت المبلغ ( 30 ريال ) اذا فوق 15 ( 60 ريال )', items: 'شروط الأغراض المحددة مسبقاً' },
-  lava: { name: 'Lava Base GoUp', emoji: '🌋', money: 'اذا ناقصك 15 وتحت المبلغ ( 30 ريال ) اذا فوق 15 ( 60 ريال )', items: 'شروط الأغراض المحددة مسبقاً' },
-  football: { name: 'Football Base GoUp', emoji: '⚽', money: 'اذا ناقصك 15 وتحت المبلغ ( 30 ريال ) اذا فوق 15 ( 60 ريال )', items: 'شروط الأغراض المحددة مسبقاً' },
-  summer: { name: 'Summer Base GoUp', emoji: '☀️', money: 'اذا ناقصك 15 وتحت المبلغ ( 30 ريال ) اذا فوق 15 ( 60 ريال )', items: 'شروط الأغراض المحددة مسبقاً' },
-  dreamy: { name: 'Dreamy Base GoUp', emoji: '☁️', money: 'اذا ناقصك 15 وتحت المبلغ ( 30 ريال ) اذا فوق 15 ( 60 ريال )', items: 'شروط الأغراض المحددة مسبقاً' },
-  galaxy: { name: 'Galaxy Base', emoji: '🌌', money: 'اذا ناقصك 15 وتحت المبلغ ( 30 ريال ) اذا فوق 15 ( 60 ريال )', items: 'شروط الأغراض المحددة مسبقاً' },
-  radioactive: { name: 'Radioactive Base', emoji: '☢️', money: 'اذا ناقصك 15 وتحت المبلغ ( 30 ريال ) اذا فوق 15 ( 60 ريال )', items: 'شروط الأغراض المحددة مسبقاً' },
-  halloween: { name: 'Halloween Base', emoji: '🎃', money: 'اذا ناقصك 15 وتحت المبلغ ( 30 ريال ) اذا فوق 15 ( 60 ريال )', items: 'شروط الأغراض المحددة مسبقاً' }
+  silver: { name: 'Silver Base', emoji: '⚪', threshold: 15, lowPrice: '20 ريال', highPrice: '40 ريال', items: '(١٠ وتحت كروماندو كاندي وفوق باستثناء البارتي، ١٠٠ وفوق دب كاندي وفوق)' },
+  gold: { name: 'Gold Base', emoji: '🟡', threshold: 15, lowPrice: '20 ريال', highPrice: '40 ريال', items: '(١٠ وتحت كروماندو كاندي وفوق باستثناء البارتي، ١٠٠ وفوق دب كاندي وفوق)' },
+  crystal: { name: 'Crystal Base', emoji: '💎', threshold: 15, lowPrice: '25 ريال', highPrice: '50 ريال', items: 'شروط الأغراض المحددة مسبقاً' },
+  bloodmoon: { name: 'BloodMoon Base', emoji: '🌑', threshold: 15, lowPrice: '30 ريال', highPrice: '60 ريال', items: 'شروط الأغراض المحددة مسبقاً' },
+  rainbow: { name: 'Rainbow Base GoUp', emoji: '🌈', threshold: 15, lowPrice: '30 ريال', highPrice: '60 ريال', items: 'شروط الأغراض المحددة مسبقاً' },
+  candy: { name: 'Candy Base GoUp', emoji: '🍬', threshold: 15, lowPrice: '30 ريال', highPrice: '60 ريال', items: 'شروط الأغراض المحددة مسبقاً' },
+  cyber: { name: 'Cyber Base GoUp', emoji: '🤖', threshold: 15, lowPrice: '30 ريال', highPrice: '60 ريال', items: 'شروط الأغراض المحددة مسبقاً' },
+  party: { name: 'Party Base GoUp', emoji: '🎉', threshold: 15, lowPrice: '30 ريال', highPrice: '60 ريال', items: 'شروط الأغراض المحددة مسبقاً' },
+  bw: { name: 'Black & White Base GoUp', emoji: '⬛', threshold: 15, lowPrice: '30 ريال', highPrice: '60 ريال', items: 'شروط الأغراض المحددة مسبقاً' },
+  aqua: { name: 'Aqua Base GoUp', emoji: '💧', threshold: 15, lowPrice: '30 ريال', highPrice: '60 ريال', items: 'شروط الأغراض المحددة مسبقاً' },
+  lava: { name: 'Lava Base GoUp', emoji: '🌋', threshold: 15, lowPrice: '30 ريال', highPrice: '60 ريال', items: 'شروط الأغراض المحددة مسبقاً' },
+  football: { name: 'Football Base GoUp', emoji: '⚽', threshold: 15, lowPrice: '30 ريال', highPrice: '60 ريال', items: 'شروط الأغراض المحددة مسبقاً' },
+  summer: { name: 'Summer Base GoUp', emoji: '☀️', threshold: 15, lowPrice: '30 ريال', highPrice: '60 ريال', items: 'شروط الأغراض المحددة مسبقاً' },
+  dreamy: { name: 'Dreamy Base GoUp', emoji: '☁️', threshold: 15, lowPrice: '30 ريال', highPrice: '60 ريال', items: 'شروط الأغراض المحددة مسبقاً' },
+  galaxy: { name: 'Galaxy Base', emoji: '🌌', threshold: 15, lowPrice: '30 ريال', highPrice: '60 ريال', items: 'شروط الأغراض المحددة مسبقاً' },
+  radioactive: { name: 'Radioactive Base', emoji: '☢️', threshold: 15, lowPrice: '30 ريال', highPrice: '60 ريال', items: 'شروط الأغراض المحددة مسبقاً' },
+  halloween: { name: 'Halloween Base', emoji: '🎃', threshold: 15, lowPrice: '30 ريال', highPrice: '60 ريال', items: 'شروط الأغراض المحددة مسبقاً' }
 };
 
 let serverSettings = {
@@ -61,7 +61,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'void_nextgen_revolution_2026',
+  secret: process.env.SESSION_SECRET || 'void_dynamic_pricing_2026',
   resave: false,
   saveUninitialized: false,
   cookie: { maxAge: 3600000 * 24 }
@@ -75,7 +75,7 @@ const DASHBOARD_PASSWORD = process.env.DASHBOARD_PASSWORD || 'VD122';
 const TOKEN = process.env.TOKEN;
 const REDIRECT_URI = `${BASE_URL}/api/auth/callback`;
 
-// تصميم التصميم الجديد المذهل (Next-Gen Dark Cyber Glass UI)
+// تصميم اللوحة العصري والمريح
 const renderUltimateLayout = (activeTab, content) => {
   let memberCount = 0;
   let botIconUrl = 'https://cdn.discordapp.com/embed/avatars/0.png';
@@ -95,192 +95,67 @@ const renderUltimateLayout = (activeTab, content) => {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Void • Command Center</title>
     <style>
-      @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Cairo:wght@400;600;700;800;900&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap');
+      * { box-sizing: border-box; font-family: 'Cairo', sans-serif; transition: all 0.2s ease; }
+      body { background: #08090d; color: #f3f4f6; margin: 0; padding: 0; display: flex; min-height: 100vh; overflow-x: hidden; }
       
-      * { box-sizing: border-box; font-family: 'Cairo', 'Plus Jakarta Sans', sans-serif; transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); }
-      
-      body {
-        background: #090a0f;
-        color: #f3f4f6;
-        margin: 0;
-        padding: 0;
-        display: flex;
-        min-height: 100vh;
-        overflow-x: hidden;
-      }
-      
-      /* خلفية سايبر المستقبلية ناعمة وشبكية احترافية */
       body::before {
         content: ''; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-        background: 
-          radial-gradient(circle at 15% 15%, rgba(99, 102, 241, 0.08), transparent 45%),
-          radial-gradient(circle at 85% 85%, rgba(168, 85, 247, 0.08), transparent 45%),
-          linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
-        background-size: 100% 100%, 100% 100%, 40px 40px, 40px 40px;
+        background: radial-gradient(circle at 15% 15%, rgba(99, 102, 241, 0.08), transparent 45%),
+                    radial-gradient(circle at 85% 85%, rgba(168, 85, 247, 0.08), transparent 45%);
         z-index: 1; pointer-events: none;
       }
 
-      /* القائمة الجانبية المودرن النحيفة */
       .sidebar {
-        width: 250px;
-        background: rgba(13, 15, 23, 0.85);
-        backdrop-filter: blur(30px);
-        border-left: 1px solid rgba(255, 255, 255, 0.08);
-        padding: 24px 16px;
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-        position: fixed;
-        right: 0; top: 0; bottom: 0;
-        z-index: 100;
-        box-shadow: -10px 0 40px rgba(0,0,0,0.6);
+        width: 250px; background: rgba(13, 15, 23, 0.88); backdrop-filter: blur(25px);
+        border-left: 1px solid rgba(255, 255, 255, 0.08); padding: 22px 16px;
+        display: flex; flex-direction: column; justify-content: space-between;
+        position: fixed; right: 0; top: 0; bottom: 0; z-index: 100;
       }
 
-      .brand-box {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding-bottom: 20px;
-        margin-bottom: 20px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-      }
+      .brand-box { display: flex; align-items: center; gap: 12px; padding-bottom: 18px; margin-bottom: 18px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
+      .brand-avatar { width: 42px; height: 42px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.15); }
+      .brand-title { font-size: 15px; font-weight: 900; background: linear-gradient(135deg, #ffffff, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+      .brand-sub { font-size: 11px; color: #6b7280; }
 
-      .brand-avatar {
-        width: 44px;
-        height: 44px;
-        border-radius: 12px;
-        box-shadow: 0 0 20px rgba(99, 102, 241, 0.35);
-        border: 1px solid rgba(255, 255, 255, 0.15);
-      }
+      .nav-group { margin-bottom: 18px; }
+      .nav-label { font-size: 10px; color: #6366f1; font-weight: 800; text-transform: uppercase; margin-bottom: 8px; padding-right: 8px; letter-spacing: 1px; }
+      .nav-item { display: flex; align-items: center; justify-content: space-between; padding: 9px 13px; border-radius: 10px; color: #9ca3af; text-decoration: none; font-weight: 600; font-size: 13px; margin-bottom: 4px; }
+      .nav-item:hover { background: rgba(255, 255, 255, 0.05); color: #f3f4f6; }
+      .nav-item.active { background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(168, 85, 247, 0.15)); color: #ffffff; border: 1px solid rgba(99, 102, 241, 0.4); }
 
-      .brand-title {
-        font-size: 16px;
-        font-weight: 900;
-        background: linear-gradient(135deg, #ffffff, #a855f7);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        letter-spacing: 0.5px;
-      }
+      .badge-live { background: rgba(16, 185, 129, 0.15); color: #34d399; padding: 2px 8px; border-radius: 20px; font-size: 10px; border: 1px solid rgba(16, 185, 129, 0.3); font-weight: 800; }
 
-      .brand-sub { font-size: 11px; color: #6b7280; font-weight: 600; }
+      .main-content { margin-right: 250px; flex: 1; padding: 28px 36px; max-width: 1350px; position: relative; z-index: 10; }
       
-      .nav-group { margin-bottom: 20px; }
-      .nav-label { font-size: 10px; color: #6366f1; font-weight: 800; text-transform: uppercase; margin-bottom: 10px; padding-right: 8px; letter-spacing: 1.2px; }
-      
-      .nav-item {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 10px 14px;
-        border-radius: 10px;
-        color: #9ca3af;
-        text-decoration: none;
-        font-weight: 600;
-        font-size: 13px;
-        margin-bottom: 4px;
-        border: 1px solid transparent;
-      }
+      .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 22px; }
+      .stat-card { background: rgba(17, 20, 31, 0.65); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.07); padding: 16px 18px; border-radius: 14px; display: flex; justify-content: space-between; align-items: center; }
+      .stat-num { font-size: 22px; font-weight: 800; color: #ffffff; }
+      .stat-title { font-size: 12px; color: #9ca3af; font-weight: 600; }
 
-      .nav-item:hover {
-        background: rgba(255, 255, 255, 0.04);
-        color: #f3f4f6;
-      }
-
-      .nav-item.active {
-        background: linear-gradient(135deg, rgba(99, 102, 241, 0.18), rgba(168, 85, 247, 0.12));
-        color: #ffffff;
-        border: 1px solid rgba(99, 102, 241, 0.4);
-        box-shadow: 0 0 15px rgba(99, 102, 241, 0.15);
-      }
-
-      .badge-live {
-        background: rgba(16, 185, 129, 0.15);
-        color: #34d399;
-        padding: 2px 8px;
-        border-radius: 20px;
-        font-size: 10px;
-        border: 1px solid rgba(16, 185, 129, 0.3);
-        font-weight: 800;
-      }
-
-      .main-content { margin-right: 250px; flex: 1; padding: 32px 40px; max-width: 1350px; position: relative; z-index: 10; }
-      
-      /* كروت الإحصائيات العلوية بتصميم مدمج وأنيق */
-      .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
-      .stat-card {
-        background: rgba(17, 20, 31, 0.6);
-        backdrop-filter: blur(20px);
-        border: 1px solid rgba(255, 255, 255, 0.06);
-        padding: 18px 20px;
-        border-radius: 14px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-      }
-      .stat-card:hover { border-color: rgba(99, 102, 241, 0.3); transform: translateY(-2px); }
-      .stat-num { font-size: 24px; font-weight: 800; color: #ffffff; letter-spacing: -0.5px; }
-      .stat-title { font-size: 12px; color: #9ca3af; font-weight: 600; margin-bottom: 2px; }
-
-      .glass-card {
-        background: rgba(17, 20, 31, 0.55);
-        backdrop-filter: blur(25px);
-        border: 1px solid rgba(255, 255, 255, 0.07);
-        border-radius: 16px;
-        padding: 24px 28px;
-        margin-bottom: 20px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-      }
+      .glass-card { background: rgba(17, 20, 31, 0.6); backdrop-filter: blur(25px); border: 1px solid rgba(255, 255, 255, 0.07); border-radius: 16px; padding: 22px 26px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
       
       h1, h2, h3 { color: #fff; margin-top: 0; font-weight: 800; }
       .purple-gradient { background: linear-gradient(135deg, #ffffff, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
       
-      input, textarea, select {
-        width: 100%;
-        padding: 11px 15px;
-        border-radius: 10px;
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        background: rgba(10, 12, 18, 0.8);
-        color: #f3f4f6;
-        outline: none;
-        margin-top: 8px;
-        font-size: 13px;
-      }
-      input:focus, textarea:focus, select:focus { border-color: #6366f1; box-shadow: 0 0 15px rgba(99, 102, 241, 0.25); background: rgba(13, 16, 25, 0.95); }
+      .grid-inputs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+      input, textarea, select { width: 100%; padding: 10px 14px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.08); background: rgba(10, 12, 18, 0.85); color: #f3f4f6; outline: none; margin-top: 6px; font-size: 13px; }
+      input:focus, textarea:focus, select:focus { border-color: #6366f1; box-shadow: 0 0 15px rgba(99, 102, 241, 0.25); }
       select option { background: #0f1118; color: #fff; }
-      label { font-size: 12px; font-weight: 700; color: #d1d5db; display: block; margin-top: 14px; }
+      label { font-size: 12px; font-weight: 700; color: #d1d5db; display: block; margin-top: 10px; }
       
-      .btn {
-        background: linear-gradient(135deg, #4f46e5, #7c3aed);
-        color: #fff;
-        border: none;
-        padding: 11px 22px;
-        border-radius: 10px;
-        font-weight: 700;
-        cursor: pointer;
-        width: 100%;
-        box-shadow: 0 4px 15px rgba(79, 70, 229, 0.3);
-        margin-top: 18px;
-        font-size: 13px;
-        text-align: center;
-        text-decoration: none;
-        display: inline-block;
-      }
-      .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(79, 70, 229, 0.5); filter: brightness(1.1); }
-      
-      /* جدول السجلات الجديد عالي الدقة والمودرن */
+      .btn { background: linear-gradient(135deg, #4f46e5, #7c3aed); color: #fff; border: none; padding: 11px 22px; border-radius: 10px; font-weight: 700; cursor: pointer; width: 100%; box-shadow: 0 4px 15px rgba(79, 70, 229, 0.3); margin-top: 16px; font-size: 13px; text-align: center; text-decoration: none; display: inline-block; }
+      .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(79, 70, 229, 0.5); }
+
       .logs-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
       .logs-table th, .logs-table td { padding: 12px 16px; text-align: right; border-bottom: 1px solid rgba(255, 255, 255, 0.05); font-size: 13px; }
-      .logs-table th { color: #9ca3af; font-weight: 700; background: rgba(255, 255, 255, 0.02); font-size: 12px; }
-      .logs-table tr:hover { background: rgba(255, 255, 255, 0.02); }
+      .logs-table th { color: #9ca3af; font-weight: 700; background: rgba(255, 255, 255, 0.02); }
       .log-badge { padding: 3px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; display: inline-block; }
       
       .badge-role { background: rgba(168, 85, 247, 0.12); color: #d8b4fe; border: 1px solid rgba(168, 85, 247, 0.25); }
       .badge-msg { background: rgba(245, 158, 11, 0.12); color: #fcd34d; border: 1px solid rgba(245, 158, 11, 0.25); }
       .badge-voice { background: rgba(59, 130, 246, 0.12); color: #93c5fd; border: 1px solid rgba(59, 130, 246, 0.25); }
       .badge-ticket { background: rgba(16, 185, 129, 0.12); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.25); }
-      .badge-ban { background: rgba(239, 68, 68, 0.12); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.25); }
-      .badge-member { background: rgba(14, 165, 233, 0.12); color: #7dd3fc; border: 1px solid rgba(14, 165, 233, 0.25); }
     </style>
   </head>
   <body>
@@ -290,7 +165,7 @@ const renderUltimateLayout = (activeTab, content) => {
           <img src="${botIconUrl}" class="brand-avatar" alt="Logo">
           <div>
             <div class="brand-title">VOID BOT</div>
-            <div class="brand-sub">Community Dashboard</div>
+            <div class="brand-sub">Community Center</div>
           </div>
         </div>
         <div class="nav-group">
@@ -305,37 +180,25 @@ const renderUltimateLayout = (activeTab, content) => {
           <a href="/security" class="nav-item ${activeTab === 'security' ? 'active' : ''}"><span>🛡️ درع الحماية</span></a>
         </div>
       </div>
-      <a href="/logout" class="btn" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.25); color: #fca5a5; margin-top: 0; font-size: 12px; padding: 8px; box-shadow: none;">🚪 خروج</a>
+      <a href="/logout" class="btn" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.25); color: #fca5a5; font-size: 12px; padding: 8px;">🚪 تسجيل الخروج</a>
     </div>
 
     <div class="main-content">
       <div class="stats-grid">
         <div class="stat-card">
-          <div>
-            <div class="stat-title">الأعضاء</div>
-            <div class="stat-num">${memberCount}</div>
-          </div>
+          <div><div class="stat-title">الأعضاء</div><div class="stat-num">${memberCount}</div></div>
           <div style="font-size:20px;">👥</div>
         </div>
         <div class="stat-card">
-          <div>
-            <div class="stat-title">القواعد</div>
-            <div class="stat-num">17</div>
-          </div>
+          <div><div class="stat-title">القواعد</div><div class="stat-num">17</div></div>
           <div style="font-size:20px;">🎨</div>
         </div>
         <div class="stat-card">
-          <div>
-            <div class="stat-title">تذاكر نشطة</div>
-            <div class="stat-num">${ticketsDataMap.size}</div>
-          </div>
+          <div><div class="stat-title">تذاكر نشطة</div><div class="stat-num">${ticketsDataMap.size}</div></div>
           <div style="font-size:20px;">🎫</div>
         </div>
         <div class="stat-card">
-          <div>
-            <div class="stat-title">سجلات مسجلة</div>
-            <div class="stat-num">${dashboardLogs.length}</div>
-          </div>
+          <div><div class="stat-title">سجلات مسجلة</div><div class="stat-num">${dashboardLogs.length}</div></div>
           <div style="font-size:20px;">📜</div>
         </div>
       </div>
@@ -346,7 +209,6 @@ const renderUltimateLayout = (activeTab, content) => {
   `;
 };
 
-// واجهة الدخول الجديدة الاحترافية المذهلة
 app.get('/login', (req, res) => {
   let botIconUrl = 'https://cdn.discordapp.com/embed/avatars/0.png';
   try {
@@ -363,82 +225,21 @@ app.get('/login', (req, res) => {
       <title>Void • Admin Portal</title>
       <style>
         @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800&display=swap');
-        body {
-          background: #090a0f;
-          color: #fff;
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          height: 100vh;
-          margin: 0;
-          font-family: 'Cairo', sans-serif;
-        }
-
-        body::before {
-          content: ''; position: fixed; width: 100%; height: 100%;
-          background: radial-gradient(circle at center, rgba(99, 102, 241, 0.12), transparent 60%);
-          z-index: 1; pointer-events: none;
-        }
-
-        .login-card {
-          background: rgba(15, 18, 28, 0.85);
-          backdrop-filter: blur(40px);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          padding: 38px 32px;
-          border-radius: 20px;
-          text-align: center;
-          width: 350px;
-          box-shadow: 0 20px 50px rgba(0,0,0,0.8);
-          position: relative;
-          z-index: 10;
-        }
-
-        .brand-avatar {
-          width: 75px;
-          height: 75px;
-          border-radius: 18px;
-          box-shadow: 0 0 30px rgba(99, 102, 241, 0.4);
-          margin-bottom: 14px;
-          border: 1px solid rgba(255, 255, 255, 0.15);
-        }
-
-        input {
-          width: 100%;
-          padding: 11px 14px;
-          border-radius: 10px;
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          background: rgba(8, 10, 16, 0.9);
-          color: #fff;
-          text-align: center;
-          font-size: 13px;
-          margin-bottom: 16px;
-          outline: none;
-        }
-        input:focus { border-color: #6366f1; box-shadow: 0 0 15px rgba(99, 102, 241, 0.3); }
-
-        button {
-          background: linear-gradient(135deg, #4f46e5, #7c3aed);
-          color: #fff;
-          border: none;
-          padding: 11px;
-          border-radius: 10px;
-          width: 100%;
-          font-weight: 700;
-          font-size: 13px;
-          cursor: pointer;
-          box-shadow: 0 4px 15px rgba(79, 70, 229, 0.3);
-        }
-        button:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(79, 70, 229, 0.5); }
+        body { background: #08090d; color: #fff; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: 'Cairo', sans-serif; }
+        .login-card { background: rgba(15, 18, 28, 0.85); backdrop-filter: blur(40px); border: 1px solid rgba(255, 255, 255, 0.1); padding: 35px 30px; border-radius: 20px; text-align: center; width: 340px; box-shadow: 0 20px 50px rgba(0,0,0,0.8); }
+        .brand-avatar { width: 70px; height: 70px; border-radius: 16px; margin-bottom: 12px; border: 1px solid rgba(255, 255, 255, 0.15); }
+        input { width: 100%; padding: 11px 14px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(8, 10, 16, 0.9); color: #fff; text-align: center; font-size: 13px; margin-bottom: 16px; outline: none; }
+        button { background: linear-gradient(135deg, #4f46e5, #7c3aed); color: #fff; border: none; padding: 11px; border-radius: 10px; width: 100%; font-weight: 700; font-size: 13px; cursor: pointer; }
       </style>
     </head>
     <body>
       <div class="login-card">
         <img src="${botIconUrl}" class="brand-avatar" alt="Server Logo">
         <h1 style="font-size: 20px; margin-bottom: 4px;" class="purple-gradient">VOID COMMUNITY</h1>
-        <p style="color: #9ca3af; font-size: 12px; margin-bottom: 20px;">تسجيل الدخول إلى لوحة التحكم الإدارية</p>
+        <p style="color: #9ca3af; font-size: 12px; margin-bottom: 20px;">تسجيل الدخول للوحة التحكم</p>
         <form action="/login/pass" method="POST">
           <input type="password" name="password" placeholder="كلمة المرور" required autofocus>
-          <button type="submit">دخول ونقل لديسكورد</button>
+          <button type="submit">دخول للوحة</button>
         </form>
       </div>
     </body>
@@ -507,14 +308,14 @@ app.get('/', (req, res) => {
   const content = `
     <div class="glass-card" style="display: flex; justify-content: space-between; align-items: center;">
       <div>
-        <h1 class="purple-gradient" style="margin: 0; font-size: 18px;">🎨 أسعار وشروط القواعد (17 قاعدة)</h1>
-        <p style="color: #9ca3af; margin: 4px 0 0 0; font-size: 12px;">أهلاً بك، ${req.session.user?.username || 'المسؤول'} 👋 | تحديث ونشر اللوحة في القنوات.</p>
+        <h1 class="purple-gradient" style="margin: 0; font-size: 18px;">🎨 تسعير وشروط القواعد الديناميكية (17 قاعدة)</h1>
+        <p style="color: #9ca3af; margin: 4px 0 0 0; font-size: 12px;">مرحباً، ${req.session.user?.username || 'المسؤول'} 👋 | يمكنك تحكم الحدود والأسعار لكل قاعدة تفصيلياً.</p>
       </div>
-      <span style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); padding: 5px 12px; border-radius: 20px; font-weight: 700; font-size: 11px;">🟢 مزامن ونشط</span>
+      <span style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); padding: 5px 12px; border-radius: 20px; font-weight: 700; font-size: 11px;">🟢 التسعير التلقائي نشط</span>
     </div>
 
     <div class="glass-card">
-      <h2 style="font-size: 15px;" class="purple-gradient">📢 نشر لوحة الألوان إلى ديسكورد</h2>
+      <h2 style="font-size: 15px;" class="purple-gradient">📢 إرسال لوحة الألوان إلى ديسكورد</h2>
       <form action="/send-panel" method="POST">
         <label>اختر القناة المخصصة:</label>
         <select name="channel_id" required>${channelOptionsHTML}</select>
@@ -523,17 +324,31 @@ app.get('/', (req, res) => {
     </div>
 
     <form action="/save-colors" method="POST">
-      <h2 style="font-size: 15px; margin-bottom: 12px;" class="purple-gradient">⚡ تعديل أسعار وشروط الـ 17 قاعدة</h2>
+      <h2 style="font-size: 15px; margin-bottom: 12px;" class="purple-gradient">⚡ إعدادات الأسعار الحسابية لكل قاعدة</h2>
       ${Object.keys(basesData).map(key => `
-        <div class="glass-card" style="padding: 16px;">
-          <h3 style="margin: 0 0 8px 0; color: #a855f7; font-size: 14px;">${basesData[key].emoji}${basesData[key].name}</h3>
-          <label>💰 المقابل المادي:</label>
-          <textarea name="${key}_money" rows="2">${basesData[key].money}</textarea>
+        <div class="glass-card" style="padding: 18px;">
+          <h3 style="margin: 0 0 12px 0; color: #a855f7; font-size: 15px;">${basesData[key].emoji}${basesData[key].name}</h3>
+          
+          <div class="grid-inputs">
+            <div>
+              <label>الحد الفاصل للنواقص (Limit):</label>
+              <input type="number" name="${key}_threshold" value="${basesData[key].threshold}" required>
+            </div>
+            <div>
+              <label>سعر المبالغ العادية (تحت الحد):</label>
+              <input type="text" name="${key}_lowPrice" value="${basesData[key].lowPrice}" required>
+            </div>
+            <div>
+              <label>سعر المبالغ العالية (فوق الحد):</label>
+              <input type="text" name="${key}_highPrice" value="${basesData[key].highPrice}" required>
+            </div>
+          </div>
+
           <label>🎁 المقابل بالأغراض:</label>
           <textarea name="${key}_items" rows="2">${basesData[key].items}</textarea>
         </div>
       `).join('')}
-      <button type="submit" class="btn" style="position: sticky; bottom: 20px; z-index: 10;">💾 حفظ كافة التعديلات والتحديث الفوري</button>
+      <button type="submit" class="btn" style="position: sticky; bottom: 20px; z-index: 10;">💾 حفظ كافة التعديلات والتسعير</button>
     </form>
   `;
 
@@ -543,10 +358,12 @@ app.get('/', (req, res) => {
 app.post('/save-colors', (req, res) => {
   if (!req.session.authenticated) return res.redirect('/login');
   Object.keys(basesData).forEach(key => {
-    if (req.body[`${key}_money`]) basesData[key].money = req.body[`${key}_money`];
+    if (req.body[`${key}_threshold`]) basesData[key].threshold = Number(req.body[`${key}_threshold`]);
+    if (req.body[`${key}_lowPrice`]) basesData[key].lowPrice = req.body[`${key}_lowPrice`];
+    if (req.body[`${key}_highPrice`]) basesData[key].highPrice = req.body[`${key}_highPrice`];
     if (req.body[`${key}_items`]) basesData[key].items = req.body[`${key}_items`];
   });
-  addDashboardLog('badge-role', 'تحديث القواعد', `تم تحديث شروط وأسعار القواعد بواسطة @${req.session.user?.username}`);
+  addDashboardLog('badge-role', 'تحديث القواعد', `تم تحديث حدود وأسعار القواعد بواسطة @${req.session.user?.username}`);
   res.redirect('/');
 });
 
@@ -728,7 +545,7 @@ app.post('/send-panel', async (req, res) => {
 
 app.listen(PORT, () => console.log(`🌐 Dashboard Active on port ${PORT}`));
 
-// ------------------- 7. بوت ديسكورد والمراقبة الشاملة -------------------
+// ------------------- 7. بوت ديسكورد وحساب المقابل الديناميكي -------------------
 const client = new Client({
   intents: [
     I.Guilds, I.GuildMembers, I.GuildMessages, I.MessageContent,
@@ -790,7 +607,7 @@ client.once('ready', () => {
   addDashboardLog('badge-role', 'تشغيل البوت', `تم تشغيل البوت بنجاح باسم ${client.user.tag}`);
 });
 
-// سجلات الأحداث المباشرة
+// سجلات ديسكورد المباشرة
 client.on('guildMemberUpdate', (oldMember, newMember) => {
   const addedRoles = newMember.roles.cache.filter(role => !oldMember.roles.cache.has(role.id));
   const removedRoles = oldMember.roles.cache.filter(role => !newMember.roles.cache.has(role.id));
@@ -846,7 +663,7 @@ client.on('guildMemberRemove', member => {
   addDashboardLog('badge-member', 'مغادرة عضو', `العضو @${member.user.username} غادر السيرفر.`);
 });
 
-// التفاعلات والتذاكر
+// التفاعلات والتذاكر وحساب المقابل تلقائياً
 client.on('interactionCreate', async interaction => {
   if (interaction.isStringSelectMenu() && interaction.customId === 'select_base_color') {
     const selectedKey = interaction.values[0];
@@ -860,7 +677,7 @@ client.on('interactionCreate', async interaction => {
       .setCustomId('guarantee_val').setLabel('اكتب الضمان حقك').setPlaceholder('اكتب الضمان').setStyle(TextInputStyle.Short).setRequired(true);
 
     const missingInput = new TextInputBuilder()
-      .setCustomId('missing_val').setLabel('اكتب عدد نواقصك').setPlaceholder('مثال: 5').setStyle(TextInputStyle.Short).setRequired(true);
+      .setCustomId('missing_val').setLabel('اكتب عدد نواقصك (أرقام فقط)').setPlaceholder('مثال: 5').setStyle(TextInputStyle.Short).setRequired(true);
 
     modal.addComponents(new ActionRowBuilder().addComponents(guaranteeInput), new ActionRowBuilder().addComponents(missingInput));
     await interaction.showModal(modal);
@@ -868,22 +685,26 @@ client.on('interactionCreate', async interaction => {
 
   if (interaction.isModalSubmit() && interaction.customId.startsWith('modal_info_')) {
     const baseKey = interaction.customId.replace('modal_info_', '');
+    const missingValRaw = interaction.fields.getTextInputValue('missing_val');
+    const missingNumber = parseInt(missingValRaw.replace(/[^0-9]/g, '')) || 0;
+
     userSessions.set(interaction.user.id, {
       baseKey: baseKey,
       guarantee: interaction.fields.getTextInputValue('guarantee_val'),
-      missing: interaction.fields.getTextInputValue('missing_val')
+      missing: missingValRaw,
+      missingNum: missingNumber
     });
 
     const paymentMenu = new StringSelectMenuBuilder()
       .setCustomId('select_payment')
       .setPlaceholder('اختر نوع المقابل')
       .addOptions([
-        { label: 'مقابل مادي', value: 'money', description: 'عرض المقابل المادي المحدد لهذا اللون', emoji: '💰' },
+        { label: 'مقابل مادي (حساب تلقائي بناءً على نواقصك)', value: 'money', description: 'عرض السعر المحسوب لعدد النواقص', emoji: '💰' },
         { label: 'أغراض داخل اللعبة', value: 'items', description: 'عرض الأغراض المحددة مسبقاً لهذا اللون', emoji: '🎁' }
       ]);
 
     await interaction.reply({
-      content: `✅ **تم حفظ الضمان وعدد النواقص.**\n\n🎨 **الآن اختر نوع المقابل للحصول على ${basesData[baseKey]?.name || baseKey}:**`,
+      content: `✅ **تم حفظ الضمان وعدد النواقص (${missingNumber}).**\n\n🎨 **اختر نوع المقابل الآن للحصول على ${basesData[baseKey]?.name || baseKey}:**`,
       components: [new ActionRowBuilder().addComponents(paymentMenu)],
       ephemeral: true
     });
@@ -894,8 +715,19 @@ client.on('interactionCreate', async interaction => {
     const session = userSessions.get(interaction.user.id);
     if (!session) return interaction.reply({ content: '❌ انتهت الجلسة، يرجى البدء من جديد.', ephemeral: true });
 
-    const baseConfig = basesData[session.baseKey] || { name: session.baseKey, money: 'غير محدد', items: 'غير محدد' };
-    let textDetails = payType === 'money' ? `💰 **المقابل المادي للون ${baseConfig.name}:**\n${baseConfig.money}` : `🎁 **مقابل الأغراض للون ${baseConfig.name}:**\n${baseConfig.items}`;
+    const baseConfig = basesData[session.baseKey] || { name: session.baseKey, threshold: 15, lowPrice: '20 ريال', highPrice: '40 ريال', items: 'غير محدد' };
+    
+    // الحساب التلقائي للمقابل المادي بناءً على عدد النواقص
+    let calculatedPrice = '';
+    if (session.missingNum <= baseConfig.threshold) {
+      calculatedPrice = `💵 **السعر المطلوب لعدد (${session.missingNum}) نواقص:** ${baseConfig.lowPrice}\n*(لأن عدد نواقصك ${baseConfig.threshold} أو أقل)*`;
+    } else {
+      calculatedPrice = `💵 **السعر المطلوب لعدد (${session.missingNum}) نواقص:** ${baseConfig.highPrice}\n*(لأن عدد نواقصك أكثر من ${baseConfig.threshold})*`;
+    }
+
+    let textDetails = payType === 'money' 
+      ? `💰 **المقابل المادي للون ${baseConfig.name}:**\n${calculatedPrice}` 
+      : `🎁 **مقابل الأغراض للون ${baseConfig.name}:**\n${baseConfig.items}`;
 
     const btns = new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId('btn_accept').setLabel('قبول').setEmoji('✅').setStyle(ButtonStyle.Success),
@@ -969,7 +801,7 @@ client.on('interactionCreate', async interaction => {
         .addFields(
           { name: '👤 العضو', value: `<@${interaction.user.id}>`, inline: true },
           { name: '🛡️ الضمان', value: session ? session.guarantee : 'غير محدد', inline: true },
-          { name: '🔢 عدد النواقص', value: session ? session.missing : 'غير محدد', inline: true },
+          { name: '🔢 عدد النواقص', value: session ? `${session.missing}` : 'غير محدد', inline: true },
           { name: '👑 الرتبة المخولة', value: specificRole ? `<@&${specificRole.id}>` : 'الإدارة العامة', inline: false }
         )
         .setColor('#6366f1')
