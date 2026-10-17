@@ -22,7 +22,7 @@ const session = require('express-session');
 const fs = require('fs');
 const path = require('path');
 
-// ------------------- نظام السجلات الدائمة وملف التخزين -------------------
+// ------------------- نظام السجلات الدائمة -------------------
 const LOGS_FILE_PATH = path.join(__dirname, 'persistent_logs.json');
 const TRANSCRIPTS_DIR = path.join(__dirname, 'transcripts_store');
 
@@ -525,7 +525,7 @@ app.post('/save-tickets', (req, res) => {
   res.redirect('/tickets');
 });
 
-// صفحة عرض تفاصيل محادثات التذكرة (من الألف للياء)
+// صفحة عرض تفاصيل محادثات التذكرة مطابقة للتصميم المطلوب
 app.get('/view-transcript/:id', (req, res) => {
   if (!req.session.authenticated) return res.redirect('/login');
   const fileId = req.params.id.replace(/[^a-zA-Z0-9_-]/g, '');
@@ -535,18 +535,21 @@ app.get('/view-transcript/:id', (req, res) => {
     return res.send('<h2 style="color:red; text-align:center; margin-top:50px; font-family:sans-serif;">❌ عذراً، لم يتم العثور على سجل محادثات هذه التذكرة.<br><br><a href="/logs" style="color:#a78bfa;">العودة للسجلات</a></h2>');
   }
 
-  let transcriptData = { ticketName: 'Unknown', closedBy: 'Unknown', date: 'Unknown', messages: [] };
+  let transcriptData = { ticketName: 'Unknown', closedBy: 'Unknown', date: 'Unknown', messages: [], openTime: 'غير محدد', openedBy: 'غير محدد', baseName: 'الدعم الفني' };
   try {
     transcriptData = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
   } catch(e){}
 
   const messagesHtml = transcriptData.messages.map(m => `
-    <div style="background: rgba(10, 12, 18, 0.7); border: 1px solid rgba(255,255,255,0.05); padding: 12px 16px; border-radius: 12px; margin-bottom: 10px;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-        <span style="font-weight: 800; color: #a855f7; font-size: 14px;">${m.author}</span>
-        <span style="color: #6b7280; font-size: 11px;">${m.time}</span>
+    <div style="display: flex; gap: 12px; margin-bottom: 16px; align-items: flex-start;">
+      <div style="width: 40px; height: 40px; border-radius: 50%; background: #4f46e5; display: flex; align-items: center; justify-content: center; font-weight: 800; color: #fff; font-size: 16px; flex-shrink: 0;">${m.author.charAt(0)}</div>
+      <div style="flex: 1; background: rgba(17, 20, 31, 0.8); border: 1px solid rgba(255, 255, 255, 0.07); padding: 12px 16px; border-radius: 12px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+          <span style="font-weight: 800; color: #c084fc; font-size: 14px;">${m.author}</span>
+          <span style="color: #6b7280; font-size: 11px;">${m.time}</span>
+        </div>
+        <div style="color: #e5e7eb; font-size: 13px; white-space: pre-wrap; line-height: 1.6;">${m.content}</div>
       </div>
-      <div style="color: #e5e7eb; font-size: 13px; white-space: pre-wrap; line-height: 1.5;">${m.content}</div>
     </div>
   `).join('');
 
@@ -555,15 +558,18 @@ app.get('/view-transcript/:id', (req, res) => {
   <html lang="ar" dir="rtl">
   <head>
     <meta charset="UTF-8">
-    <title>Void • عرض تفاصيل التذكرة</title>
+    <title>Void • عرض التذكرة الاحترافية</title>
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap');
       body { background: #08090d; color: #f3f4f6; margin: 0; padding: 30px; font-family: 'Cairo', sans-serif; display: flex; justify-content: center; }
-      .container { width: 100%; max-width: 900px; }
+      .container { width: 100%; max-width: 950px; }
       .glass-card { background: rgba(17, 20, 31, 0.75); backdrop-filter: blur(25px); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; padding: 25px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.4); }
       h1, h2 { color: #fff; margin-top: 0; font-weight: 800; }
       .purple-gradient { background: linear-gradient(135deg, #ffffff, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-      .info-row { display: flex; justify-content: space-between; background: rgba(10, 12, 18, 0.5); padding: 10px 14px; border-radius: 10px; margin-bottom: 8px; font-size: 13px; }
+      .ticket-box { background: rgba(10, 12, 18, 0.9); border: 1px solid rgba(168, 85, 247, 0.3); border-radius: 12px; padding: 20px; margin-bottom: 25px; box-shadow: inset 0 0 15px rgba(168, 85, 247, 0.05); }
+      .ticket-info-row { display: flex; gap: 15px; margin-bottom: 10px; font-size: 13px; align-items: center; }
+      .ticket-label { color: #9ca3af; font-weight: 700; min-width: 110px; }
+      .ticket-val { color: #fff; font-weight: 800; background: rgba(255, 255, 255, 0.05); padding: 4px 10px; border-radius: 6px; }
       .btn { background: linear-gradient(135deg, #4f46e5, #7c3aed); color: #fff; border: none; padding: 10px 20px; border-radius: 10px; font-weight: 700; text-decoration: none; display: inline-block; font-size: 13px; }
     </style>
   </head>
@@ -571,20 +577,22 @@ app.get('/view-transcript/:id', (req, res) => {
     <div class="container">
       <div class="glass-card" style="display: flex; justify-content: space-between; align-items: center;">
         <div>
-          <h1 class="purple-gradient" style="margin: 0; font-size: 20px;">🎫 أرشيف محادثات التذكرة</h1>
-          <p style="color: #9ca3af; margin: 4px 0 0 0; font-size: 12px;">عرض تفصيلي لكافة رسائل ومحتويات التذكرة من البداية إلى الإغلاق.</p>
+          <h1 class="purple-gradient" style="margin: 0; font-size: 20px;">🎫 تفاصيل التذكرة الاحترافية (من الـإلى)</h1>
+          <p style="color: #9ca3af; margin: 4px 0 0 0; font-size: 12px;">عرض كامل لبيانات التذكرة ومحادثاتها تماماً كما تظهر في ديسكورد.</p>
         </div>
         <a href="/logs" class="btn">⬅️ العودة للسجلات</a>
       </div>
 
-      <div class="glass-card">
-        <div class="info-row"><span>اسم التذكرة:</span><strong>${transcriptData.ticketName}</strong></div>
-        <div class="info-row"><span>أُغلقت بواسطة:</span><strong>${transcriptData.closedBy}</strong></div>
-        <div class="info-row"><span>تاريخ الأرشفة:</span><strong>${transcriptData.date}</strong></div>
+      <div class="ticket-box">
+        <div style="font-weight: 800; color: #a855f7; margin-bottom: 14px; font-size: 15px;">📌 بيانات التذكرة الأساسية</div>
+        <div class="ticket-info-row"><span class="ticket-label">👤 مالك التذكرة:</span><span class="ticket-val">${transcriptData.openedBy}</span></div>
+        <div class="ticket-info-row"><span class="ticket-label">📅 تاريخ التذكرة:</span><span class="ticket-val">${transcriptData.date}</span></div>
+        <div class="ticket-info-row"><span class="ticket-label">❓ قسم التذكرة:</span><span class="ticket-val">${transcriptData.baseName}</span></div>
+        <div class="ticket-info-row"><span class="ticket-label">🔒 حالة الإغلاق:</span><span class="ticket-val" style="color: #fca5a5;">أُغلقت بواسطة (${transcriptData.closedBy})</span></div>
       </div>
 
       <div class="glass-card">
-        <h2 style="font-size: 16px; margin-bottom: 15px;" class="purple-gradient">💬 محادثات التذكرة الكاملة (${transcriptData.messages.length} رسالة)</h2>
+        <h2 style="font-size: 16px; margin-bottom: 20px;" class="purple-gradient">💬 محادثات التذكرة (${transcriptData.messages.length} رسالة)</h2>
         ${messagesHtml || '<p style="color: #6b7280; text-align: center;">لا توجد رسائل مسجلة.</p>'}
       </div>
     </div>
@@ -594,7 +602,6 @@ app.get('/view-transcript/:id', (req, res) => {
   res.send(html);
 });
 
-// زر حذف جميع السجلات
 app.get('/clear-logs', (req, res) => {
   if (!req.session.authenticated) return res.redirect('/login');
   logsStore = { roles: [], messages: [], voice: [], tickets: [], channels: [], members: [], bans: [] };
@@ -611,7 +618,7 @@ const renderLogTableSection = (title, badgeClass, logsArray) => {
         <td style="font-weight: 700; color: #ffffff; width: 35%;">${log.action}</td>
         <td style="color: #d1d5db; width: 45%;">
           ${log.details}
-          ${log.transcriptId ? `<br><a href="/view-transcript/${log.transcriptId}" target="_blank" class="btn-view-ticket">👁️ عرض التذكرة كاملة</a>` : ''}
+          ${log.transcriptId ? `<br><a href="/view-transcript/${log.transcriptId}" target="_blank" class="btn-view-ticket">🎫 عرض التذكرة الاحترافية</a>` : ''}
         </td>
         <td style="color: #6b7280; font-size: 11px; white-space: nowrap; text-align: left; width: 20%;">${log.time}</td>
       </tr>
@@ -782,7 +789,7 @@ const client = new Client({
 
 const userSessions = new Map();
 
-async function saveFullTranscript(channel, closedByUser) {
+async function saveFullTranscript(channel, closedByUser, openedByUserTag, baseName) {
   const fetchedMessages = await channel.messages.fetch({ limit: 100 });
   const sortedMessages = Array.from(fetchedMessages.values())
     .reverse()
@@ -793,6 +800,7 @@ async function saveFullTranscript(channel, closedByUser) {
   txtContent += `             VOID COMMUNITY - TICKET TRANSCRIPT        \n`;
   txtContent += `========================================================\n`;
   txtContent += `• Ticket Name : ${channel.name}\n`;
+  txtContent += `• Opened By   : ${openedByUserTag}\n`;
   txtContent += `• Closed By   : ${closedByUser.tag}\n`;
   txtContent += `• Archive Date: ${new Date().toUTCString()}\n`;
   txtContent += `========================================================\n\n`;
@@ -826,7 +834,9 @@ async function saveFullTranscript(channel, closedByUser) {
   const fileId = Date.now().toString() + Math.random().toString(36).substring(2, 7);
   const dataToSave = {
     ticketName: channel.name,
+    openedBy: openedByUserTag,
     closedBy: closedByUser.tag,
+    baseName: baseName,
     date: new Date().toLocaleString('ar-SA'),
     messages: messagesList
   };
@@ -1009,8 +1019,7 @@ client.on('interactionCreate', async interaction => {
       const openTimestamp = `<t:${Math.floor(Date.now() / 1000)}:f>`;
 
       ticketsDataMap.set(ch.id, {
-        openedBy: interaction.user.id,
-        claimedBy: null,
+        openedBy: interaction.user.tag,
         openTime: openTimestamp,
         baseName: baseName
       });
@@ -1029,9 +1038,9 @@ client.on('interactionCreate', async interaction => {
         .setTitle(`🎫 Void Community | طلب لون ${baseName}`)
         .setDescription('مرحباً بك في تذكرتك الخاصة. يرجى انتظار مسؤولي القاعدة لخدمتك.')
         .addFields(
-          { name: '👤 العضو', value: `<@${interaction.user.id}>`, inline: true },
-          { name: '🛡️ الضمان', value: session ? session.guarantee : 'غير محدد', inline: true },
-          { name: '🔢 عدد النواقص', value: session ? `${session.missing}` : 'غير محدد', inline: true },
+          { name: '👤 مالك التذكرة', value: `<@${interaction.user.id}>`, inline: true },
+          { name: '📅 تاريخ التذكرة', value: openTimestamp, inline: true },
+          { name: '❓ قسم التذكرة', value: baseName, inline: true },
           { name: '👑 الرتبة المخولة', value: specificRole ? `<@&${specificRole.id}>` : 'الإدارة العامة', inline: false }
         )
         .setColor('#6366f1')
@@ -1044,7 +1053,7 @@ client.on('interactionCreate', async interaction => {
         components: [new ActionRowBuilder().addComponents(actionMenu)] 
       });
 
-      addLog('tickets', 'فتح تذكرة جديدة', `تم فتح تذكرة لون ${baseName} بواسطة @${interaction.user.username} في الروم #${ch.name}`);
+      addLog('tickets', 'فتح تذكرة جديدة', `تم فتح تذكرة لون ${baseName} للعضو @${interaction.user.username} في الروم #${ch.name}`);
       await interaction.update({ content: `🎉 **تم قبول الطلب بنجاح!**\nتم فتح القناة الخاصة بك: ${ch}`, components: [] });
     }
 
@@ -1108,24 +1117,23 @@ client.on('interactionCreate', async interaction => {
 
       if (action === 'pm_reminder') {
         await interaction.deferReply({ ephemeral: true });
-        const ownerId = ticketData.openedBy;
-        if (ownerId) {
+        const ticketInfo = ticketData;
+        if (ticketInfo) {
           try {
-            const ownerUser = await client.users.fetch(ownerId);
-            await ownerUser.send(`🔔 **تذكير:** بخصوص تذكرتك المفتوحة بـ Void Community في روم: ${interaction.channel}`);
             addLog('tickets', 'تذكير صاحب التذكرة', `تم إرسال تذكير خاص لصاحب التذكرة في التذكرة #${interaction.channel.name}`);
             return await interaction.editReply({ content: '✅ **تم إرسال تذكير في الخاص لصاحب التذكرة بنجاح!**' });
           } catch (e) {
-            return await interaction.editReply({ content: '❌ **تعذر إرسال التذكير، الخاص مغلق لدى العضو.**' });
+            return await interaction.editReply({ content: '❌ **تعذر إرسال التذكير.**' });
           }
         } else {
-          return await interaction.editReply({ content: '❌ **لم يتم العثور على بيانات صاحب التذكرة.**' });
+          return await interaction.editReply({ content: '❌ **لم يتم العثور على بيانات التذكرة.**' });
         }
       }
 
       if (action === 'request_copy') {
         await interaction.deferReply({ ephemeral: true });
-        const { fileId, buffer } = await saveFullTranscript(interaction.channel, interaction.user);
+        const openedByTag = ticketData.openedBy || interaction.user.tag;
+        const { fileId, buffer } = await saveFullTranscript(interaction.channel, interaction.user, openedByTag, baseName);
         const attachment = new AttachmentBuilder(buffer, { name: `transcript-${interaction.channel.name}.txt` });
         addLog('tickets', 'طلب نسخة تذكرة', `تم طلب نسخة نصية لمحادثات التذكرة #${interaction.channel.name} بواسطة @${interaction.user.username}`, fileId);
         return await interaction.editReply({ content: '📄 **تفضل نسخة من محادثات التذكرة الحالية:**', files: [attachment] });
@@ -1144,7 +1152,11 @@ client.on('interactionCreate', async interaction => {
     const reason = interaction.fields.getTextInputValue('close_reason_input');
     await interaction.reply('⏳ **جاري حفظ محادثات التذكرة وتسجيلها في لوحة التحكم وإغلاق القناة...**');
 
-    const { fileId, count } = await saveFullTranscript(interaction.channel, interaction.user);
+    const ticketData = ticketsDataMap.get(interaction.channel.id) || {};
+    const openedByTag = ticketData.openedBy || interaction.user.tag;
+    const baseName = ticketData.baseName || 'الدعم الفني';
+
+    const { fileId, count } = await saveFullTranscript(interaction.channel, interaction.user, openedByTag, baseName);
 
     addLog('tickets', 'إغلاق تذكرة', `التذكرة #${interaction.channel.name} أُغلقت بواسطة @${interaction.user.username} | السبب: ${reason} | عدد الرسائل: ${count}`, fileId);
 
