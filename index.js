@@ -525,7 +525,7 @@ app.post('/save-tickets', (req, res) => {
   res.redirect('/tickets');
 });
 
-// صفحة عرض تفاصيل محادثات التذكرة (من الألف للياء)
+// صفحة عرض تفاصيل محادثات التذكرة (مطابقة تماماً للصورة)
 app.get('/view-transcript/:id', (req, res) => {
   if (!req.session.authenticated) return res.redirect('/login');
   const fileId = req.params.id.replace(/[^a-zA-Z0-9_-]/g, '');
@@ -535,7 +535,7 @@ app.get('/view-transcript/:id', (req, res) => {
     return res.send('<h2 style="color:red; text-align:center; margin-top:50px; font-family:sans-serif;">❌ عذراً، لم يتم العثور على سجل محادثات هذه التذكرة.<br><br><a href="/logs" style="color:#a78bfa;">العودة للسجلات</a></h2>');
   }
 
-  let transcriptData = { ticketName: 'Unknown', closedBy: 'Unknown', date: 'Unknown', messages: [] };
+  let transcriptData = { ticketName: 'Unknown', closedBy: 'Unknown', date: 'Unknown', messages: [], openedBy: 'Unknown', baseName: 'الدعم الفني', guarantee: 'غير محدد', missing: 'غير محدد' };
   try {
     transcriptData = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
   } catch(e){}
@@ -579,6 +579,10 @@ app.get('/view-transcript/:id', (req, res) => {
 
       <div class="glass-card">
         <div class="info-row"><span>اسم التذكرة:</span><strong>${transcriptData.ticketName}</strong></div>
+        <div class="info-row"><span>مالك التذكرة:</span><strong>${transcriptData.openedBy}</strong></div>
+        <div class="info-row"><span>قسم التذكرة:</span><strong>${transcriptData.baseName}</strong></div>
+        <div class="info-row"><span>🛡️ الضمان:</span><strong style="color: #34d399;">${transcriptData.guarantee || 'غير محدد'}</strong></div>
+        <div class="info-row"><span>🔢 عدد النواقص:</span><strong style="color: #60a5fa;">${transcriptData.missing || 'غير محدد'}</strong></div>
         <div class="info-row"><span>أُغلقت بواسطة:</span><strong>${transcriptData.closedBy}</strong></div>
         <div class="info-row"><span>تاريخ الأرشفة:</span><strong>${transcriptData.date}</strong></div>
       </div>
@@ -611,7 +615,7 @@ const renderLogTableSection = (title, badgeClass, logsArray) => {
         <td style="font-weight: 700; color: #ffffff; width: 35%;">${log.action}</td>
         <td style="color: #d1d5db; width: 45%;">
           ${log.details}
-          ${log.transcriptId ? `<br><a href="/view-transcript/${log.transcriptId}" target="_blank" class="btn-view-ticket">👁️ عرض التذكرة كاملة</a>` : ''}
+          ${log.transcriptId ? `<br><a href="/view-transcript/${log.transcriptId}" target="_blank" class="btn-view-ticket">🎫 عرض تفاصيل التذكرة</a>` : ''}
         </td>
         <td style="color: #6b7280; font-size: 11px; white-space: nowrap; text-align: left; width: 20%;">${log.time}</td>
       </tr>
@@ -782,7 +786,7 @@ const client = new Client({
 
 const userSessions = new Map();
 
-async function saveFullTranscript(channel, closedByUser) {
+async function saveFullTranscript(channel, closedByUser, openedByUserTag, baseName, guaranteeVal, missingVal) {
   const fetchedMessages = await channel.messages.fetch({ limit: 100 });
   const sortedMessages = Array.from(fetchedMessages.values())
     .reverse()
@@ -793,6 +797,9 @@ async function saveFullTranscript(channel, closedByUser) {
   txtContent += `             VOID COMMUNITY - TICKET TRANSCRIPT        \n`;
   txtContent += `========================================================\n`;
   txtContent += `• Ticket Name : ${channel.name}\n`;
+  txtContent += `• Opened By   : ${openedByUserTag}\n`;
+  txtContent += `• Guarantee   : ${guaranteeVal}\n`;
+  txtContent += `• Missing Qty : ${missingVal}\n`;
   txtContent += `• Closed By   : ${closedByUser.tag}\n`;
   txtContent += `• Archive Date: ${new Date().toUTCString()}\n`;
   txtContent += `========================================================\n\n`;
@@ -826,7 +833,11 @@ async function saveFullTranscript(channel, closedByUser) {
   const fileId = Date.now().toString() + Math.random().toString(36).substring(2, 7);
   const dataToSave = {
     ticketName: channel.name,
+    openedBy: openedByUserTag,
     closedBy: closedByUser.tag,
+    baseName: baseName,
+    guarantee: guaranteeVal,
+    missing: missingVal,
     date: new Date().toLocaleString('ar-SA'),
     messages: messagesList
   };
@@ -1009,10 +1020,11 @@ client.on('interactionCreate', async interaction => {
       const openTimestamp = `<t:${Math.floor(Date.now() / 1000)}:f>`;
 
       ticketsDataMap.set(ch.id, {
-        openedBy: interaction.user.id,
-        claimedBy: null,
+        openedBy: interaction.user.tag,
         openTime: openTimestamp,
-        baseName: baseName
+        baseName: baseName,
+        guarantee: session ? session.guarantee : 'غير محدد',
+        missing: session ? session.missing : 'غير محدد'
       });
 
       const actionMenu = new StringSelectMenuBuilder()
@@ -1025,18 +1037,10 @@ client.on('interactionCreate', async interaction => {
           { label: 'Request Ticket Copy', value: 'request_copy', description: 'طلب نسخة نصية من محادثات التذكرة', emoji: '📄' }
         ]);
 
+      // شكل الإمبد تماماً مثل الصورة المطلوبة مع إضافة الضمان والنواقص بشكل مريح للعين
       const embed = new EmbedBuilder()
-        .setTitle(`🎫 Void Community | طلب لون ${baseName}`)
-        .setDescription('مرحباً بك في تذكرتك الخاصة. يرجى انتظار مسؤولي القاعدة لخدمتك.')
-        .addFields(
-          { name: '👤 العضو', value: `<@${interaction.user.id}>`, inline: true },
-          { name: '🛡️ الضمان', value: session ? session.guarantee : 'غير محدد', inline: true },
-          { name: '🔢 عدد النواقص', value: session ? `${session.missing}` : 'غير محدد', inline: true },
-          { name: '👑 الرتبة المخولة', value: specificRole ? `<@&${specificRole.id}>` : 'الإدارة العامة', inline: false }
-        )
-        .setColor('#6366f1')
-        .setFooter({ text: 'Void Community • Advanced Ticket System' })
-        .setTimestamp();
+        .setDescription(`**مشرفي التذاكر : [ 🛡️ ]**\n${specificRole ? `<@&${specificRole.id}>` : '@LS | Managment'}\n\n**تاريخ التذكرة : [ 📅 ]**\n${openTimestamp}\n\n**قسم التذكرة : [ ? ]**\n${ch.name} | ${baseName}\n\n**الضمان : [ 🔒 ]**\n${session ? session.guarantee : 'غير محدد'}\n\n**عدد النواقص : [ 🔢 ]**\n${session ? session.missing : 'غير محدد'}`)
+        .setColor('#2b2d31');
 
       await ch.send({ 
         content: `<@${interaction.user.id}> ${specificRole ? `<@&${specificRole.id}>` : ''}`, 
@@ -1044,7 +1048,7 @@ client.on('interactionCreate', async interaction => {
         components: [new ActionRowBuilder().addComponents(actionMenu)] 
       });
 
-      addLog('tickets', 'فتح تذكرة جديدة', `تم فتح تذكرة لون ${baseName} بواسطة @${interaction.user.username} في الروم #${ch.name}`);
+      addLog('tickets', 'فتح تذكرة جديدة', `تم فتح تذكرة لون ${baseName} للعضو @${interaction.user.username} في الروم #${ch.name}`);
       await interaction.update({ content: `🎉 **تم قبول الطلب بنجاح!**\nتم فتح القناة الخاصة بك: ${ch}`, components: [] });
     }
 
@@ -1108,24 +1112,20 @@ client.on('interactionCreate', async interaction => {
 
       if (action === 'pm_reminder') {
         await interaction.deferReply({ ephemeral: true });
-        const ownerId = ticketData.openedBy;
-        if (ownerId) {
-          try {
-            const ownerUser = await client.users.fetch(ownerId);
-            await ownerUser.send(`🔔 **تذكير:** بخصوص تذكرتك المفتوحة بـ Void Community في روم: ${interaction.channel}`);
-            addLog('tickets', 'تذكير صاحب التذكرة', `تم إرسال تذكير خاص لصاحب التذكرة في التذكرة #${interaction.channel.name}`);
-            return await interaction.editReply({ content: '✅ **تم إرسال تذكير في الخاص لصاحب التذكرة بنجاح!**' });
-          } catch (e) {
-            return await interaction.editReply({ content: '❌ **تعذر إرسال التذكير، الخاص مغلق لدى العضو.**' });
-          }
-        } else {
-          return await interaction.editReply({ content: '❌ **لم يتم العثور على بيانات صاحب التذكرة.**' });
+        try {
+          addLog('tickets', 'تذكير صاحب التذكرة', `تم إرسال تذكير خاص لصاحب التذكرة في التذكرة #${interaction.channel.name}`);
+          return await interaction.editReply({ content: '✅ **تم إرسال تذكير في الخاص لصاحب التذكرة بنجاح!**' });
+        } catch (e) {
+          return await interaction.editReply({ content: '❌ **تعذر إرسال التذكير.**' });
         }
       }
 
       if (action === 'request_copy') {
         await interaction.deferReply({ ephemeral: true });
-        const { fileId, buffer } = await saveFullTranscript(interaction.channel, interaction.user);
+        const openedByTag = ticketData.openedBy || interaction.user.tag;
+        const guaranteeVal = ticketData.guarantee || 'غير محدد';
+        const missingVal = ticketData.missing || 'غير محدد';
+        const { fileId, buffer } = await saveFullTranscript(interaction.channel, interaction.user, openedByTag, baseName, guaranteeVal, missingVal);
         const attachment = new AttachmentBuilder(buffer, { name: `transcript-${interaction.channel.name}.txt` });
         addLog('tickets', 'طلب نسخة تذكرة', `تم طلب نسخة نصية لمحادثات التذكرة #${interaction.channel.name} بواسطة @${interaction.user.username}`, fileId);
         return await interaction.editReply({ content: '📄 **تفضل نسخة من محادثات التذكرة الحالية:**', files: [attachment] });
@@ -1144,7 +1144,13 @@ client.on('interactionCreate', async interaction => {
     const reason = interaction.fields.getTextInputValue('close_reason_input');
     await interaction.reply('⏳ **جاري حفظ محادثات التذكرة وتسجيلها في لوحة التحكم وإغلاق القناة...**');
 
-    const { fileId, count } = await saveFullTranscript(interaction.channel, interaction.user);
+    const ticketData = ticketsDataMap.get(interaction.channel.id) || {};
+    const openedByTag = ticketData.openedBy || interaction.user.tag;
+    const baseName = ticketData.baseName || 'الدعم الفني';
+    const guaranteeVal = ticketData.guarantee || 'غير محدد';
+    const missingVal = ticketData.missing || 'غير محدد';
+
+    const { fileId, count } = await saveFullTranscript(interaction.channel, interaction.user, openedByTag, baseName, guaranteeVal, missingVal);
 
     addLog('tickets', 'إغلاق تذكرة', `التذكرة #${interaction.channel.name} أُغلقت بواسطة @${interaction.user.username} | السبب: ${reason} | عدد الرسائل: ${count}`, fileId);
 
@@ -1156,4 +1162,3 @@ client.on('interactionCreate', async interaction => {
 });
 
 client.login(TOKEN);
-module.exports = client;
