@@ -20,46 +20,41 @@ const {
 const express = require('express');
 const session = require('express-session');
 
-// ------------------- 1. بيانات قواعد الألوان الـ 17 المخصصة -------------------
+// ------------------- 1. بيانات قواعد الألوان بنظام الشرائح (Tier Ranges) -------------------
 let basesData = {
   silver: { 
     name: 'Silver Base', emoji: '⚪', 
-    prices: [
-      { qty: 1, price: '10 ريال' },
-      { qty: 2, price: '12 ريال' },
-      { qty: 3, price: '15 ريال' },
-      { qty: 5, price: '20 ريال' },
-      { qty: 10, price: '30 ريال' },
-      { qty: 15, price: '40 ريال' },
-      { qty: 20, price: '50 ريال' }
+    tiers: [
+      { maxQty: 20, price: '20 ريال' },
+      { maxQty: 40, price: '40 ريال' },
+      { maxQty: 999, price: '60 ريال' }
     ],
     items: '(١٠ وتحت كروماندو كاندي وفوق باستثناء البارتي، ١٠٠ وفوق دب كاندي وفوق)' 
   },
   gold: { 
     name: 'Gold Base', emoji: '🟡', 
-    prices: [
-      { qty: 1, price: '10 ريال' },
-      { qty: 2, price: '12 ريال' },
-      { qty: 5, price: '20 ريال' },
-      { qty: 15, price: '40 ريال' }
+    tiers: [
+      { maxQty: 20, price: '20 ريال' },
+      { maxQty: 40, price: '40 ريال' },
+      { maxQty: 999, price: '60 ريال' }
     ],
     items: '(١٠ وتحت كروماندو كاندي وفوق باستثناء البارتي، ١٠٠ وفوق دب كاندي وفوق)' 
   },
-  crystal: { name: 'Crystal Base', emoji: '💎', prices: [{ qty: 1, price: '15 ريال' }, { qty: 5, price: '25 ريال' }], items: 'شروط الأغراض المحددة مسبقاً' },
-  bloodmoon: { name: 'BloodMoon Base', emoji: '🌑', prices: [{ qty: 1, price: '15 ريال' }, { qty: 5, price: '30 ريال' }], items: 'شروط الأغراض المحددة مسبقاً' },
-  rainbow: { name: 'Rainbow Base GoUp', emoji: '🌈', prices: [{ qty: 1, price: '15 ريال' }, { qty: 5, price: '30 ريال' }], items: 'شروط الأغراض المحددة مسبقاً' },
-  candy: { name: 'Candy Base GoUp', emoji: '🍬', prices: [{ qty: 1, price: '15 ريال' }, { qty: 5, price: '30 ريال' }], items: 'شروط الأغراض المحددة مسبقاً' },
-  cyber: { name: 'Cyber Base GoUp', emoji: '🤖', prices: [{ qty: 1, price: '15 ريال' }, { qty: 5, price: '30 ريال' }], items: 'شروط الأغراض المحددة مسبقاً' },
-  party: { name: 'Party Base GoUp', emoji: '🎉', prices: [{ qty: 1, price: '15 ريال' }, { qty: 5, price: '30 ريال' }], items: 'شروط الأغراض المحددة مسبقاً' },
-  bw: { name: 'Black & White Base GoUp', emoji: '⬛', prices: [{ qty: 1, price: '15 ريال' }, { qty: 5, price: '30 ريال' }], items: 'شروط الأغراض المحددة مسبقاً' },
-  aqua: { name: 'Aqua Base GoUp', emoji: '💧', prices: [{ qty: 1, price: '15 ريال' }, { qty: 5, price: '30 ريال' }], items: 'شروط الأغراض المحددة مسبقاً' },
-  lava: { name: 'Lava Base GoUp', emoji: '🌋', prices: [{ qty: 1, price: '15 ريال' }, { qty: 5, price: '30 ريال' }], items: 'شروط الأغراض المحددة مسبقاً' },
-  football: { name: 'Football Base GoUp', emoji: '⚽', prices: [{ qty: 1, price: '15 ريال' }, { qty: 5, price: '30 ريال' }], items: 'شروط الأغراض المحددة مسبقاً' },
-  summer: { name: 'Summer Base GoUp', emoji: '☀️', prices: [{ qty: 1, price: '15 ريال' }, { qty: 5, price: '30 ريال' }], items: 'شروط الأغراض المحددة مسبقاً' },
-  dreamy: { name: 'Dreamy Base GoUp', emoji: '☁️', prices: [{ qty: 1, price: '15 ريال' }, { qty: 5, price: '30 ريال' }], items: 'شروط الأغراض المحددة مسبقاً' },
-  galaxy: { name: 'Galaxy Base', emoji: '🌌', prices: [{ qty: 1, price: '15 ريال' }, { qty: 5, price: '30 ريال' }], items: 'شروط الأغراض المحددة مسبقاً' },
-  radioactive: { name: 'Radioactive Base', emoji: '☢️', prices: [{ qty: 1, price: '15 ريال' }, { qty: 5, price: '30 ريال' }], items: 'شروط الأغراض المحددة مسبقاً' },
-  halloween: { name: 'Halloween Base', emoji: '🎃', prices: [{ qty: 1, price: '15 ريال' }, { qty: 5, price: '30 ريال' }], items: 'شروط الأغراض المحددة مسبقاً' }
+  crystal: { name: 'Crystal Base', emoji: '💎', tiers: [{ maxQty: 20, price: '25 ريال' }, { maxQty: 40, price: '50 ريال' }], items: 'شروط الأغراض المحددة مسبقاً' },
+  bloodmoon: { name: 'BloodMoon Base', emoji: '🌑', tiers: [{ maxQty: 20, price: '30 ريال' }, { maxQty: 40, price: '60 ريال' }], items: 'شروط الأغراض المحددة مسبقاً' },
+  rainbow: { name: 'Rainbow Base GoUp', emoji: '🌈', tiers: [{ maxQty: 20, price: '30 ريال' }, { maxQty: 40, price: '60 ريال' }], items: 'شروط الأغراض المحددة مسبقاً' },
+  candy: { name: 'Candy Base GoUp', emoji: '🍬', tiers: [{ maxQty: 20, price: '30 ريال' }, { maxQty: 40, price: '60 ريال' }], items: 'شروط الأغراض المحددة مسبقاً' },
+  cyber: { name: 'Cyber Base GoUp', emoji: '🤖', tiers: [{ maxQty: 20, price: '30 ريال' }, { maxQty: 40, price: '60 ريال' }], items: 'شروط الأغراض المحددة مسبقاً' },
+  party: { name: 'Party Base GoUp', emoji: '🎉', tiers: [{ maxQty: 20, price: '30 ريال' }, { maxQty: 40, price: '60 ريال' }], items: 'شروط الأغراض المحددة مسبقاً' },
+  bw: { name: 'Black & White Base GoUp', emoji: '⬛', tiers: [{ maxQty: 20, price: '30 ريال' }, { maxQty: 40, price: '60 ريال' }], items: 'شروط الأغراض المحددة مسبقاً' },
+  aqua: { name: 'Aqua Base GoUp', emoji: '💧', tiers: [{ maxQty: 20, price: '30 ريال' }, { maxQty: 40, price: '60 ريال' }], items: 'شروط الأغراض المحددة مسبقاً' },
+  lava: { name: 'Lava Base GoUp', emoji: '🌋', tiers: [{ maxQty: 20, price: '30 ريال' }, { maxQty: 40, price: '60 ريال' }], items: 'شروط الأغراض المحددة مسبقاً' },
+  football: { name: 'Football Base GoUp', emoji: '⚽', tiers: [{ maxQty: 20, price: '30 ريال' }, { maxQty: 40, price: '60 ريال' }], items: 'شروط الأغراض المحددة مسبقاً' },
+  summer: { name: 'Summer Base GoUp', emoji: '☀️', tiers: [{ maxQty: 20, price: '30 ريال' }, { maxQty: 40, price: '60 ريال' }], items: 'شروط الأغراض المحددة مسبقاً' },
+  dreamy: { name: 'Dreamy Base GoUp', emoji: '☁️', tiers: [{ maxQty: 20, price: '30 ريال' }, { maxQty: 40, price: '60 ريال' }], items: 'شروط الأغراض المحددة مسبقاً' },
+  galaxy: { name: 'Galaxy Base', emoji: '🌌', tiers: [{ maxQty: 20, price: '30 ريال' }, { maxQty: 40, price: '60 ريال' }], items: 'شروط الأغراض المحددة مسبقاً' },
+  radioactive: { name: 'Radioactive Base', emoji: '☢️', tiers: [{ maxQty: 20, price: '30 ريال' }, { maxQty: 40, price: '60 ريال' }], items: 'شروط الأغراض المحددة مسبقاً' },
+  halloween: { name: 'Halloween Base', emoji: '🎃', tiers: [{ maxQty: 20, price: '30 ريال' }, { maxQty: 40, price: '60 ريال' }], items: 'شروط الأغراض المحددة مسبقاً' }
 };
 
 let serverSettings = {
@@ -76,20 +71,28 @@ function addDashboardLog(category, action, details) {
   if (dashboardLogs.length > 250) dashboardLogs.pop();
 }
 
-function getPriceForQuantity(pricesArray, quantity) {
-  if (!pricesArray || pricesArray.length === 0) return 'غير محدد';
+// دالة فحص الشريحة التي يقع فيها الرقم
+function getTierPrice(tiersArray, userQuantity) {
+  if (!tiersArray || tiersArray.length === 0) return { price: 'غير محدد', tierText: 'غير محدد' };
   
-  const sorted = [...pricesArray].sort((a, b) => a.qty - b.qty);
-  const match = sorted.find(p => p.qty === quantity);
-  if (match) return match.price;
-
-  for (let i = sorted.length - 1; i >= 0; i--) {
-    if (quantity >= sorted[i].qty) {
-      return sorted[i].price;
+  // ترتيب الشرائح تصاعدياً حسب الحد
+  const sorted = [...tiersArray].sort((a, b) => a.maxQty - b.maxQty);
+  
+  for (let tier of sorted) {
+    if (userQuantity <= tier.maxQty) {
+      return {
+        price: tier.price,
+        tierText: `${tier.maxQty} وتحت`
+      };
     }
   }
 
-  return sorted[0].price;
+  // إذا كان الرقم أكبر من كل الشرائح المسجلة
+  const lastTier = sorted[sorted.length - 1];
+  return {
+    price: lastTier.price,
+    tierText: `فوق ${lastTier.maxQty}`
+  };
 }
 
 // ------------------- 2. إعدادات Express -------------------
@@ -98,7 +101,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'void_easy_inputs_2026',
+  secret: process.env.SESSION_SECRET || 'void_range_tier_pricing_2026',
   resave: false,
   saveUninitialized: false,
   cookie: { maxAge: 3600000 * 24 }
@@ -174,10 +177,12 @@ const renderUltimateLayout = (activeTab, content) => {
       h1, h2, h3 { color: #fff; margin-top: 0; font-weight: 800; }
       .purple-gradient { background: linear-gradient(135deg, #ffffff, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
       
-      .price-row { display: flex; gap: 10px; align-items: center; margin-bottom: 8px; }
-      .price-row input[type="number"] { width: 100px; text-align: center; }
-      .price-row input[type="text"] { flex: 1; }
-      .btn-del { background: rgba(239, 68, 68, 0.2); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; padding: 8px 12px; cursor: pointer; font-weight: 700; margin-top: 6px; }
+      .tier-row { display: flex; gap: 10px; align-items: center; margin-bottom: 8px; background: rgba(10, 12, 18, 0.5); padding: 8px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.05); }
+      .tier-row input[type="number"] { width: 130px; text-align: center; }
+      .tier-row input[type="text"] { flex: 1; }
+      .tier-label { font-size: 12px; font-weight: 800; color: #a855f7; white-space: nowrap; }
+      
+      .btn-del { background: rgba(239, 68, 68, 0.2); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; padding: 7px 12px; cursor: pointer; font-weight: 700; margin-top: 6px; }
       .btn-add { background: rgba(99, 102, 241, 0.2); color: #a5b4fc; border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 8px; padding: 6px 14px; cursor: pointer; font-weight: 700; font-size: 12px; margin-top: 6px; display: inline-block; }
 
       input, textarea, select { width: 100%; padding: 10px 14px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.08); background: rgba(10, 12, 18, 0.85); color: #f3f4f6; outline: none; margin-top: 6px; font-size: 13px; }
@@ -199,12 +204,13 @@ const renderUltimateLayout = (activeTab, content) => {
       .badge-ticket { background: rgba(16, 185, 129, 0.12); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.25); }
     </style>
     <script>
-      function addPriceRow(baseKey) {
-        const container = document.getElementById('price-container-' + baseKey);
+      function addTierRow(baseKey) {
+        const container = document.getElementById('tier-container-' + baseKey);
         const div = document.createElement('div');
-        div.className = 'price-row';
+        div.className = 'tier-row';
         div.innerHTML = \`
-          <input type="number" name="\${baseKey}_qty[]" placeholder="العدد" required>
+          <input type="number" name="\${baseKey}_maxQty[]" placeholder="الحد (مثال: 20)" required>
+          <span class="tier-label">وتحت ⟵</span>
           <input type="text" name="\${baseKey}_price[]" placeholder="السعر (مثال: 20 ريال)" required>
           <button type="button" class="btn-del" onclick="this.parentElement.remove()">🗑️</button>
         \`;
@@ -362,10 +368,10 @@ app.get('/', (req, res) => {
   const content = `
     <div class="glass-card" style="display: flex; justify-content: space-between; align-items: center;">
       <div>
-        <h1 class="purple-gradient" style="margin: 0; font-size: 18px;">🎨 إدارة خانات الأسعار لكل رقم (17 قاعدة)</h1>
-        <p style="color: #9ca3af; margin: 4px 0 0 0; font-size: 12px;">مرحباً، ${req.session.user?.username || 'المسؤول'} 👋 | أضف خانة لكل رقم وحدد سعره مباشرة بجانبه بسهولة.</p>
+        <h1 class="purple-gradient" style="margin: 0; font-size: 18px;">🎨 شرائح أسعار النواقص (20 وتحت / 40 وتحت)</h1>
+        <p style="color: #9ca3af; margin: 4px 0 0 0; font-size: 12px;">مرحباً، ${req.session.user?.username || 'المسؤول'} 👋 | يمكنك إضافة وتحديد أي عدد وتحته سعر مخصص.</p>
       </div>
-      <span style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); padding: 5px 12px; border-radius: 20px; font-weight: 700; font-size: 11px;">🟢 واجهة الأرقام التفاعلية</span>
+      <span style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); padding: 5px 12px; border-radius: 20px; font-weight: 700; font-size: 11px;">🟢 التسعير بالشرائح نشط</span>
     </div>
 
     <div class="glass-card">
@@ -378,28 +384,29 @@ app.get('/', (req, res) => {
     </div>
 
     <form action="/save-colors" method="POST">
-      <h2 style="font-size: 15px; margin-bottom: 12px;" class="purple-gradient">⚡ إعدادات الأرقام والأسعار الحصرية</h2>
+      <h2 style="font-size: 15px; margin-bottom: 12px;" class="purple-gradient">⚡ إعدادات شرائح السعر لكل قاعدة (17 قاعدة)</h2>
       ${Object.keys(basesData).map(key => `
         <div class="glass-card" style="padding: 18px;">
           <h3 style="margin: 0 0 10px 0; color: #a855f7; font-size: 15px;">${basesData[key].emoji}${basesData[key].name}</h3>
           
-          <label style="margin-bottom: 8px;">💰 تسعير النواقص بالخانات الرقمية:</label>
-          <div id="price-container-${key}">
-            ${basesData[key].prices.map(p => `
-              <div class="price-row">
-                <input type="number" name="${key}_qty[]" value="${p.qty}" placeholder="العدد" required>
-                <input type="text" name="${key}_price[]" value="${p.price}" placeholder="السعر" required>
+          <label style="margin-bottom: 8px;">💰 شرائح تسعير النواقص (مثال: 20 وتحت ⟵ 20 ريال):</label>
+          <div id="tier-container-${key}">
+            ${basesData[key].tiers.map(t => `
+              <div class="tier-row">
+                <input type="number" name="${key}_maxQty[]" value="${t.maxQty}" placeholder="العدد" required>
+                <span class="tier-label">وتحت ⟵</span>
+                <input type="text" name="${key}_price[]" value="${t.price}" placeholder="السعر" required>
                 <button type="button" class="btn-del" onclick="this.parentElement.remove()">🗑️</button>
               </div>
             `).join('')}
           </div>
-          <button type="button" class="btn-add" onclick="addPriceRow('${key}')">➕ إضافة سعر لرقم جديد</button>
+          <button type="button" class="btn-add" onclick="addTierRow('${key}')">➕ إضافة شريحة سعر جديدة</button>
 
           <label style="margin-top: 15px;">🎁 المقابل بالأغراض:</label>
           <textarea name="${key}_items" rows="2">${basesData[key].items}</textarea>
         </div>
       `).join('')}
-      <button type="submit" class="btn" style="position: sticky; bottom: 20px; z-index: 10;">💾 حفظ كافة التعديلات والأسعار</button>
+      <button type="submit" class="btn" style="position: sticky; bottom: 20px; z-index: 10;">💾 حفظ كافة التعديلات والشرائح</button>
     </form>
   `;
 
@@ -409,25 +416,25 @@ app.get('/', (req, res) => {
 app.post('/save-colors', (req, res) => {
   if (!req.session.authenticated) return res.redirect('/login');
   Object.keys(basesData).forEach(key => {
-    const qtys = req.body[`${key}_qty[]`];
+    const maxQtys = req.body[`${key}_maxQty[]`];
     const prices = req.body[`${key}_price[]`];
     
-    let newPrices = [];
-    if (Array.isArray(qtys)) {
-      for (let i = 0; i < qtys.length; i++) {
-        if (qtys[i] && prices[i]) {
-          newPrices.push({ qty: Number(qtys[i]), price: prices[i] });
+    let newTiers = [];
+    if (Array.isArray(maxQtys)) {
+      for (let i = 0; i < maxQtys.length; i++) {
+        if (maxQtys[i] && prices[i]) {
+          newTiers.push({ maxQty: Number(maxQtys[i]), price: prices[i] });
         }
       }
-    } else if (qtys && prices) {
-      newPrices.push({ qty: Number(qtys), price: prices });
+    } else if (maxQtys && prices) {
+      newTiers.push({ maxQty: Number(maxQtys), price: prices });
     }
 
-    basesData[key].prices = newPrices;
+    basesData[key].tiers = newTiers;
     if (req.body[`${key}_items`]) basesData[key].items = req.body[`${key}_items`];
   });
 
-  addDashboardLog('badge-role', 'تحديث القواعد', `تم تحديث أسعار الأرقام بواسطة @${req.session.user?.username}`);
+  addDashboardLog('badge-role', 'تحديث القواعد', `تم تحديث شرائح الأسعار بواسطة @${req.session.user?.username}`);
   res.redirect('/');
 });
 
@@ -609,7 +616,7 @@ app.post('/send-panel', async (req, res) => {
 
 app.listen(PORT, () => console.log(`🌐 Dashboard Active on port ${PORT}`));
 
-// ------------------- 7. بوت ديسكورد والمطابقة المباشرة -------------------
+// ------------------- 7. بوت ديسكورد والمطابقة الحسابية للشرائح -------------------
 const client = new Client({
   intents: [
     I.Guilds, I.GuildMembers, I.GuildMessages, I.MessageContent,
@@ -739,7 +746,7 @@ client.on('interactionCreate', async interaction => {
       .setCustomId('guarantee_val').setLabel('اكتب الضمان حقك').setPlaceholder('اكتب الضمان').setStyle(TextInputStyle.Short).setRequired(true);
 
     const missingInput = new TextInputBuilder()
-      .setCustomId('missing_val').setLabel('اكتب عدد نواقصك (أرقام فقط)').setPlaceholder('مثال: 3').setStyle(TextInputStyle.Short).setRequired(true);
+      .setCustomId('missing_val').setLabel('اكتب عدد نواقصك (أرقام فقط)').setPlaceholder('مثال: 15').setStyle(TextInputStyle.Short).setRequired(true);
 
     modal.addComponents(new ActionRowBuilder().addComponents(guaranteeInput), new ActionRowBuilder().addComponents(missingInput));
     await interaction.showModal(modal);
@@ -761,7 +768,7 @@ client.on('interactionCreate', async interaction => {
       .setCustomId('select_payment')
       .setPlaceholder('اختر نوع المقابل')
       .addOptions([
-        { label: 'مقابل مادي (حساب دقيق لعدد نواقصك)', value: 'money', description: 'عرض السعر المباشر للعدد المحدد', emoji: '💰' },
+        { label: 'مقابل مادي (حساب الشريحة تلقائياً)', value: 'money', description: 'عرض السعر حسب شريحة نواقصك', emoji: '💰' },
         { label: 'أغراض داخل اللعبة', value: 'items', description: 'عرض الأغراض المحددة مسبقاً لهذا اللون', emoji: '🎁' }
       ]);
 
@@ -777,12 +784,13 @@ client.on('interactionCreate', async interaction => {
     const session = userSessions.get(interaction.user.id);
     if (!session) return interaction.reply({ content: '❌ انتهت الجلسة، يرجى البدء من جديد.', ephemeral: true });
 
-    const baseConfig = basesData[session.baseKey] || { name: session.baseKey, prices: [], items: 'غير محدد' };
+    const baseConfig = basesData[session.baseKey] || { name: session.baseKey, tiers: [], items: 'غير محدد' };
     
-    const exactPrice = getPriceForQuantity(baseConfig.prices, session.missingNum);
+    // مطابقة الشريحة
+    const { price, tierText } = getTierPrice(baseConfig.tiers, session.missingNum);
 
     let textDetails = payType === 'money' 
-      ? `💰 **المقابل المادي للون ${baseConfig.name}:**\n💵 **السعر المطلوب لعدد (${session.missingNum}) نواقص:** ${exactPrice}` 
+      ? `💰 **المقابل المادي للون ${baseConfig.name}:**\n💵 **السعر المطلوب لعدد (${session.missingNum}) نواقص:** ${price}\n*(شريحة ${tierText})*` 
       : `🎁 **مقابل الأغراض للون ${baseConfig.name}:**\n${baseConfig.items}`;
 
     const btns = new ActionRowBuilder().addComponents(
