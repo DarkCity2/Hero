@@ -19,6 +19,48 @@ const {
 } = require('discord.js');
 const express = require('express');
 const session = require('express-session');
+const fs = require('fs');
+const path = require('path');
+
+// ------------------- ملف حفظ السجلات لضمان عدم حذفها عند التحديث -------------------
+const LOGS_FILE_PATH = path.join(__dirname, 'persistent_logs.json');
+
+let logsStore = {
+  roles: [],
+  messages: [],
+  voice: [],
+  tickets: [],
+  channels: [],
+  members: [],
+  bans: []
+};
+
+// تحميل السجلات المحفوظة إن وجدت
+try {
+  if (fs.existsSync(LOGS_FILE_PATH)) {
+    const rawData = fs.readFileSync(LOGS_FILE_PATH, 'utf-8');
+    logsStore = JSON.parse(rawData);
+  }
+} catch (e) {
+  console.log('⚠️ ملاحظة: جاري إنشاء ملف سجلات جديد.');
+}
+
+function saveLogsToFile() {
+  try {
+    fs.writeFileSync(LOGS_FILE_PATH, JSON.stringify(logsStore, null, 2), 'utf-8');
+  } catch (e) {}
+}
+
+function addLog(category, action, details) {
+  const time = new Date().toLocaleString('ar-SA', { timeZone: 'Asia/Riyadh' });
+  const logItem = { action, details, time };
+  
+  if (!logsStore[category]) logsStore[category] = [];
+  logsStore[category].unshift(logItem);
+  if (logsStore[category].length > 200) logsStore[category].pop();
+  
+  saveLogsToFile();
+}
 
 // ------------------- 1. بيانات قواعد الألوان بنظام الشرائح المزدوجة -------------------
 let basesData = {
@@ -70,26 +112,6 @@ let serverSettings = {
 
 const ticketsDataMap = new Map();
 
-const logsStore = {
-  roles: [],
-  messages: [],
-  voice: [],
-  tickets: [],
-  channels: [],
-  members: [],
-  bans: []
-};
-
-function addLog(category, action, details) {
-  const time = new Date().toLocaleString('ar-SA', { timeZone: 'Asia/Riyadh' });
-  const logItem = { action, details, time };
-  
-  if (logsStore[category]) {
-    logsStore[category].unshift(logItem);
-    if (logsStore[category].length > 100) logsStore[category].pop();
-  }
-}
-
 function getTierPrice(tiersArray, userQuantity) {
   if (!tiersArray || tiersArray.length === 0) return { price: 'غير محدد', tierText: 'غير محدد' };
   const sorted = [...tiersArray].sort((a, b) => a.maxQty - b.maxQty);
@@ -120,7 +142,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'void_ultimate_logs_2026',
+  secret: process.env.SESSION_SECRET || 'void_ultimate_logs_persistent_2026',
   resave: false,
   saveUninitialized: false,
   cookie: { maxAge: 3600000 * 24 }
@@ -145,7 +167,7 @@ const renderUltimateLayout = (activeTab, content) => {
     }
   } catch(e){}
 
-  let totalLogsCount = Object.values(logsStore).reduce((acc, arr) => acc + arr.length, 0);
+  let totalLogsCount = Object.values(logsStore).reduce((acc, arr) => acc + (arr ? arr.length : 0), 0);
 
   return `
   <!DOCTYPE html>
@@ -262,7 +284,7 @@ const renderUltimateLayout = (activeTab, content) => {
         </div>
         <div class="nav-group">
           <div class="nav-label">المراقبة المباشرة</div>
-          <a href="/logs" class="nav-item ${activeTab === 'logs' ? 'active' : ''}"><span>📜 سجلات الأحداث</span><div class="badge-live">LIVE</div></a>
+          <a href="/logs" class="nav-item ${activeTab === 'logs' ? 'active' : ''}"><span>📜 سجلات الأحداث</span><div class="badge-live">PERSISTENT</div></a>
           <a href="/moderation" class="nav-item ${activeTab === 'moderation' ? 'active' : ''}"><span>🔨 أدوات الإدارة</span></a>
           <a href="/security" class="nav-item ${activeTab === 'security' ? 'active' : ''}"><span>🛡️ درع الحماية</span></a>
         </div>
@@ -518,9 +540,10 @@ app.post('/save-tickets', (req, res) => {
 });
 
 const renderLogTableSection = (title, badgeClass, logsArray) => {
-  const rows = logsArray.length === 0 
+  const items = logsArray || [];
+  const rows = items.length === 0 
     ? `<tr><td colspan="3" style="text-align: center; color: #6b7280; padding: 15px; font-size: 12px;">لا توجد أحداث مسجلة في هذا القسم حتى الآن.</td></tr>`
-    : logsArray.map(log => `
+    : items.map(log => `
       <tr>
         <td style="font-weight: 700; color: #ffffff; width: 35%;">${log.action}</td>
         <td style="color: #d1d5db; width: 45%;">${log.details}</td>
@@ -532,7 +555,7 @@ const renderLogTableSection = (title, badgeClass, logsArray) => {
     <div class="glass-card">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
         <h3 style="margin: 0; font-size: 15px;" class="purple-gradient">${title}</h3>
-        <span class="log-badge ${badgeClass}">${logsArray.length} سجل</span>
+        <span class="log-badge ${badgeClass}">${items.length} سجل</span>
       </div>
       <div style="overflow-x: auto;">
         <table class="logs-table">
@@ -557,15 +580,15 @@ app.get('/logs', (req, res) => {
 
   const content = `
     <div class="glass-card">
-      <h1 class="purple-gradient" style="margin: 0; font-size: 18px;">📜 سجلات الأحداث الشاملة الكاملة (Live Logs)</h1>
-      <p style="color: #9ca3af; margin-top: 4px; font-size: 12px;">مراقبة حية ولحظية لكل شاردة وواردة في السيرفر (رومات، رتب، أعضاء، تذاكر، رسائل، وصوت).</p>
+      <h1 class="purple-gradient" style="margin: 0; font-size: 18px;">📜 سجلات الأحداث الشاملة الدائمة (Persistent Live Logs)</h1>
+      <p style="color: #9ca3af; margin-top: 4px; font-size: 12px;">مراقبة حية لا تختفي أبداً عند تحديث الصفحة أو إعادة تشغيل البوت.</p>
     </div>
 
     ${renderLogTableSection('👑 سجلات الرتب (Roles)', 'badge-roles', logsStore.roles)}
     ${renderLogTableSection('💬 سجلات الرسائل (Messages)', 'badge-messages', logsStore.messages)}
     ${renderLogTableSection('🎙️ سجلات الرومات الصوتية (Voice)', 'badge-voice', logsStore.voice)}
-    ${renderLogTableSection('🎫 سجلات التذاكر (Tickets)', 'badge-tickets', logsStore.tickets)}
-    ${renderLogTableSection('📁 سجلات الرومات الكتابية والصوتية (Channels - إنشاء/حذف/تعديل)', 'badge-channels', logsStore.channels)}
+    ${renderLogTableSection('🎫 سجلات التذاكر الاحترافية (Tickets)', 'badge-tickets', logsStore.tickets)}
+    ${renderLogTableSection('📁 سجلات الرومات (Channels - إنشاء/حذف/تعديل)', 'badge-channels', logsStore.channels)}
     ${renderLogTableSection('👥 سجلات الأعضاء (Members - انضمام/مغادرة)', 'badge-members', logsStore.members)}
     ${renderLogTableSection('🔨 سجلات الحظر (Bans)', 'badge-bans', logsStore.bans)}
   `;
@@ -678,7 +701,7 @@ app.post('/send-panel', async (req, res) => {
 
 app.listen(PORT, () => console.log(`🌐 Dashboard Active on port ${PORT}`));
 
-// ------------------- 7. بوت ديسكورد والمراقبة الشاملة والكاملة -------------------
+// ------------------- 7. بوت ديسكورد والمراقبة الشاملة الدائمة -------------------
 const client = new Client({
   intents: [
     I.Guilds, I.GuildMembers, I.GuildMessages, I.MessageContent,
@@ -961,11 +984,12 @@ client.on('interactionCreate', async interaction => {
         components: [new ActionRowBuilder().addComponents(actionMenu)] 
       });
 
-      addLog('tickets', 'فتح تذكرة', `تم فتح تذكرة لون ${baseName} بواسطة @${interaction.user.username}`);
+      addLog('tickets', 'فتح تذكرة جديدة', `تم فتح تذكرة لون ${baseName} بواسطة @${interaction.user.username} في الروم #${ch.name}`);
       await interaction.update({ content: `🎉 **تم قبول الطلب بنجاح!**\nتم فتح القناة الخاصة بك: ${ch}`, components: [] });
     }
 
     if (interaction.customId === 'btn_reject') {
+      addLog('tickets', 'رفض طلب لون', `قام العضو @${interaction.user.username} برفض طلب لون.`);
       await interaction.update({ content: '❌ **تم إلغاء الطلب.**', components: [] });
     }
   }
@@ -1029,6 +1053,7 @@ client.on('interactionCreate', async interaction => {
           try {
             const ownerUser = await client.users.fetch(ownerId);
             await ownerUser.send(`🔔 **تذكير:** بخصوص تذكرتك المفتوحة بـ Void Community في روم: ${interaction.channel}`);
+            addLog('tickets', 'تذكير صاحب التذكرة', `تم إرسال تذكير خاص لصاحب التذكرة في التذكرة #${interaction.channel.name}`);
             return await interaction.editReply({ content: '✅ **تم إرسال تذكير في الخاص لصاحب التذكرة بنجاح!**' });
           } catch (e) {
             return await interaction.editReply({ content: '❌ **تعذر إرسال التذكير، الخاص مغلق لدى العضو.**' });
@@ -1042,6 +1067,7 @@ client.on('interactionCreate', async interaction => {
         await interaction.deferReply({ ephemeral: true });
         const { buffer } = await createTranscriptBuffer(interaction.channel, interaction.user);
         const attachment = new AttachmentBuilder(buffer, { name: `transcript-${interaction.channel.name}.txt` });
+        addLog('tickets', 'طلب نسخة تذكرة', `تم طلب نسخة نصية لمحادثات التذكرة #${interaction.channel.name} بواسطة @${interaction.user.username}`);
         return await interaction.editReply({ content: '📄 **تفضل نسخة من محادثات التذكرة الحالية:**', files: [attachment] });
       }
     }
