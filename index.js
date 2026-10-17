@@ -70,7 +70,6 @@ let serverSettings = {
 
 const ticketsDataMap = new Map();
 
-// سجلات منفصلة لكل تصنيف لضمان الترتيب والتصميم الجامد
 const logsStore = {
   roles: [],
   messages: [],
@@ -233,12 +232,7 @@ const renderUltimateLayout = (activeTab, content) => {
         const container = document.getElementById('tier-container-' + baseKey);
         const div = document.createElement('div');
         div.className = 'tier-row';
-        div.innerHTML = `
-          <input type="number" name="${baseKey}_maxQty[]" placeholder="العدد" required>
-          <span class="tier-label">وتحت ⟵</span>
-          <input type="text" name="${baseKey}_price[]" placeholder="السعر (مثال: 20 ريال)" required>
-          <button type="button" class="btn-del" onclick="this.parentElement.remove()">🗑️</button>
-        `;
+        div.innerHTML = '<input type="number" name="' + baseKey + '_maxQty[]" placeholder="العدد" required><span class="tier-label">وتحت ⟵</span><input type="text" name="' + baseKey + '_price[]" placeholder="السعر (مثال: 20 ريال)" required><button type="button" class="btn-del" onclick="this.parentElement.remove()">🗑️</button>';
         container.appendChild(div);
       }
 
@@ -246,12 +240,7 @@ const renderUltimateLayout = (activeTab, content) => {
         const container = document.getElementById('item-tier-container-' + baseKey);
         const div = document.createElement('div');
         div.className = 'tier-row';
-        div.innerHTML = `
-          <input type="number" name="${baseKey}_itemMaxQty[]" placeholder="العدد" required>
-          <span class="tier-label">وتحت ⟵</span>
-          <input type="text" name="${baseKey}_itemText[]" placeholder="شروط الأغراض" required>
-          <button type="button" class="btn-del" onclick="this.parentElement.remove()">🗑️</button>
-        `;
+        div.innerHTML = '<input type="number" name="' + baseKey + '_itemMaxQty[]" placeholder="العدد" required><span class="tier-label">وتحت ⟵</span><input type="text" name="' + baseKey + '_itemText[]" placeholder="شروط الأغراض" required><button type="button" class="btn-del" onclick="this.parentElement.remove()">🗑️</button>';
         container.appendChild(div);
       }
     </script>
@@ -528,7 +517,6 @@ app.post('/save-tickets', (req, res) => {
   res.redirect('/tickets');
 });
 
-// دالة لتوليد جدول السجلات داخل الكارد بتصميم جامد
 const renderLogTableSection = (title, badgeClass, logsArray) => {
   const rows = logsArray.length === 0 
     ? `<tr><td colspan="3" style="text-align: center; color: #6b7280; padding: 15px; font-size: 12px;">لا توجد أحداث مسجلة في هذا القسم حتى الآن.</td></tr>`
@@ -752,7 +740,6 @@ client.once('ready', () => {
   addLog('roles', 'تشغيل البوت', `تم تشغيل البوت بنجاح باسم ${client.user.tag}`);
 });
 
-// 1. مراقبة الرتب (إضافة / إزالة)
 client.on('guildMemberUpdate', (oldMember, newMember) => {
   const addedRoles = newMember.roles.cache.filter(role => !oldMember.roles.cache.has(role.id));
   const removedRoles = oldMember.roles.cache.filter(role => !newMember.roles.cache.has(role.id));
@@ -766,7 +753,6 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
   });
 });
 
-// 2. مراقبة الرسائل (حذف / تعديل)
 client.on('messageDelete', message => {
   if (message.author?.bot) return;
   const authorName = message.author ? `@${message.author.username}` : 'عضو غير معروف';
@@ -783,7 +769,6 @@ client.on('messageUpdate', (oldMessage, newMessage) => {
   addLog('messages', 'تعديل رسالة', `العضو ${authorName} في ${channelName} عدّل رسالته من: "${oldMessage.content}" إلى: "${newMessage.content}"`);
 });
 
-// 3. مراقبة الصوت (دخول / خروج / تنقل)
 client.on('voiceStateUpdate', (oldState, newState) => {
   const memberName = `@${newState.member.user.username}`;
   if (!oldState.channelId && newState.channelId) {
@@ -795,7 +780,6 @@ client.on('voiceStateUpdate', (oldState, newState) => {
   }
 });
 
-// 4. مراقبة الرومات (إنشاء / حذف / تعديل)
 client.on('channelCreate', channel => {
   const chName = channel.name ? `#${channel.name}` : 'روم';
   const chType = channel.type === ChannelType.GuildText ? 'كتابي' : channel.type === ChannelType.GuildVoice ? 'صوتي' : 'كاتيجوري';
@@ -814,7 +798,6 @@ client.on('channelUpdate', (oldChannel, newChannel) => {
   }
 });
 
-// 5. مراقبة الأعضاء (انضمام / مغادرة)
 client.on('guildMemberAdd', member => {
   addLog('members', 'انضمام عضو', `العضو @${member.user.username} انضم إلى السيرفر.`);
 });
@@ -823,7 +806,6 @@ client.on('guildMemberRemove', member => {
   addLog('members', 'مغادرة عضو', `العضو @${member.user.username} غادر السيرفر.`);
 });
 
-// 6. مراقبة الحظر (Ban / Unban)
 client.on('guildBanAdd', ban => {
   addLog('bans', 'حظر عضو (Ban)', `تم حظر العضو @${ban.user.username} من السيرفر.`);
 });
@@ -832,7 +814,6 @@ client.on('guildBanRemove', ban => {
   addLog('bans', 'فك حظر (Unban)', `تم فك الحظر عن العضو @${ban.user.username}`);
 });
 
-// 7. تفاعلات التذاكر والأزرار
 client.on('interactionCreate', async interaction => {
   if (interaction.isStringSelectMenu() && interaction.customId === 'select_base_color') {
     const selectedKey = interaction.values[0];
