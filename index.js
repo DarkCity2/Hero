@@ -22,8 +22,13 @@ const session = require('express-session');
 const fs = require('fs');
 const path = require('path');
 
-// ------------------- ملف حفظ السجلات لضمان عدم حذفها عند التحديث -------------------
+// ------------------- نظام السجلات الدائمة وملف التخزين -------------------
 const LOGS_FILE_PATH = path.join(__dirname, 'persistent_logs.json');
+const TRANSCRIPTS_DIR = path.join(__dirname, 'transcripts_store');
+
+if (!fs.existsSync(TRANSCRIPTS_DIR)) {
+  fs.mkdirSync(TRANSCRIPTS_DIR, { recursive: true });
+}
 
 let logsStore = {
   roles: [],
@@ -35,15 +40,12 @@ let logsStore = {
   bans: []
 };
 
-// تحميل السجلات المحفوظة إن وجدت
 try {
   if (fs.existsSync(LOGS_FILE_PATH)) {
     const rawData = fs.readFileSync(LOGS_FILE_PATH, 'utf-8');
     logsStore = JSON.parse(rawData);
   }
-} catch (e) {
-  console.log('⚠️ ملاحظة: جاري إنشاء ملف سجلات جديد.');
-}
+} catch (e) {}
 
 function saveLogsToFile() {
   try {
@@ -51,42 +53,28 @@ function saveLogsToFile() {
   } catch (e) {}
 }
 
-function addLog(category, action, details) {
+function addLog(category, action, details, transcriptId = null) {
   const time = new Date().toLocaleString('ar-SA', { timeZone: 'Asia/Riyadh' });
-  const logItem = { action, details, time };
+  const logItem = { action, details, time, transcriptId };
   
   if (!logsStore[category]) logsStore[category] = [];
   logsStore[category].unshift(logItem);
-  if (logsStore[category].length > 200) logsStore[category].pop();
+  if (logsStore[category].length > 300) logsStore[category].pop();
   
   saveLogsToFile();
 }
 
-// ------------------- 1. بيانات قواعد الألوان بنظام الشرائح المزدوجة -------------------
+// ------------------- 1. بيانات قواعد الألوان -------------------
 let basesData = {
   silver: { 
     name: 'Silver Base', emoji: '⚪', 
-    tiers: [
-      { maxQty: 20, price: '20 ريال' },
-      { maxQty: 40, price: '40 ريال' },
-      { maxQty: 999, price: '60 ريال' }
-    ],
-    itemTiers: [
-      { maxQty: 10, items: 'كروماندو كاندي وفوق باستثناء البارتي' },
-      { maxQty: 999, items: 'دب كاندي وفوق' }
-    ]
+    tiers: [{ maxQty: 20, price: '20 ريال' }, { maxQty: 40, price: '40 ريال' }, { maxQty: 999, price: '60 ريال' }],
+    itemTiers: [{ maxQty: 10, items: 'كروماندو كاندي وفوق باستثناء البارتي' }, { maxQty: 999, items: 'دب كاندي وفوق' }]
   },
   gold: { 
     name: 'Gold Base', emoji: '🟡', 
-    tiers: [
-      { maxQty: 20, price: '20 ريال' },
-      { maxQty: 40, price: '40 ريال' },
-      { maxQty: 999, price: '60 ريال' }
-    ],
-    itemTiers: [
-      { maxQty: 10, items: 'كروماندو كاندي وفوق باستثناء البارتي' },
-      { maxQty: 999, items: 'دب كاندي وفوق' }
-    ]
+    tiers: [{ maxQty: 20, price: '20 ريال' }, { maxQty: 40, price: '40 ريال' }, { maxQty: 999, price: '60 ريال' }],
+    itemTiers: [{ maxQty: 10, items: 'كروماندو كاندي وفوق باستثناء البارتي' }, { maxQty: 999, items: 'دب كاندي وفوق' }]
   },
   crystal: { name: 'Crystal Base', emoji: '💎', tiers: [{ maxQty: 20, price: '25 ريال' }, { maxQty: 40, price: '50 ريال' }], itemTiers: [{ maxQty: 999, items: 'شروط الأغراض المحددة مسبقاً' }] },
   bloodmoon: { name: 'BloodMoon Base', emoji: '🌑', tiers: [{ maxQty: 20, price: '30 ريال' }, { maxQty: 40, price: '60 ريال' }], itemTiers: [{ maxQty: 999, items: 'شروط الأغراض المحددة مسبقاً' }] },
@@ -116,9 +104,7 @@ function getTierPrice(tiersArray, userQuantity) {
   if (!tiersArray || tiersArray.length === 0) return { price: 'غير محدد', tierText: 'غير محدد' };
   const sorted = [...tiersArray].sort((a, b) => a.maxQty - b.maxQty);
   for (let tier of sorted) {
-    if (userQuantity <= tier.maxQty) {
-      return { price: tier.price, tierText: `${tier.maxQty} وتحت` };
-    }
+    if (userQuantity <= tier.maxQty) return { price: tier.price, tierText: `${tier.maxQty} وتحت` };
   }
   const lastTier = sorted[sorted.length - 1];
   return { price: lastTier.price, tierText: `فوق ${lastTier.maxQty}` };
@@ -128,9 +114,7 @@ function getTierItems(itemTiersArray, userQuantity) {
   if (!itemTiersArray || itemTiersArray.length === 0) return { items: 'غير محدد', tierText: 'غير محدد' };
   const sorted = [...itemTiersArray].sort((a, b) => a.maxQty - b.maxQty);
   for (let tier of sorted) {
-    if (userQuantity <= tier.maxQty) {
-      return { items: tier.items, tierText: `${tier.maxQty} وتحت` };
-    }
+    if (userQuantity <= tier.maxQty) return { items: tier.items, tierText: `${tier.maxQty} وتحت` };
   }
   const lastTier = sorted[sorted.length - 1];
   return { items: lastTier.items, tierText: `فوق ${lastTier.maxQty}` };
@@ -248,6 +232,12 @@ const renderUltimateLayout = (activeTab, content) => {
       .badge-channels { background: rgba(236, 72, 153, 0.15); color: #f472b6; border: 1px solid rgba(236, 72, 153, 0.3); }
       .badge-members { background: rgba(6, 182, 212, 0.15); color: #67e8f9; border: 1px solid rgba(6, 182, 212, 0.3); }
       .badge-bans { background: rgba(239, 68, 68, 0.15); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.3); }
+      
+      .btn-view-ticket { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; text-decoration: none; display: inline-block; margin-right: 8px; }
+      .btn-view-ticket:hover { background: rgba(16, 185, 129, 0.35); color: #fff; }
+      
+      .btn-clear-logs { background: rgba(239, 68, 68, 0.15); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.3); padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+      .btn-clear-logs:hover { background: rgba(239, 68, 68, 0.3); color: #fff; }
     </style>
     <script>
       function addTierRow(baseKey) {
@@ -480,9 +470,7 @@ app.post('/save-colors', (req, res) => {
     let newTiers = [];
     if (Array.isArray(maxQtys)) {
       for (let i = 0; i < maxQtys.length; i++) {
-        if (maxQtys[i] && prices[i]) {
-          newTiers.push({ maxQty: Number(maxQtys[i]), price: prices[i] });
-        }
+        if (maxQtys[i] && prices[i]) newTiers.push({ maxQty: Number(maxQtys[i]), price: prices[i] });
       }
     } else if (maxQtys && prices) {
       newTiers.push({ maxQty: Number(maxQtys), price: prices });
@@ -494,9 +482,7 @@ app.post('/save-colors', (req, res) => {
     let newItemTiers = [];
     if (Array.isArray(itemMaxQtys)) {
       for (let i = 0; i < itemMaxQtys.length; i++) {
-        if (itemMaxQtys[i] && itemTexts[i]) {
-          newItemTiers.push({ maxQty: Number(itemMaxQtys[i]), items: itemTexts[i] });
-        }
+        if (itemMaxQtys[i] && itemTexts[i]) newItemTiers.push({ maxQty: Number(itemMaxQtys[i]), items: itemTexts[i] });
       }
     } else if (itemMaxQtys && itemTexts) {
       newItemTiers.push({ maxQty: Number(itemMaxQtys), items: itemTexts });
@@ -539,6 +525,83 @@ app.post('/save-tickets', (req, res) => {
   res.redirect('/tickets');
 });
 
+// صفحة عرض تفاصيل محادثات التذكرة (من الألف للياء)
+app.get('/view-transcript/:id', (req, res) => {
+  if (!req.session.authenticated) return res.redirect('/login');
+  const fileId = req.params.id.replace(/[^a-zA-Z0-9_-]/g, '');
+  const filePath = path.join(TRANSCRIPTS_DIR, `${fileId}.json`);
+
+  if (!fs.existsSync(filePath)) {
+    return res.send('<h2 style="color:red; text-align:center; margin-top:50px; font-family:sans-serif;">❌ عذراً، لم يتم العثور على سجل محادثات هذه التذكرة.<br><br><a href="/logs" style="color:#a78bfa;">العودة للسجلات</a></h2>');
+  }
+
+  let transcriptData = { ticketName: 'Unknown', closedBy: 'Unknown', date: 'Unknown', messages: [] };
+  try {
+    transcriptData = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+  } catch(e){}
+
+  const messagesHtml = transcriptData.messages.map(m => `
+    <div style="background: rgba(10, 12, 18, 0.7); border: 1px solid rgba(255,255,255,0.05); padding: 12px 16px; border-radius: 12px; margin-bottom: 10px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+        <span style="font-weight: 800; color: #a855f7; font-size: 14px;">${m.author}</span>
+        <span style="color: #6b7280; font-size: 11px;">${m.time}</span>
+      </div>
+      <div style="color: #e5e7eb; font-size: 13px; white-space: pre-wrap; line-height: 1.5;">${m.content}</div>
+    </div>
+  `).join('');
+
+  const html = `
+  <!DOCTYPE html>
+  <html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8">
+    <title>Void • عرض تفاصيل التذكرة</title>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap');
+      body { background: #08090d; color: #f3f4f6; margin: 0; padding: 30px; font-family: 'Cairo', sans-serif; display: flex; justify-content: center; }
+      .container { width: 100%; max-width: 900px; }
+      .glass-card { background: rgba(17, 20, 31, 0.75); backdrop-filter: blur(25px); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; padding: 25px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.4); }
+      h1, h2 { color: #fff; margin-top: 0; font-weight: 800; }
+      .purple-gradient { background: linear-gradient(135deg, #ffffff, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+      .info-row { display: flex; justify-content: space-between; background: rgba(10, 12, 18, 0.5); padding: 10px 14px; border-radius: 10px; margin-bottom: 8px; font-size: 13px; }
+      .btn { background: linear-gradient(135deg, #4f46e5, #7c3aed); color: #fff; border: none; padding: 10px 20px; border-radius: 10px; font-weight: 700; text-decoration: none; display: inline-block; font-size: 13px; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="glass-card" style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <h1 class="purple-gradient" style="margin: 0; font-size: 20px;">🎫 أرشيف محادثات التذكرة</h1>
+          <p style="color: #9ca3af; margin: 4px 0 0 0; font-size: 12px;">عرض تفصيلي لكافة رسائل ومحتويات التذكرة من البداية إلى الإغلاق.</p>
+        </div>
+        <a href="/logs" class="btn">⬅️ العودة للسجلات</a>
+      </div>
+
+      <div class="glass-card">
+        <div class="info-row"><span>اسم التذكرة:</span><strong>${transcriptData.ticketName}</strong></div>
+        <div class="info-row"><span>أُغلقت بواسطة:</span><strong>${transcriptData.closedBy}</strong></div>
+        <div class="info-row"><span>تاريخ الأرشفة:</span><strong>${transcriptData.date}</strong></div>
+      </div>
+
+      <div class="glass-card">
+        <h2 style="font-size: 16px; margin-bottom: 15px;" class="purple-gradient">💬 محادثات التذكرة الكاملة (${transcriptData.messages.length} رسالة)</h2>
+        ${messagesHtml || '<p style="color: #6b7280; text-align: center;">لا توجد رسائل مسجلة.</p>'}
+      </div>
+    </div>
+  </body>
+  </html>
+  `;
+  res.send(html);
+});
+
+// زر حذف جميع السجلات
+app.get('/clear-logs', (req, res) => {
+  if (!req.session.authenticated) return res.redirect('/login');
+  logsStore = { roles: [], messages: [], voice: [], tickets: [], channels: [], members: [], bans: [] };
+  saveLogsToFile();
+  res.redirect('/logs');
+});
+
 const renderLogTableSection = (title, badgeClass, logsArray) => {
   const items = logsArray || [];
   const rows = items.length === 0 
@@ -546,7 +609,10 @@ const renderLogTableSection = (title, badgeClass, logsArray) => {
     : items.map(log => `
       <tr>
         <td style="font-weight: 700; color: #ffffff; width: 35%;">${log.action}</td>
-        <td style="color: #d1d5db; width: 45%;">${log.details}</td>
+        <td style="color: #d1d5db; width: 45%;">
+          ${log.details}
+          ${log.transcriptId ? `<br><a href="/view-transcript/${log.transcriptId}" target="_blank" class="btn-view-ticket">👁️ عرض التذكرة كاملة</a>` : ''}
+        </td>
         <td style="color: #6b7280; font-size: 11px; white-space: nowrap; text-align: left; width: 20%;">${log.time}</td>
       </tr>
     `).join('');
@@ -579,9 +645,12 @@ app.get('/logs', (req, res) => {
   if (!req.session.authenticated) return res.redirect('/login');
 
   const content = `
-    <div class="glass-card">
-      <h1 class="purple-gradient" style="margin: 0; font-size: 18px;">📜 سجلات الأحداث الشاملة الدائمة (Persistent Live Logs)</h1>
-      <p style="color: #9ca3af; margin-top: 4px; font-size: 12px;">مراقبة حية لا تختفي أبداً عند تحديث الصفحة أو إعادة تشغيل البوت.</p>
+    <div class="glass-card" style="display: flex; justify-content: space-between; align-items: center;">
+      <div>
+        <h1 class="purple-gradient" style="margin: 0; font-size: 18px;">📜 سجلات الأحداث الشاملة الدائمة (Persistent Live Logs)</h1>
+        <p style="color: #9ca3af; margin-top: 4px; font-size: 12px;">مراقبة حية لا تختفي أبداً عند تحديث الصفحة أو إعادة تشغيل البوت.</p>
+      </div>
+      <a href="/clear-logs" class="btn-clear-logs" onclick="return confirm('هل أنت متأكد من حذف جميع السجلات بالكامل؟')">🗑️ حذف جميع السجلات</a>
     </div>
 
     ${renderLogTableSection('👑 سجلات الرتب (Roles)', 'badge-roles', logsStore.roles)}
@@ -701,7 +770,7 @@ app.post('/send-panel', async (req, res) => {
 
 app.listen(PORT, () => console.log(`🌐 Dashboard Active on port ${PORT}`));
 
-// ------------------- 7. بوت ديسكورد والمراقبة الشاملة الدائمة -------------------
+// ------------------- 7. بوت ديسكورد -------------------
 const client = new Client({
   intents: [
     I.Guilds, I.GuildMembers, I.GuildMessages, I.MessageContent,
@@ -713,19 +782,20 @@ const client = new Client({
 
 const userSessions = new Map();
 
-async function createTranscriptBuffer(channel, closedByUser) {
+async function saveFullTranscript(channel, closedByUser) {
   const fetchedMessages = await channel.messages.fetch({ limit: 100 });
   const sortedMessages = Array.from(fetchedMessages.values())
     .reverse()
     .filter(msg => !msg.content.includes('جاري حفظ محادثات التذكرة'));
 
-  let transcriptContent = `========================================================\n`;
-  transcriptContent += `             VOID COMMUNITY - TICKET TRANSCRIPT        \n`;
-  transcriptContent += `========================================================\n`;
-  transcriptContent += `• Ticket Name : ${channel.name}\n`;
-  transcriptContent += `• Closed By   : ${closedByUser.tag}\n`;
-  transcriptContent += `• Archive Date: ${new Date().toUTCString()}\n`;
-  transcriptContent += `========================================================\n\n`;
+  let messagesList = [];
+  let txtContent = `========================================================\n`;
+  txtContent += `             VOID COMMUNITY - TICKET TRANSCRIPT        \n`;
+  txtContent += `========================================================\n`;
+  txtContent += `• Ticket Name : ${channel.name}\n`;
+  txtContent += `• Closed By   : ${closedByUser.tag}\n`;
+  txtContent += `• Archive Date: ${new Date().toUTCString()}\n`;
+  txtContent += `========================================================\n\n`;
 
   sortedMessages.forEach(msg => {
     const timeStr = msg.createdAt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
@@ -744,16 +814,30 @@ async function createTranscriptBuffer(channel, closedByUser) {
     }
 
     if (content.trim()) {
-      transcriptContent += `[${timeStr}] ${msg.author.tag}: ${content.trim()}\n`;
+      messagesList.push({
+        author: msg.author.tag,
+        content: content.trim(),
+        time: timeStr
+      });
+      txtContent += `[${timeStr}] ${msg.author.tag}: ${content.trim()}\n`;
     }
   });
 
-  transcriptContent += `\n========================================================\n`;
-  transcriptContent += `              End of Transcript - Void Bot              \n`;
-  transcriptContent += `========================================================`;
+  const fileId = Date.now().toString() + Math.random().toString(36).substring(2, 7);
+  const dataToSave = {
+    ticketName: channel.name,
+    closedBy: closedByUser.tag,
+    date: new Date().toLocaleString('ar-SA'),
+    messages: messagesList
+  };
+
+  try {
+    fs.writeFileSync(path.join(TRANSCRIPTS_DIR, `${fileId}.json`), JSON.stringify(dataToSave, null, 2), 'utf-8');
+  } catch(e){}
 
   return {
-    buffer: Buffer.from(transcriptContent, 'utf-8'),
+    fileId,
+    buffer: Buffer.from(txtContent, 'utf-8'),
     count: sortedMessages.length
   };
 }
@@ -767,13 +851,8 @@ client.on('guildMemberUpdate', (oldMember, newMember) => {
   const addedRoles = newMember.roles.cache.filter(role => !oldMember.roles.cache.has(role.id));
   const removedRoles = oldMember.roles.cache.filter(role => !newMember.roles.cache.has(role.id));
 
-  addedRoles.forEach(role => {
-    addLog('roles', 'إضافة رتبة لعضو', `تم إعطاء الرتبة [${role.name}] للعضو @${newMember.user.username}`);
-  });
-
-  removedRoles.forEach(role => {
-    addLog('roles', 'إزالة رتبة من عضو', `تم إزالة الرتبة [${role.name}] من العضو @${newMember.user.username}`);
-  });
+  addedRoles.forEach(role => addLog('roles', 'إضافة رتبة لعضو', `تم إعطاء الرتبة [${role.name}] للعضو @${newMember.user.username}`));
+  removedRoles.forEach(role => addLog('roles', 'إزالة رتبة من عضو', `تم إزالة الرتبة [${role.name}] من العضو @${newMember.user.username}`));
 });
 
 client.on('messageDelete', message => {
@@ -821,21 +900,10 @@ client.on('channelUpdate', (oldChannel, newChannel) => {
   }
 });
 
-client.on('guildMemberAdd', member => {
-  addLog('members', 'انضمام عضو', `العضو @${member.user.username} انضم إلى السيرفر.`);
-});
-
-client.on('guildMemberRemove', member => {
-  addLog('members', 'مغادرة عضو', `العضو @${member.user.username} غادر السيرفر.`);
-});
-
-client.on('guildBanAdd', ban => {
-  addLog('bans', 'حظر عضو (Ban)', `تم حظر العضو @${ban.user.username} من السيرفر.`);
-});
-
-client.on('guildBanRemove', ban => {
-  addLog('bans', 'فك حظر (Unban)', `تم فك الحظر عن العضو @${ban.user.username}`);
-});
+client.on('guildMemberAdd', member => addLog('members', 'انضمام عضو', `العضو @${member.user.username} انضم إلى السيرفر.`));
+client.on('guildMemberRemove', member => addLog('members', 'مغادرة عضو', `العضو @${member.user.username} غادر السيرفر.`));
+client.on('guildBanAdd', ban => addLog('bans', 'حظر عضو (Ban)', `تم حظر العضو @${ban.user.username} من السيرفر.`));
+client.on('guildBanRemove', ban => addLog('bans', 'فك حظر (Unban)', `تم فك الحظر عن العضو @${ban.user.username}`));
 
 client.on('interactionCreate', async interaction => {
   if (interaction.isStringSelectMenu() && interaction.customId === 'select_base_color') {
@@ -922,32 +990,24 @@ client.on('interactionCreate', async interaction => {
 
       const specificRole = interaction.guild.roles.cache.find(r => r.name.toLowerCase() === baseName.toLowerCase());
       if (specificRole) {
-        permissionOverwrites.push({
-          id: specificRole.id,
-          allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages]
-        });
+        permissionOverwrites.push({ id: specificRole.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] });
       }
 
       const prefixKey = session?.baseKey ? session.baseKey : 'color';
       const channelName = `ticket-${prefixKey}-${interaction.user.username}`.toLowerCase();
 
-      const channelOptions = {
-        name: channelName,
-        type: ChannelType.GuildText,
-        permissionOverwrites: permissionOverwrites
-      };
+      const channelOptions = { name: channelName, type: ChannelType.GuildText, permissionOverwrites };
 
       if (serverSettings.ticketCategories) {
         const categories = serverSettings.ticketCategories.split(',').map(c => c.trim()).filter(Boolean);
         if (categories.length > 0) {
-          const randomCat = categories[Math.floor(Math.random() * categories.length)];
-          channelOptions.parent = randomCat;
+          channelOptions.parent = categories[Math.floor(Math.random() * categories.length)];
         }
       }
 
       const ch = await interaction.guild.channels.create(channelOptions);
-
       const openTimestamp = `<t:${Math.floor(Date.now() / 1000)}:f>`;
+
       ticketsDataMap.set(ch.id, {
         openedBy: interaction.user.id,
         claimedBy: null,
@@ -1065,9 +1125,9 @@ client.on('interactionCreate', async interaction => {
 
       if (action === 'request_copy') {
         await interaction.deferReply({ ephemeral: true });
-        const { buffer } = await createTranscriptBuffer(interaction.channel, interaction.user);
+        const { fileId, buffer } = await saveFullTranscript(interaction.channel, interaction.user);
         const attachment = new AttachmentBuilder(buffer, { name: `transcript-${interaction.channel.name}.txt` });
-        addLog('tickets', 'طلب نسخة تذكرة', `تم طلب نسخة نصية لمحادثات التذكرة #${interaction.channel.name} بواسطة @${interaction.user.username}`);
+        addLog('tickets', 'طلب نسخة تذكرة', `تم طلب نسخة نصية لمحادثات التذكرة #${interaction.channel.name} بواسطة @${interaction.user.username}`, fileId);
         return await interaction.editReply({ content: '📄 **تفضل نسخة من محادثات التذكرة الحالية:**', files: [attachment] });
       }
     }
@@ -1075,10 +1135,7 @@ client.on('interactionCreate', async interaction => {
 
   if (interaction.isUserSelectMenu() && interaction.customId === 'select_user_to_add') {
     const targetUserId = interaction.values[0];
-    await interaction.channel.permissionOverwrites.edit(targetUserId, {
-      ViewChannel: true,
-      SendMessages: true
-    });
+    await interaction.channel.permissionOverwrites.edit(targetUserId, { ViewChannel: true, SendMessages: true });
     addLog('tickets', 'إضافة عضو لتذكرة', `تم إضافة العضو <@${targetUserId}> إلى التذكرة #${interaction.channel.name}`);
     await interaction.reply({ content: `✅ **تمت إضافة العضو <@${targetUserId}> للتذكرة بنجاح!**` });
   }
@@ -1087,9 +1144,9 @@ client.on('interactionCreate', async interaction => {
     const reason = interaction.fields.getTextInputValue('close_reason_input');
     await interaction.reply('⏳ **جاري حفظ محادثات التذكرة وتسجيلها في لوحة التحكم وإغلاق القناة...**');
 
-    const { count } = await createTranscriptBuffer(interaction.channel, interaction.user);
+    const { fileId, count } = await saveFullTranscript(interaction.channel, interaction.user);
 
-    addLog('tickets', 'إغلاق تذكرة', `التذكرة #${interaction.channel.name} أُغلقت بواسطة @${interaction.user.username} | السبب: ${reason} | عدد الرسائل: ${count}`);
+    addLog('tickets', 'إغلاق تذكرة', `التذكرة #${interaction.channel.name} أُغلقت بواسطة @${interaction.user.username} | السبب: ${reason} | عدد الرسائل: ${count}`, fileId);
 
     setTimeout(() => {
       ticketsDataMap.delete(interaction.channel.id);
