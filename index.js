@@ -42,14 +42,10 @@ let basesData = {
 };
 
 let serverSettings = {
-  ticketCategoryId: '',
-  supportRole: 'Staff Moderator 🛠️',
+  ticketCategories: '', // يدعم آيدي أو عدة آيديinput للفئات مفصولة بفاصلة
   ownerRoleName: 'Owner',
   logChannel: 'void-logs',
-  maxTickets: 1,
-  autoMuteSpam: true,
-  blockLinks: true,
-  antiRaid: true
+  ticketLogChannel: 'ticket-logs'
 };
 
 const ticketsDataMap = new Map();
@@ -115,13 +111,13 @@ const renderUltimateLayout = (activeTab, content) => `
         <div class="nav-group">
           <div class="nav-label">عام</div>
           <a href="/" class="nav-item ${activeTab === 'colors' ? 'active' : ''}"><span>🎨 ألوان القواعد (17)</span></a>
-          <a href="/tickets" class="nav-item ${activeTab === 'tickets' ? 'active' : ''}"><span>🎫 التذاكر والدعم</span><div class="badge-check">✓</div></a>
+          <a href="/tickets" class="nav-item ${activeTab === 'tickets' ? 'active' : ''}"><span>🎫 التذاكر والكاتيجوري</span><div class="badge-check">✓</div></a>
         </div>
         <div class="nav-group">
           <div class="nav-label">الإدارة والحماية</div>
           <a href="/moderation" class="nav-item ${activeTab === 'moderation' ? 'active' : ''}"><span>🔨 إدارة السيرفر</span><div class="badge-check">✓</div></a>
-          <a href="/logs" class="nav-item ${activeTab === 'logs' ? 'active' : ''}"><span>📜 السجلات (اللوقات)</span><div class="badge-check">✓</div></a>
-          <a href="/security" class="nav-item ${activeTab === 'security' ? 'active' : ''}"><span>🛡️ الحماية ومكافحة الهجمات</span><div class="badge-check">✓</div></a>
+          <a href="/logs" class="nav-item ${activeTab === 'logs' ? 'active' : ''}"><span>📜 السجلات العامة</span><div class="badge-check">✓</div></a>
+          <a href="/security" class="nav-item ${activeTab === 'security' ? 'active' : ''}"><span>🛡️ حماية السيرفر</span><div class="badge-check">✓</div></a>
         </div>
       </div>
       <a href="/logout" class="btn" style="background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4); color: #f87171; margin-top: 0;">تسجيل الخروج</a>
@@ -269,19 +265,22 @@ app.get('/tickets', (req, res) => {
   if (!req.session.authenticated) return res.redirect('/login');
   const content = `
     <div class="glass-card">
-      <h1 class="purple-gradient" style="margin: 0; font-size: 24px;">🎫 إعدادات نظام التذاكر والدعم</h1>
-      <p style="color: #94a3b8; margin-top: 5px;">تحديد كاتيجوري التذاكر ورتب الدعم والـ Owner.</p>
+      <h1 class="purple-gradient" style="margin: 0; font-size: 24px;">🎫 إعدادات التذاكر والكاتيجوري واللوقات</h1>
+      <p style="color: #94a3b8; margin-top: 5px;">إدارة كاتيجوري التذاكر وروم اللوقات الخاصة بالتذاكر ورتبة الـ Owner.</p>
     </div>
     
     <form action="/save-tickets" method="POST">
       <div class="glass-card">
-        <label>معرف كاتيجوري التذاكر (Category ID):</label>
-        <input type="text" name="ticketCategoryId" value="${serverSettings.ticketCategoryId}" placeholder="مثال: 123456789012345678">
+        <label>معرفات كاتيجوري التذاكر (Category IDs - يدعم أكثر من آيدي مفصول بفاصلة):</label>
+        <input type="text" name="ticketCategories" value="${serverSettings.ticketCategories}" placeholder="مثال: 123456789012345678, 987654321098765432">
 
-        <label>اسم رتبة الـ Owner المسؤول عن باقي الخيارات:</label>
+        <label>اسم روم لوقات التذاكر (Ticket Logs Channel):</label>
+        <input type="text" name="ticketLogChannel" value="${serverSettings.ticketLogChannel}" placeholder="مثال: ticket-logs">
+
+        <label>اسم رتبة الـ Owner المسؤول عن خيارات التحكم:</label>
         <input type="text" name="ownerRoleName" value="${serverSettings.ownerRoleName}" placeholder="Owner">
 
-        <button type="submit" class="btn">💾 حفظ إعدادات التذاكر</button>
+        <button type="submit" class="btn">💾 حفظ إعدادات التذاكر واللوقات</button>
       </div>
     </form>
   `;
@@ -290,7 +289,8 @@ app.get('/tickets', (req, res) => {
 
 app.post('/save-tickets', (req, res) => {
   if (!req.session.authenticated) return res.redirect('/login');
-  serverSettings.ticketCategoryId = req.body.ticketCategoryId;
+  if (req.body.ticketCategories !== undefined) serverSettings.ticketCategories = req.body.ticketCategories;
+  if (req.body.ticketLogChannel) serverSettings.ticketLogChannel = req.body.ticketLogChannel;
   if (req.body.ownerRoleName) serverSettings.ownerRoleName = req.body.ownerRoleName;
   res.redirect('/tickets');
 });
@@ -304,14 +304,14 @@ app.get('/logs', (req, res) => {
   if (!req.session.authenticated) return res.redirect('/login');
   const content = `
     <div class="glass-card">
-      <h1 class="purple-gradient" style="margin:0; font-size:24px;">📜 إعدادات السجلات (Audit & Ticket Logs)</h1>
-      <p style="color: #94a3b8; margin-top: 5px;">تحديد روم اللوقات لتسجيل التذاكر وحفظ المحادثات بالكامل.</p>
+      <h1 class="purple-gradient" style="margin:0; font-size:24px;">📜 السجلات العامة (Audit Logs)</h1>
+      <p style="color: #94a3b8; margin-top: 5px;">إدارة رومات السجلات العامة للسيرفر.</p>
     </div>
     <form action="/save-logs" method="POST">
       <div class="glass-card">
-        <label>اسم أو آيدي روم السجلات (Log Channel Name):</label>
+        <label>اسم أو آيدي روم السجلات العامة:</label>
         <input type="text" name="logChannel" value="${serverSettings.logChannel}" placeholder="مثال: void-logs">
-        <button type="submit" class="btn">💾 حفظ إعدادات اللوقات</button>
+        <button type="submit" class="btn">💾 حفظ إعدادات السجلات</button>
       </div>
     </form>
   `;
@@ -326,7 +326,7 @@ app.post('/save-logs', (req, res) => {
 
 app.get('/security', (req, res) => {
   if (!req.session.authenticated) return res.redirect('/login');
-  res.send(renderUltimateLayout('security', `<div class="glass-card"><h1 class="purple-gradient">🛡️ الحماية</h1></div>`));
+  res.send(renderUltimateLayout('security', `<div class="glass-card"><h1 class="purple-gradient">🛡️ حماية السيرفر</h1></div>`));
 });
 
 app.post('/send-panel', async (req, res) => {
@@ -372,15 +372,14 @@ const client = new Client({
 
 const userSessions = new Map();
 
-async function sendLog(guild, embed, attachment = null) {
-  if (!serverSettings.logChannel) return;
+async function sendTicketLog(guild, embed, attachment = null) {
+  const logChannelName = serverSettings.ticketLogChannel || 'ticket-logs';
   try {
-    let logCh = guild.channels.cache.find(c => c.name === serverSettings.logChannel || c.id === serverSettings.logChannel);
+    let logCh = guild.channels.cache.find(c => c.name === logChannelName || c.id === logChannelName);
     if (!logCh) {
       logCh = await guild.channels.create({
-        name: serverSettings.logChannel.replace(/[^a-z0-9-]/gi, '-').toLowerCase(),
-        type: ChannelType.GuildText,
-        parent: serverSettings.ticketCategoryId || undefined
+        name: logChannelName.replace(/[^a-z0-9-]/gi, '-').toLowerCase(),
+        type: ChannelType.GuildText
       }).catch(() => null);
     }
     if (logCh) {
@@ -389,7 +388,7 @@ async function sendLog(guild, embed, attachment = null) {
       await logCh.send(payload).catch(() => {});
     }
   } catch (e) {
-    console.error('Log error:', e);
+    console.error('Ticket Log error:', e);
   }
 }
 
@@ -399,13 +398,13 @@ async function createTranscriptBuffer(channel, closedByUser) {
     .reverse()
     .filter(msg => !msg.content.includes('جاري حفظ محادثات التذكرة'));
 
-  let transcriptContent = `==================================================\n`;
-  transcriptContent += `         VOID COMMUNITY - TICKET TRANSCRIPT\n`;
-  transcriptContent += `==================================================\n`;
-  transcriptContent += `Ticket Name: ${channel.name}\n`;
-  transcriptContent += `Closed By: ${closedByUser.tag}\n`;
-  transcriptContent += `Archive Date: ${new Date().toUTCString()}\n`;
-  transcriptContent += `==================================================\n\n`;
+  let transcriptContent = `========================================================\n`;
+  transcriptContent += `             VOID COMMUNITY - TICKET TRANSCRIPT        \n`;
+  transcriptContent += `========================================================\n`;
+  transcriptContent += `• Ticket Name : ${channel.name}\n`;
+  transcriptContent += `• Closed By   : ${closedByUser.tag}\n`;
+  transcriptContent += `• Archive Date: ${new Date().toUTCString()}\n`;
+  transcriptContent += `========================================================\n\n`;
 
   sortedMessages.forEach(msg => {
     const timeStr = msg.createdAt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
@@ -417,7 +416,7 @@ async function createTranscriptBuffer(channel, closedByUser) {
         if (e.description) content += `\n${e.description}`;
         if (e.fields) {
           e.fields.forEach(f => {
-            content += `\n• ${f.name}:${f.value}`;
+            content += `\n   ↳ ${f.name}:${f.value}`;
           });
         }
       });
@@ -428,9 +427,9 @@ async function createTranscriptBuffer(channel, closedByUser) {
     }
   });
 
-  transcriptContent += `\n==================================================\n`;
-  transcriptContent += ` End of Transcript - Void Community Bot\n`;
-  transcriptContent += `==================================================`;
+  transcriptContent += `\n========================================================\n`;
+  transcriptContent += `              End of Transcript - Void Bot              \n`;
+  transcriptContent += `========================================================`;
 
   return {
     buffer: Buffer.from(transcriptContent, 'utf-8'),
@@ -526,12 +525,17 @@ client.on('interactionCreate', async interaction => {
 
       const channelOptions = {
         name: channelName,
-        type: ChannelType.GuildType ?? ChannelType.GuildText,
+        type: ChannelType.GuildText,
         permissionOverwrites: permissionOverwrites
       };
 
-      if (serverSettings.ticketCategoryId) {
-        channelOptions.parent = serverSettings.ticketCategoryId;
+      // تحديد الكاتيجوري بذكاء (اختيار عشوائي لو فيه أكثر من كاتيجوري أو الأول)
+      if (serverSettings.ticketCategories) {
+        const categories = serverSettings.ticketCategories.split(',').map(c => c.trim()).filter(Boolean);
+        if (categories.length > 0) {
+          const randomCat = categories[Math.floor(Math.random() * categories.length)];
+          channelOptions.parent = randomCat;
+        }
       }
 
       const ch = await interaction.guild.channels.create(channelOptions);
@@ -546,24 +550,26 @@ client.on('interactionCreate', async interaction => {
 
       const actionMenu = new StringSelectMenuBuilder()
         .setCustomId('ticket_action_select')
-        .setPlaceholder('Choose a Ticket Action ⚙️')
+        .setPlaceholder('⚙️ اختر إجراء التذكرة الاحترافي...')
         .addOptions([
-          { label: 'Close with Reason', value: 'close_with_reason', description: 'Close the ticket with reason', emoji: '🔒' },
-          { label: 'Add User to Ticket', value: 'add_user', description: 'Add a user to the ticket', emoji: '👥' },
-          { label: 'Member PM Reminder', value: 'pm_reminder', description: 'Send a PM reminder to the ticket creator', emoji: '✉️' },
-          { label: 'Request Ticket Copy', value: 'request_copy', description: 'Request a copy of the ticket', emoji: '📄' }
+          { label: 'Close with Reason', value: 'close_with_reason', description: 'إغلاق التذكرة مع كتابة السبب', emoji: '🔒' },
+          { label: 'Add User to Ticket', value: 'add_user', description: 'إضافة عضو إلى التذكرة الحالية', emoji: '👥' },
+          { label: 'Member PM Reminder', value: 'pm_reminder', description: 'إرسال تذكير خاص لصاحب التذكرة', emoji: '✉️' },
+          { label: 'Request Ticket Copy', value: 'request_copy', description: 'طلب نسخة نصية من محادثات التذكرة', emoji: '📄' }
         ]);
 
       const embed = new EmbedBuilder()
         .setTitle(`🎫 Void Community | طلب لون ${baseName}`)
+        .setDescription('مرحباً بك في تذكرتك الخاصة. يرجى انتظار مسؤولي القاعدة لخدمتك.')
         .addFields(
           { name: '👤 العضو', value: `<@${interaction.user.id}>`, inline: true },
           { name: '🛡️ الضمان', value: session ? session.guarantee : 'غير محدد', inline: true },
           { name: '🔢 عدد النواقص', value: session ? session.missing : 'غير محدد', inline: true },
-          { name: '👑 الرتبة المخولة لرؤية التذكرة', value: specificRole ? `<@&${specificRole.id}>` : 'الإدارة العامة', inline: false }
+          { name: '👑 الرتبة المخولة', value: specificRole ? `<@&${specificRole.id}>` : 'الإدارة العامة', inline: false }
         )
-        .setColor('#57f287')
-        .setFooter({ text: 'Void Community Ticket System' });
+        .setColor('#5865F2')
+        .setFooter({ text: 'Void Community • Advanced Ticket System' })
+        .setTimestamp();
 
       await ch.send({ 
         content: `<@${interaction.user.id}>${specificRole ? `<@&${specificRole.id}>` : ''}`, 
@@ -579,19 +585,17 @@ client.on('interactionCreate', async interaction => {
     }
   }
 
-  // ------------------- فحص الصلاحيات الصارم بالرتب -------------------
+  // ------------------- فحص الصلاحيات الصارم -------------------
   if (interaction.isStringSelectMenu() && interaction.customId === 'ticket_action_select') {
     const action = interaction.values[0];
     const member = interaction.member;
     const ticketData = ticketsDataMap.get(interaction.channel.id) || {};
     const baseName = ticketData.baseName || '';
 
-    // التحقق الصارم من الرتب والأدمن
     const isServerAdministrator = member.permissions.has(PermissionFlagsBits.Administrator);
     const hasBaseRole = member.roles.cache.some(r => r.name.toLowerCase() === baseName.toLowerCase());
     const hasOwnerRole = member.roles.cache.some(r => r.name.toLowerCase() === serverSettings.ownerRoleName.toLowerCase());
 
-    // منع أي عضو لا يملك رتبة القاعدة ولا Owner ولا أدمن من تنفيذ أي شيء
     if (!hasBaseRole && !hasOwnerRole && !isServerAdministrator) {
       return interaction.reply({ content: '❌ **عذراً، هذه القائمة مخصصة فقط لمسؤولي التذاكر وأصحاب الرتب!**', ephemeral: true });
     }
@@ -653,8 +657,8 @@ client.on('interactionCreate', async interaction => {
       if (action === 'request_copy') {
         await interaction.deferReply({ ephemeral: true });
         const { buffer } = await createTranscriptBuffer(interaction.channel, interaction.user);
-        const attachment = new AttachmentBuilder(buffer, { name: `copy-${interaction.channel.name}.txt` });
-        return await interaction.editReply({ content: '📄 **تفضل هذه نسخة كاملة من محادثات التذكرة:**', files: [attachment] });
+        const attachment = new AttachmentBuilder(buffer, { name: `transcript-${interaction.channel.name}.txt` });
+        return await interaction.editReply({ content: '📄 **تفضل نسخة من محادثات التذكرة الحالية:**', files: [attachment] });
       }
     }
   }
@@ -670,38 +674,40 @@ client.on('interactionCreate', async interaction => {
 
   if (interaction.isModalSubmit() && interaction.customId.startsWith('modal_close_reason')) {
     const reason = interaction.fields.getTextInputValue('close_reason_input');
-    await interaction.reply('⏳ **جاري حفظ محادثات التذكرة وتنسيق اللوق وإغلاق القناة...**');
+    await interaction.reply('⏳ **جاري حفظ سجلات التذكرة وإغلاق القناة بشكل احترافي...**');
 
     const ticketData = ticketsDataMap.get(interaction.channel.id) || {};
     const openedByMention = ticketData.openedBy ? `<@${ticketData.openedBy}>` : `<@${interaction.user.id}>`;
-    const claimedByText = ticketData.claimedBy ? `<@${ticketData.claimedBy}>` : 'No one';
     const openTimeText = ticketData.openTime || `<t:${Math.floor(Date.now() / 1000)}:f>`;
     const closeTimeText = `<t:${Math.floor(Date.now() / 1000)}:f>`;
 
     const { buffer, count } = await createTranscriptBuffer(interaction.channel, interaction.user);
     const attachment = new AttachmentBuilder(buffer, { name: `transcript-${interaction.channel.name}.txt` });
 
+    // تصميم Embed احترافي وفاخر مشابه لـ Wics Bot
     const closedEmbed = new EmbedBuilder()
-      .setAuthor({ name: interaction.guild.name, iconURL: interaction.guild.iconURL() })
-      .setTitle('Ticket Closed 🔒')
+      .setAuthor({ name: 'Void Community • Ticket Closed', iconURL: interaction.guild.iconURL() })
+      .setTitle('🔒 تقرير إغلاق تذكرة جديد')
+      .setDescription('تم إرشفة تفاصيل التذكرة وحفظ سجل المحادثات بالكامل بنجاح.')
       .addFields(
-        { name: 'Opened By', value: openedByMention, inline: true },
-        { name: 'Claimed By', value: claimedByText, inline: true },
-        { name: 'Closed By', value: `<@${interaction.user.id}>`, inline: true },
-        { name: 'Open Time', value: openTimeText, inline: true },
-        { name: 'Close Time', value: closeTimeText, inline: true },
-        { name: 'Close Reason', value: `\`\`\`${reason}\`\`\``, inline: false }
+        { name: '📂 اسم التذكرة', value: `\`${interaction.channel.name}\``, inline: true },
+        { name: '👤 صاحب التذكرة', value: openedByMention, inline: true },
+        { name: '🛠️ أُغلقت بواسطة', value: `<@${interaction.user.id}>`, inline: true },
+        { name: '⏱️ وقت الفتح', value: openTimeText, inline: true },
+        { name: '⏱️ وقت الإغلاق', value: closeTimeText, inline: true },
+        { name: '💬 إجمالي الرسائل', value: `\`${count} رسالة\``, inline: true },
+        { name: '📌 سبب الإغلاق', value: `\`\`\`${reason}\`\`\``, inline: false }
       )
-      .setColor('#ef4444')
-      .setFooter({ text: `Void Ticket System • Total Messages: ${count}` })
+      .setColor('#ED4245')
+      .setFooter({ text: 'Void Community Security & Logs System' })
       .setTimestamp();
 
-    await sendLog(interaction.guild, closedEmbed, attachment);
+    await sendTicketLog(interaction.guild, closedEmbed, attachment);
 
     setTimeout(() => {
       ticketsDataMap.delete(interaction.channel.id);
       interaction.channel.delete().catch(() => {});
-    }, 4000);
+    }, 3000);
   }
 });
 
