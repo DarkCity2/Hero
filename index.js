@@ -140,6 +140,17 @@ const DASHBOARD_PASSWORD = process.env.DASHBOARD_PASSWORD || 'VD122';
 const TOKEN = process.env.TOKEN;
 const REDIRECT_URI = `${BASE_URL}/api/auth/callback`;
 
+const client = new Client({
+  intents: [
+    I.Guilds,
+    I.GuildMessages,
+    I.MessageContent,
+    I.GuildMembers,
+    I.GuildVoiceStates
+  ],
+  partials: [P.Channel, P.Message, P.User, P.GuildMember]
+});
+
 const renderUltimateLayout = (activeTab, content) => {
   let memberCount = 0;
   let botIconUrl = 'https://cdn.discordapp.com/embed/avatars/0.png';
@@ -462,6 +473,47 @@ app.get('/', (req, res) => {
   res.send(renderUltimateLayout('colors', content));
 });
 
+// إرسال لوحة التذاكر الفخمة ذات الصورة العريضة
+app.post('/send-panel', async (req, res) => {
+  if (!req.session.authenticated) return res.redirect('/login');
+  const channelId = req.body.channel_id;
+  try {
+    const channel = await client.channels.fetch(channelId);
+    if (channel && channel.isTextBased()) {
+      const guild = channel.guild;
+      const bannerUrl = guild.bannerURL({ size: 1024, extension: 'png' }) || guild.iconURL({ size: 1024, extension: 'png' }) || 'https://i.imgur.com/8Q9Z4yX.png';
+
+      const embed = new EmbedBuilder()
+        .setColor('#2b2d31')
+        .setTitle(`✨ مركز التذاكر والخدمات الرسمية | ${guild.name}`)
+        .setDescription(`> قم باختيار القسم المناسب لطلبك من القائمة أدناه ليتم فتح تذكرة خاصة بك فوراً.`)
+        .setImage(bannerUrl);
+
+      const selectMenu = new StringSelectMenuBuilder()
+        .setCustomId('ticket_select_menu')
+        .setPlaceholder('اختر خيار التذكرة...')
+        .addOptions([
+          {
+            label: 'الدعم الفني | Technical Support',
+            value: 'ticket_support',
+            emoji: '🎫'
+          },
+          {
+            label: 'التقديم على الإدارة | Management Application',
+            value: 'ticket_apply',
+            emoji: '📋'
+          }
+        ]);
+
+      const row = new ActionRowBuilder().addComponents(selectMenu);
+      await channel.send({ embeds: [embed], components: [row] });
+    }
+  } catch (e) {
+    console.error('Error sending panel:', e);
+  }
+  res.redirect('/');
+});
+
 app.post('/save-colors', (req, res) => {
   if (!req.session.authenticated) return res.redirect('/login');
   Object.keys(basesData).forEach(key => {
@@ -525,7 +577,59 @@ app.post('/save-tickets', (req, res) => {
   res.redirect('/tickets');
 });
 
-// صفحة عرض تفاصيل محادثات التذكرة (مطابقة تماماً للصورة)
+// صفحة السجلات الدائمة
+app.get('/logs', (req, res) => {
+  if (!req.session.authenticated) return res.redirect('/login');
+  const allLogsHtml = Object.keys(logsStore).map(cat => {
+    const items = logsStore[cat] || [];
+    return items.map(l => `
+      <tr>
+        <td><span class="log-badge badge-${cat}">${cat.toUpperCase()}</span></td>
+        <td style="font-weight: 700; color: #fff;">${l.action}</td>
+        <td>${l.details}${l.transcriptId ? `<a href="/view-transcript/${l.transcriptId}" class="btn-view-ticket">📄 عرض التذكرة</a>` : ''}</td>
+        <td style="color: #6b7280; font-size: 12px;">${l.time}</td>
+      </tr>
+    `).join('');
+  }).join('');
+
+  const content = `
+    <div class="glass-card" style="display: flex; justify-content: space-between; align-items: center;">
+      <div>
+        <h1 class="purple-gradient" style="margin: 0; font-size: 18px;">📜 سجلات الأحداث الدائمة</h1>
+        <p style="color: #9ca3af; margin: 4px 0 0 0; font-size: 12px;">متابعة دقيقة لكافة تفاعلات السيرفر والأعضاء والتذاكر.</p>
+      </div>
+      <form action="/clear-logs" method="POST" onsubmit="return confirm('هل أنت متأكد من مسح كافة السجلات؟');">
+        <button type="submit" class="btn-clear-logs">🗑️ مسح السجلات</button>
+      </form>
+    </div>
+
+    <div class="glass-card" style="padding: 10px 20px;">
+      <table class="logs-table">
+        <thead>
+          <tr>
+            <th>القسم</th>
+            <th>الحدث</th>
+            <th>التفاصيل</th>
+            <th>الوقت</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${allLogsHtml || '<tr><td colspan="4" style="text-align: center; color: #6b7280; padding: 30px;">لا توجد سجلات مسجلة حتى الآن.</td></tr>'}
+        </tbody>
+      </table>
+    </div>
+  `;
+  res.send(renderUltimateLayout('logs', content));
+});
+
+app.post('/clear-logs', (req, res) => {
+  if (!req.session.authenticated) return res.redirect('/login');
+  logsStore = { roles: [], messages: [], voice: [], tickets: [], channels: [], members: [], bans: [] };
+  saveLogsToFile();
+  res.redirect('/logs');
+});
+
+// صفحة عرض تفاصيل محادثات التذكرة المطابقة لبرمجتك
 app.get('/view-transcript/:id', (req, res) => {
   if (!req.session.authenticated) return res.redirect('/login');
   const fileId = req.params.id.replace(/[^a-zA-Z0-9_-]/g, '');
@@ -550,615 +654,191 @@ app.get('/view-transcript/:id', (req, res) => {
     </div>
   `).join('');
 
-  const html = `
-  <!DOCTYPE html>
-  <html lang="ar" dir="rtl">
-  <head>
-    <meta charset="UTF-8">
-    <title>Void • عرض تفاصيل التذكرة</title>
-    <style>
-      @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap');
-      body { background: #08090d; color: #f3f4f6; margin: 0; padding: 30px; font-family: 'Cairo', sans-serif; display: flex; justify-content: center; }
-      .container { width: 100%; max-width: 900px; }
-      .glass-card { background: rgba(17, 20, 31, 0.75); backdrop-filter: blur(25px); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; padding: 25px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.4); }
-      h1, h2 { color: #fff; margin-top: 0; font-weight: 800; }
-      .purple-gradient { background: linear-gradient(135deg, #ffffff, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-      .info-row { display: flex; justify-content: space-between; background: rgba(10, 12, 18, 0.5); padding: 10px 14px; border-radius: 10px; margin-bottom: 8px; font-size: 13px; }
-      .btn { background: linear-gradient(135deg, #4f46e5, #7c3aed); color: #fff; border: none; padding: 10px 20px; border-radius: 10px; font-weight: 700; text-decoration: none; display: inline-block; font-size: 13px; }
-    </style>
-  </head>
-  <body>
-    <div class="container">
-      <div class="glass-card" style="display: flex; justify-content: space-between; align-items: center;">
-        <div>
-          <h1 class="purple-gradient" style="margin: 0; font-size: 20px;">🎫 أرشيف محادثات التذكرة</h1>
-          <p style="color: #9ca3af; margin: 4px 0 0 0; font-size: 12px;">عرض تفصيلي لكافة رسائل ومحتويات التذكرة من البداية إلى الإغلاق.</p>
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="ar" dir="rtl">
+    <head>
+      <meta charset="UTF-8">
+      <title>Void • عرض تفاصيل التذكرة</title>
+      <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap');
+        body { background: #08090d; color: #f3f4f6; margin: 0; padding: 30px; font-family: 'Cairo', sans-serif; display: flex; justify-content: center; }
+        .container { width: 100%; max-width: 900px; }
+        .glass-card { background: rgba(17, 20, 31, 0.75); backdrop-filter: blur(25px); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; padding: 25px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.4); }
+        h1, h2 { color: #fff; margin-top: 0; font-weight: 800; }
+        .purple-gradient { background: linear-gradient(135deg, #ffffff, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .info-row { display: flex; justify-content: space-between; background: rgba(10, 12, 18, 0.5); padding: 10px 14px; border-radius: 10px; margin-bottom: 8px; font-size: 13px; }
+        .btn { background: linear-gradient(135deg, #4f46e5, #7c3aed); color: #fff; border: none; padding: 10px 20px; border-radius: 10px; font-weight: 700; cursor: pointer; text-decoration: none; display: inline-block; margin-top: 15px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="glass-card">
+          <h1 class="purple-gradient" style="font-size: 20px;">📄 سجل محادثات التذكرة: ${transcriptData.ticketName}</h1>
+          <div class="info-row"><span>صاحب التذكرة:</span> <strong>${transcriptData.openedBy}</strong></div>
+          <div class="info-row"><span>أغلق بواسطة:</span> <strong>${transcriptData.closedBy}</strong></div>
+          <div class="info-row"><span>تاريخ الإغلاق:</span> <strong>${transcriptData.date}</strong></div>
         </div>
-        <a href="/logs" class="btn">⬅️ العودة للسجلات</a>
+        <div class="glass-card">
+          <h2 style="font-size: 16px; margin-bottom: 15px;">💬 المحادثة الكاملة:</h2>
+          ${messagesHtml || '<p style="color:#6b7280; text-align:center;">لا توجد رسائل مسجلة.</p>'}
+          <a href="/logs" class="btn">⬅️ العودة إلى السجلات</a>
+        </div>
       </div>
-
-      <div class="glass-card">
-        <div class="info-row"><span>اسم التذكرة:</span><strong>${transcriptData.ticketName}</strong></div>
-        <div class="info-row"><span>مالك التذكرة:</span><strong>${transcriptData.openedBy}</strong></div>
-        <div class="info-row"><span>قسم التذكرة:</span><strong>${transcriptData.baseName}</strong></div>
-        <div class="info-row"><span>🛡️ الضمان:</span><strong style="color: #34d399;">${transcriptData.guarantee || 'غير محدد'}</strong></div>
-        <div class="info-row"><span>🔢 عدد النواقص:</span><strong style="color: #60a5fa;">${transcriptData.missing || 'غير محدد'}</strong></div>
-        <div class="info-row"><span>أُغلقت بواسطة:</span><strong>${transcriptData.closedBy}</strong></div>
-        <div class="info-row"><span>تاريخ الأرشفة:</span><strong>${transcriptData.date}</strong></div>
-      </div>
-
-      <div class="glass-card">
-        <h2 style="font-size: 16px; margin-bottom: 15px;" class="purple-gradient">💬 محادثات التذكرة الكاملة (${transcriptData.messages.length} رسالة)</h2>
-        ${messagesHtml || '<p style="color: #6b7280; text-align: center;">لا توجد رسائل مسجلة.</p>'}
-      </div>
-    </div>
-  </body>
-  </html>
-  `;
-  res.send(html);
+    </body>
+    </html>
+  `);
 });
 
-// زر حذف جميع السجلات
-app.get('/clear-logs', (req, res) => {
-  if (!req.session.authenticated) return res.redirect('/login');
-  logsStore = { roles: [], messages: [], voice: [], tickets: [], channels: [], members: [], bans: [] };
-  saveLogsToFile();
-  res.redirect('/logs');
-});
-
-const renderLogTableSection = (title, badgeClass, logsArray) => {
-  const items = logsArray || [];
-  const rows = items.length === 0 
-    ? `<tr><td colspan="3" style="text-align: center; color: #6b7280; padding: 15px; font-size: 12px;">لا توجد أحداث مسجلة في هذا القسم حتى الآن.</td></tr>`
-    : items.map(log => `
-      <tr>
-        <td style="font-weight: 700; color: #ffffff; width: 35%;">${log.action}</td>
-        <td style="color: #d1d5db; width: 45%;">
-          ${log.details}
-          ${log.transcriptId ? `<br><a href="/view-transcript/${log.transcriptId}" target="_blank" class="btn-view-ticket">🎫 عرض تفاصيل التذكرة</a>` : ''}
-        </td>
-        <td style="color: #6b7280; font-size: 11px; white-space: nowrap; text-align: left; width: 20%;">${log.time}</td>
-      </tr>
-    `).join('');
-
-  return `
-    <div class="glass-card">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-        <h3 style="margin: 0; font-size: 15px;" class="purple-gradient">${title}</h3>
-        <span class="log-badge ${badgeClass}">${items.length} سجل</span>
-      </div>
-      <div style="overflow-x: auto;">
-        <table class="logs-table">
-          <thead>
-            <tr>
-              <th>الحدث</th>
-              <th>التفاصيل الكاملة</th>
-              <th style="text-align: left;">التوقيت</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${rows}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  `;
-};
-
-app.get('/logs', (req, res) => {
-  if (!req.session.authenticated) return res.redirect('/login');
-
-  const content = `
-    <div class="glass-card" style="display: flex; justify-content: space-between; align-items: center;">
-      <div>
-        <h1 class="purple-gradient" style="margin: 0; font-size: 18px;">📜 سجلات الأحداث الشاملة الدائمة (Persistent Live Logs)</h1>
-        <p style="color: #9ca3af; margin-top: 4px; font-size: 12px;">مراقبة حية لا تختفي أبداً عند تحديث الصفحة أو إعادة تشغيل البوت.</p>
-      </div>
-      <a href="/clear-logs" class="btn-clear-logs" onclick="return confirm('هل أنت متأكد من حذف جميع السجلات بالكامل؟')">🗑️ حذف جميع السجلات</a>
-    </div>
-
-    ${renderLogTableSection('👑 سجلات الرتب (Roles)', 'badge-roles', logsStore.roles)}
-    ${renderLogTableSection('💬 سجلات الرسائل (Messages)', 'badge-messages', logsStore.messages)}
-    ${renderLogTableSection('🎙️ سجلات الرومات الصوتية (Voice)', 'badge-voice', logsStore.voice)}
-    ${renderLogTableSection('🎫 سجلات التذاكر الاحترافية (Tickets)', 'badge-tickets', logsStore.tickets)}
-    ${renderLogTableSection('📁 سجلات الرومات (Channels - إنشاء/حذف/تعديل)', 'badge-channels', logsStore.channels)}
-    ${renderLogTableSection('👥 سجلات الأعضاء (Members - انضمام/مغادرة)', 'badge-members', logsStore.members)}
-    ${renderLogTableSection('🔨 سجلات الحظر (Bans)', 'badge-bans', logsStore.bans)}
-  `;
-
-  res.send(renderUltimateLayout('logs', content));
-});
-
-app.get('/moderation', (req, res) => {
-  if (!req.session.authenticated) return res.redirect('/login');
-  
-  let channelOptionsHTML = '<option value="" disabled selected>اختر القناة لنشر الإعلان...</option>';
-  try {
-    client.guilds.cache.forEach(guild => {
-      guild.channels.cache.filter(c => c.type === ChannelType.GuildText).forEach(channel => {
-        channelOptionsHTML += `<option value="${channel.id}"># ${channel.name} — (${guild.name})</option>`;
-      });
-    });
-  } catch (e) {}
-
-  const content = `
-    <div class="glass-card">
-      <h1 class="purple-gradient" style="margin:0; font-size:18px;">🔨 أدوات الإدارة السريعة</h1>
-      <p style="color:#9ca3af; margin-top:4px; font-size:12px;">إرسال إعلانات رسمية من لوحة التحكم.</p>
-    </div>
-
-    <div class="glass-card">
-      <h2 style="font-size: 15px;" class="purple-gradient">📣 إرسال إعلان رسمي للسيرفر</h2>
-      <form action="/send-announcement" method="POST">
-        <label>اختر القناة:</label>
-        <select name="channel_id" required>${channelOptionsHTML}</select>
-        <label>عنوان الإعلان:</label>
-        <input type="text" name="title" placeholder="العنوان" required>
-        <label>محتوى الإعلان:</label>
-        <textarea name="message" rows="3" placeholder="نص الإعلان..." required></textarea>
-        <button type="submit" class="btn">🚀 إرسال الإعلان</button>
-      </form>
-    </div>
-  `;
-  res.send(renderUltimateLayout('moderation', content));
-});
-
-app.post('/send-announcement', async (req, res) => {
-  if (!req.session.authenticated) return res.redirect('/login');
-  try {
-    const channel = await client.channels.fetch(req.body.channel_id);
-    const embed = new EmbedBuilder()
-      .setTitle(`📢 ${req.body.title}`)
-      .setDescription(req.body.message)
-      .setColor('#6366f1')
-      .setFooter({ text: 'Void Community Official Announcement' })
-      .setTimestamp();
-
-    await channel.send({ embeds: [embed] });
-    addLog('messages', 'إعلان رسمي', `تم إرسال إعلان بعنوان "${req.body.title}" في الروم #${channel.name}`);
-    res.redirect('/moderation');
-  } catch(e) {
-    res.send(`<h2 style="color:red; text-align:center; margin-top:50px;">❌ خطأ: ${e.message}<br><br><a href="/moderation">العودة</a></h2>`);
-  }
-});
-
-app.get('/security', (req, res) => {
-  if (!req.session.authenticated) return res.redirect('/login');
-  const content = `
-    <div class="glass-card">
-      <h1 class="purple-gradient" style="margin:0; font-size:18px;">🛡️ مركز الحماية والأمان</h1>
-      <p style="color:#9ca3af; margin-top:4px; font-size:12px;">مراقبة درع الحماية التلقائي للبوت.</p>
-    </div>
-
-    <div class="glass-card">
-      <h2 style="font-size:15px;" class="purple-gradient">⚡ خيارات الحماية الحالية</h2>
-      <div style="margin-top: 12px; font-size: 12px;">
-        <p>• الحماية من التكرار والسبام (Anti-Spam): <span style="color:#34d399; font-weight:700;">مفعلة</span></p>
-        <p>• الحماية من الهجمات (Anti-Raid): <span style="color:#34d399; font-weight:700;">مفعلة</span></p>
-        <p>• منع روابط الديسكورد والخارجية: <span style="color:#a855f7; font-weight:700;">نشطة</span></p>
-      </div>
-    </div>
-  `;
-  res.send(renderUltimateLayout('security', content));
-});
-
-app.post('/send-panel', async (req, res) => {
-  if (!req.session.authenticated) return res.redirect('/login');
-  try {
-    const channel = await client.channels.fetch(req.body.channel_id);
-    const baseOptions = Object.keys(basesData).map(key => ({
-      label: basesData[key].name,
-      value: key,
-      description: `تقديم طلب لون ${basesData[key].name}`,
-      emoji: basesData[key].emoji
-    }));
-
-    const selectMenu = new StringSelectMenuBuilder()
-      .setCustomId('select_base_color')
-      .setPlaceholder('اختر لون القاعدة المطلوبة...')
-      .addOptions(baseOptions);
-
-    const embed = new EmbedBuilder()
-      .setTitle('🎨 Void Community | نظام ألوان ماب النطة')
-      .setDescription('اختر القاعدة التي تريد طلبها من القائمة المنسدلة أدناه لتقديم بياناتك ونوع المقابل بكل سهولة:')
-      .setColor('#6366f1')
-      .setFooter({ text: 'Void Community • Advanced Ticket System' });
-
-    await channel.send({ embeds: [embed], components: [new ActionRowBuilder().addComponents(selectMenu)] });
-    addLog('tickets', 'نشر لوحة الألوان', `تم نشر لوحة الألوان بنجاح في القناة: #${channel.name}`);
-    res.redirect('/');
-  } catch (err) {
-    res.send(`<h2 style="color:red; text-align:center; margin-top:50px;">❌ خطأ أثناء النشر: ${err.message}<br><br><a href="/">العودة للوحة</a></h2>`);
-  }
-});
-
-app.listen(PORT, () => console.log(`🌐 Dashboard Active on port ${PORT}`));
-
-// ------------------- 7. بوت ديسكورد -------------------
-const client = new Client({
-  intents: [
-    I.Guilds, I.GuildMembers, I.GuildMessages, I.MessageContent,
-    I.GuildMessageReactions, I.GuildVoiceStates, I.GuildModeration, I.GuildInvites,
-    I.GuildExpressions ?? I.GuildEmojisAndStickers
-  ],
-  partials: [P.Message, P.Channel, P.Reaction, P.User, P.GuildMember]
-});
-
-const userSessions = new Map();
-
-async function saveFullTranscript(channel, closedByUser, openedByUserTag, baseName, guaranteeVal, missingVal) {
-  const fetchedMessages = await channel.messages.fetch({ limit: 100 });
-  const sortedMessages = Array.from(fetchedMessages.values())
-    .reverse()
-    .filter(msg => !msg.content.includes('جاري حفظ محادثات التذكرة'));
-
-  let messagesList = [];
-  let txtContent = `========================================================\n`;
-  txtContent += `             VOID COMMUNITY - TICKET TRANSCRIPT        \n`;
-  txtContent += `========================================================\n`;
-  txtContent += `• Ticket Name : ${channel.name}\n`;
-  txtContent += `• Opened By   : ${openedByUserTag}\n`;
-  txtContent += `• Guarantee   : ${guaranteeVal}\n`;
-  txtContent += `• Missing Qty : ${missingVal}\n`;
-  txtContent += `• Closed By   : ${closedByUser.tag}\n`;
-  txtContent += `• Archive Date: ${new Date().toUTCString()}\n`;
-  txtContent += `========================================================\n\n`;
-
-  sortedMessages.forEach(msg => {
-    const timeStr = msg.createdAt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-    let content = msg.content;
-
-    if (msg.embeds.length > 0) {
-      msg.embeds.forEach(e => {
-        if (e.title) content += `\n[Embed Title: ${e.title}]`;
-        if (e.description) content += `\n${e.description}`;
-        if (e.fields) {
-          e.fields.forEach(f => {
-            content += `\n   ↳ ${f.name}: ${f.value}`;
-          });
+// ------------------- 3. نظام تفاعلات التذاكر الشامل بأسلوب سريع بدون أخطاء -------------------
+client.on('interactionCreate', async (interaction) => {
+  if (interaction.isButton() || interaction.isStringSelectMenu()) {
+    if (interaction.customId.startsWith('ticket_') || interaction.customId === 'close_ticket') {
+      try {
+        if (!interaction.replied && !interaction.deferred) {
+          await interaction.deferReply({ ephemeral: true });
         }
-      });
+      } catch (e) {}
     }
-
-    if (content.trim()) {
-      messagesList.push({
-        author: msg.author.tag,
-        content: content.trim(),
-        time: timeStr
-      });
-      txtContent += `[${timeStr}] ${msg.author.tag}: ${content.trim()}\n`;
-    }
-  });
-
-  const fileId = Date.now().toString() + Math.random().toString(36).substring(2, 7);
-  const dataToSave = {
-    ticketName: channel.name,
-    openedBy: openedByUserTag,
-    closedBy: closedByUser.tag,
-    baseName: baseName,
-    guarantee: guaranteeVal,
-    missing: missingVal,
-    date: new Date().toLocaleString('ar-SA'),
-    messages: messagesList
-  };
-
-  try {
-    fs.writeFileSync(path.join(TRANSCRIPTS_DIR, `${fileId}.json`), JSON.stringify(dataToSave, null, 2), 'utf-8');
-  } catch(e){}
-
-  return {
-    fileId,
-    buffer: Buffer.from(txtContent, 'utf-8'),
-    count: sortedMessages.length
-  };
-}
-
-client.once('ready', () => {
-  console.log(`✅ [Void Community] Bot Ready as: ${client.user.tag}`);
-  addLog('roles', 'تشغيل البوت', `تم تشغيل البوت بنجاح باسم ${client.user.tag}`);
-});
-
-client.on('guildMemberUpdate', (oldMember, newMember) => {
-  const addedRoles = newMember.roles.cache.filter(role => !oldMember.roles.cache.has(role.id));
-  const removedRoles = oldMember.roles.cache.filter(role => !newMember.roles.cache.has(role.id));
-
-  addedRoles.forEach(role => addLog('roles', 'إضافة رتبة لعضو', `تم إعطاء الرتبة [${role.name}] للعضو @${newMember.user.username}`));
-  removedRoles.forEach(role => addLog('roles', 'إزالة رتبة من عضو', `تم إزالة الرتبة [${role.name}] من العضو @${newMember.user.username}`));
-});
-
-client.on('messageDelete', message => {
-  if (message.author?.bot) return;
-  const authorName = message.author ? `@${message.author.username}` : 'عضو غير معروف';
-  const contentStr = message.content ? `"${message.content}"` : 'وسائط / إمبد';
-  const channelName = message.channel ? `#${message.channel.name}` : 'روم غير معروف';
-  addLog('messages', 'حذف رسالة', `حذف رسالة للعضو ${authorName} في القناة ${channelName}: ${contentStr}`);
-});
-
-client.on('messageUpdate', (oldMessage, newMessage) => {
-  if (oldMessage.author?.bot) return;
-  if (oldMessage.content === newMessage.content) return;
-  const authorName = oldMessage.author ? `@${oldMessage.author.username}` : 'عضو';
-  const channelName = oldMessage.channel ? `#${oldMessage.channel.name}` : 'روم';
-  addLog('messages', 'تعديل رسالة', `العضو ${authorName} في ${channelName} عدّل رسالته من: "${oldMessage.content}" إلى: "${newMessage.content}"`);
-});
-
-client.on('voiceStateUpdate', (oldState, newState) => {
-  const memberName = `@${newState.member.user.username}`;
-  if (!oldState.channelId && newState.channelId) {
-    addLog('voice', 'دخول روم صوتي', `انضم العضو ${memberName} إلى الروم الصوتي #${newState.channel.name}`);
-  } else if (oldState.channelId && !newState.channelId) {
-    addLog('voice', 'خروج روم صوتي', `غادر العضو ${memberName} الروم الصوتي #${oldState.channel.name}`);
-  } else if (oldState.channelId !== newState.channelId) {
-    addLog('voice', 'تنقل بين الرومات الصوتية', `انتقل العضو ${memberName} من #${oldState.channel?.name || 'روم'} إلى #${newState.channel.name}`);
-  }
-});
-
-client.on('channelCreate', channel => {
-  const chName = channel.name ? `#${channel.name}` : 'روم';
-  const chType = channel.type === ChannelType.GuildText ? 'كتابي' : channel.type === ChannelType.GuildVoice ? 'صوتي' : 'كاتيجوري';
-  addLog('channels', 'إنشاء روم جديد', `تم إنشاء روم ${chType} جديد باسم: ${chName}`);
-});
-
-client.on('channelDelete', channel => {
-  const chName = channel.name ? `#${channel.name}` : 'روم';
-  const chType = channel.type === ChannelType.GuildText ? 'كتابي' : channel.type === ChannelType.GuildVoice ? 'صوتي' : 'كاتيجوري';
-  addLog('channels', 'حذف روم', `تم حذف روم ${chType}: ${chName}`);
-});
-
-client.on('channelUpdate', (oldChannel, newChannel) => {
-  if (oldChannel.name !== newChannel.name) {
-    addLog('channels', 'تعديل روم', `تم تغيير اسم الروم من #${oldChannel.name} إلى #${newChannel.name}`);
-  }
-});
-
-client.on('guildMemberAdd', member => addLog('members', 'انضمام عضو', `العضو @${member.user.username} انضم إلى السيرفر.`));
-client.on('guildMemberRemove', member => addLog('members', 'مغادرة عضو', `العضو @${member.user.username} غادر السيرفر.`));
-client.on('guildBanAdd', ban => addLog('bans', 'حظر عضو (Ban)', `تم حظر العضو @${ban.user.username} من السيرفر.`));
-client.on('guildBanRemove', ban => addLog('bans', 'فك حظر (Unban)', `تم فك الحظر عن العضو @${ban.user.username}`));
-
-client.on('interactionCreate', async interaction => {
-  if (interaction.isStringSelectMenu() && interaction.customId === 'select_base_color') {
-    const selectedKey = interaction.values[0];
-    const baseInfo = basesData[selectedKey] || { name: selectedKey };
-
-    const modal = new ModalBuilder()
-      .setCustomId(`modal_info_${selectedKey}`)
-      .setTitle(`${baseInfo.name} بيانات ضمان`);
-
-    const guaranteeInput = new TextInputBuilder()
-      .setCustomId('guarantee_val').setLabel('اكتب الضمان حقك').setPlaceholder('اكتب الضمان').setStyle(TextInputStyle.Short).setRequired(true);
-
-    const missingInput = new TextInputBuilder()
-      .setCustomId('missing_val').setLabel('اكتب عدد نواقصك (أرقام فقط)').setPlaceholder('مثال: 15').setStyle(TextInputStyle.Short).setRequired(true);
-
-    modal.addComponents(new ActionRowBuilder().addComponents(guaranteeInput), new ActionRowBuilder().addComponents(missingInput));
-    await interaction.showModal(modal);
   }
 
-  if (interaction.isModalSubmit() && interaction.customId.startsWith('modal_info_')) {
-    const baseKey = interaction.customId.replace('modal_info_', '');
-    const missingValRaw = interaction.fields.getTextInputValue('missing_val');
-    const missingNumber = parseInt(missingValRaw.replace(/[^0-9]/g, '')) || 1;
-
-    userSessions.set(interaction.user.id, {
-      baseKey: baseKey,
-      guarantee: interaction.fields.getTextInputValue('guarantee_val'),
-      missing: missingValRaw,
-      missingNum: missingNumber
-    });
-
-    const paymentMenu = new StringSelectMenuBuilder()
-      .setCustomId('select_payment')
-      .setPlaceholder('اختر نوع المقابل')
-      .addOptions([
-        { label: 'مقابل مادي (حساب الشريحة تلقائياً)', value: 'money', description: 'عرض السعر حسب شريحة نواقصك', emoji: '💰' },
-        { label: 'أغراض داخل اللعبة (حساب الشريحة تلقائياً)', value: 'items', description: 'عرض الأغراض حسب شريحة نواقصك', emoji: '🎁' }
-      ]);
-
-    await interaction.reply({
-      content: `✅ **تم حفظ الضمان وعدد النواقص (${missingNumber}).**\n\n🎨 **اختر نوع المقابل الآن للحصول على ${basesData[baseKey]?.name || baseKey}:**`,
-      components: [new ActionRowBuilder().addComponents(paymentMenu)],
-      ephemeral: true
-    });
-  }
-
-  if (interaction.isStringSelectMenu() && interaction.customId === 'select_payment') {
-    const payType = interaction.values[0];
-    const session = userSessions.get(interaction.user.id);
-    if (!session) return interaction.reply({ content: '❌ انتهت الجلسة، يرجى البدء من جديد.', ephemeral: true });
-
-    const baseConfig = basesData[session.baseKey] || { name: session.baseKey, tiers: [], itemTiers: [] };
+  // التعامل مع اختيار التذكرة من القائمة المنسدلة
+  if (interaction.isStringSelectMenu() && interaction.customId === 'ticket_select_menu') {
+    const selectedValue = interaction.values[0];
+    const isApply = selectedValue === 'ticket_apply';
     
-    let textDetails = '';
-    if (payType === 'money') {
-      const { price, tierText } = getTierPrice(baseConfig.tiers, session.missingNum);
-      textDetails = `💰 **المقابل المادي للون ${baseConfig.name}:**\n💵 **السعر المطلوب لعدد (${session.missingNum}) نواقص:** ${price}\n*(شريحة ${tierText})*`;
-    } else {
-      const { items, tierText } = getTierItems(baseConfig.itemTiers, session.missingNum);
-      textDetails = `🎁 **مقابل الأغراض للون ${baseConfig.name}:**\n📦 **الأغراض المطلوبة لعدد (${session.missingNum}) نواقص:** ${items}\n*(شريحة ${tierText})*`;
-    }
+    const ticketType = isApply ? 'تقديم-إدارة' : 'دعم-فني';
+    const ticketTitle = isApply ? '📋 التقديم على الإدارة' : '🎫 الدعم الفني';
 
-    const btns = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('btn_accept').setLabel('قبول').setEmoji('✅').setStyle(ButtonStyle.Success),
-      new ButtonBuilder().setCustomId('btn_reject').setLabel('رفض').setEmoji('❌').setStyle(ButtonStyle.Danger)
-    );
-
-    await interaction.update({
-      content: `${textDetails}\n\n**ضمانك:** ${session.guarantee}\n**عدد نواقصك:** ${session.missing}\n\n**هل توافق على هذا المقابل؟**`,
-      components: [btns]
-    });
-  }
-
-  if (interaction.isButton()) {
-    if (interaction.customId === 'btn_accept') {
-      const session = userSessions.get(interaction.user.id);
-      const baseName = basesData[session?.baseKey]?.name || 'Base';
-
-      const permissionOverwrites = [
-        { id: interaction.guild.id, deny: [PermissionFlagsBits.ViewChannel] },
-        { id: interaction.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] }
-      ];
-
-      const specificRole = interaction.guild.roles.cache.find(r => r.name.toLowerCase() === baseName.toLowerCase());
-      if (specificRole) {
-        permissionOverwrites.push({ id: specificRole.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] });
-      }
-
-      const prefixKey = session?.baseKey ? session.baseKey : 'color';
-      const channelName = `ticket-${prefixKey}-${interaction.user.username}`.toLowerCase();
-
-      const channelOptions = { name: channelName, type: ChannelType.GuildText, permissionOverwrites };
-
-      if (serverSettings.ticketCategories) {
-        const categories = serverSettings.ticketCategories.split(',').map(c => c.trim()).filter(Boolean);
-        if (categories.length > 0) {
-          channelOptions.parent = categories[Math.floor(Math.random() * categories.length)];
-        }
-      }
-
-      const ch = await interaction.guild.channels.create(channelOptions);
-      const openTimestamp = `<t:${Math.floor(Date.now() / 1000)}:f>`;
-
-      ticketsDataMap.set(ch.id, {
-        openedBy: interaction.user.tag,
-        openTime: openTimestamp,
-        baseName: baseName,
-        guarantee: session ? session.guarantee : 'غير محدد',
-        missing: session ? session.missing : 'غير محدد'
+    try {
+      const ch = await interaction.guild.channels.create({
+        name: `${ticketType}-${interaction.user.username}`.toLowerCase().replace(/[^a-z0-9\u0600-\u06FF]/g, ''),
+        type: ChannelType.GuildText,
+        permissionOverwrites: [
+          { id: interaction.guild.id, deny: [PermissionFlagsBits.ViewChannel] },
+          { id: interaction.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.AttachFiles, PermissionFlagsBits.EmbedLinks] }
+        ]
       });
 
-      const actionMenu = new StringSelectMenuBuilder()
-        .setCustomId('ticket_action_select')
-        .setPlaceholder('⚙️ اختر إجراء التذكرة الاحترافي...')
+      const openTimestamp = `<t:${Math.floor(Date.now() / 1000)}:R>`;
+
+      const ticketEmbed = new EmbedBuilder()
+        .setColor('#2b2d31')
+        .setDescription(
+          `### ${ticketTitle}\n` +
+          `> أهلاً بك <@${interaction.user.id}>، يرجى كتابة تفاصيل طلبك هنا وسيرد عليك الإداري المختص قريباً.\n\n` +
+          `• **الوقت:** ${openTimestamp}\n` +
+          `• **المسؤول:** \`طاقم الإدارة\``
+        )
+        .setFooter({ text: interaction.guild.name, iconURL: interaction.guild.iconURL() || undefined });
+
+      const closeBtn = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId('close_ticket')
+          .setLabel('إغلاق التذكرة')
+          .setEmoji('🔒')
+          .setStyle(ButtonStyle.Danger)
+      );
+
+      await ch.send({
+        content: `|| <@${interaction.user.id}> ||`,
+        embeds: [ticketEmbed],
+        components: [closeBtn]
+      });
+
+      addLog('tickets', 'فتح تذكرة', `تم فتح تذكرة ${ticketTitle} بواسطة @${interaction.user.tag}`);
+
+      return await interaction.editReply({ 
+        content: `✨ **تم فتح تذكرتك بنجاح:** ${ch}` 
+      });
+
+    } catch (err) {
+      console.error('Ticket Error:', err);
+      return await interaction.editReply({ 
+        content: '❌ حدث خطأ أثناء إنشاء التذكرة، يرجى التأكد من صلاحيات البوت.' 
+      }).catch(() => {});
+    }
+  }
+
+  // زر إغلاق التذكرة
+  if (interaction.isButton() && interaction.customId === 'close_ticket') {
+    try {
+      await interaction.editReply({ 
+        embeds: [new EmbedBuilder().setDescription('🔒 **سيتم حذف التذكرة خلال 5 ثوانٍ وحفظ السجل...**').setColor('#ed4245')]
+      });
+
+      const channel = interaction.channel;
+      let fetchedMessages = [];
+      try {
+        const messages = await channel.messages.fetch({ limit: 100 });
+        fetchedMessages = messages.map(m => ({
+          author: m.author.tag,
+          content: m.content || '[محتوى مدمج أو صورة]',
+          time: new Date(m.createdTimestamp).toLocaleString('ar-SA')
+        })).reverse();
+      } catch(e){}
+
+      const transcriptId = 'transcript_' + Date.now();
+      const transcriptData = {
+        ticketName: channel.name,
+        openedBy: interaction.user.tag,
+        closedBy: interaction.user.tag,
+        date: new Date().toLocaleString('ar-SA'),
+        messages: fetchedMessages
+      };
+
+      fs.writeFileSync(path.join(TRANSCRIPTS_DIR, `${transcriptId}.json`), JSON.stringify(transcriptData, null, 2), 'utf-8');
+      addLog('tickets', 'إغلاق تذكرة', `تم إغلاق التذكرة ${channel.name} بواسطة @${interaction.user.tag}`, transcriptId);
+
+      setTimeout(() => {
+        channel.delete().catch(() => {});
+      }, 5000);
+    } catch (e) {}
+  }
+});
+
+// أمر نشر لوحة التذاكر المباشر
+client.on('messageCreate', async (message) => {
+  if (message.author.bot) return;
+
+  if (message.content === '!setup-tickets') {
+    if (!message.member.permissions.has(PermissionFlagsBits.Administrator)) {
+      return message.reply('❌ هذا الأمر للمشرفين فقط.');
+    }
+
+    try {
+      const bannerUrl = message.guild.bannerURL({ size: 1024, extension: 'png' }) || message.guild.iconURL({ size: 1024, extension: 'png' }) || 'https://i.imgur.com/8Q9Z4yX.png';
+      const embed = new EmbedBuilder()
+        .setColor('#2b2d31')
+        .setTitle(`✨ مركز التذاكر والخدمات الرسمية | ${message.guild.name}`)
+        .setDescription(`> قم باختيار القسم المناسب لطلبك من القائمة أدناه ليتم فتح تذكرة خاصة بك فوراً.`)
+        .setImage(bannerUrl);
+
+      const selectMenu = new StringSelectMenuBuilder()
+        .setCustomId('ticket_select_menu')
+        .setPlaceholder('اختر خيار التذكرة...')
         .addOptions([
-          { label: 'Close with Reason', value: 'close_with_reason', description: 'إغلاق التذكرة مع كتابة السبب', emoji: '🔒' },
-          { label: 'Add User to Ticket', value: 'add_user', description: 'إضافة عضو إلى التذكرة الحالية', emoji: '👥' },
-          { label: 'Member PM Reminder', value: 'pm_reminder', description: 'إرسال تذكير خاص لصاحب التذكرة', emoji: '✉️' },
-          { label: 'Request Ticket Copy', value: 'request_copy', description: 'طلب نسخة نصية من محادثات التذكرة', emoji: '📄' }
+          { label: 'الدعم الفني | Technical Support', value: 'ticket_support', emoji: '🎫' },
+          { label: 'التقديم على الإدارة | Management Application', value: 'ticket_apply', emoji: '📋' }
         ]);
 
-      // شكل الإمبد تماماً مثل الصورة المطلوبة مع إضافة الضمان والنواقص بشكل مريح للعين
-      const embed = new EmbedBuilder()
-        .setDescription(`**مشرفي التذاكر : [ 🛡️ ]**\n${specificRole ? `<@&${specificRole.id}>` : '@LS | Managment'}\n\n**تاريخ التذكرة : [ 📅 ]**\n${openTimestamp}\n\n**قسم التذكرة : [ ? ]**\n${ch.name} | ${baseName}\n\n**الضمان : [ 🔒 ]**\n${session ? session.guarantee : 'غير محدد'}\n\n**عدد النواقص : [ 🔢 ]**\n${session ? session.missing : 'غير محدد'}`)
-        .setColor('#2b2d31');
-
-      await ch.send({ 
-        content: `<@${interaction.user.id}> ${specificRole ? `<@&${specificRole.id}>` : ''}`, 
-        embeds: [embed], 
-        components: [new ActionRowBuilder().addComponents(actionMenu)] 
-      });
-
-      addLog('tickets', 'فتح تذكرة جديدة', `تم فتح تذكرة لون ${baseName} للعضو @${interaction.user.username} في الروم #${ch.name}`);
-      await interaction.update({ content: `🎉 **تم قبول الطلب بنجاح!**\nتم فتح القناة الخاصة بك: ${ch}`, components: [] });
-    }
-
-    if (interaction.customId === 'btn_reject') {
-      addLog('tickets', 'رفض طلب لون', `قام العضو @${interaction.user.username} برفض طلب لون.`);
-      await interaction.update({ content: '❌ **تم إلغاء الطلب.**', components: [] });
+      const row = new ActionRowBuilder().addComponents(selectMenu);
+      await message.channel.send({ embeds: [embed], components: [row] });
+      await message.delete().catch(() => {});
+    } catch (err) {
+      console.error(err);
+      message.reply('❌ حدث خطأ أثناء نشر لوحة التذاكر.');
     }
   }
+});
 
-  if (interaction.isStringSelectMenu() && interaction.customId === 'ticket_action_select') {
-    const action = interaction.values[0];
-    const member = interaction.member;
-    const ticketData = ticketsDataMap.get(interaction.channel.id) || {};
-    const baseName = ticketData.baseName || '';
+client.once('ready', () => {
+  console.log(`✅ Logged in as ${client.user.tag}! Void Full System is online.`);
+});
 
-    const isServerAdministrator = member.permissions.has(PermissionFlagsBits.Administrator);
-    const hasBaseRole = member.roles.cache.some(r => r.name.toLowerCase() === baseName.toLowerCase());
-    const hasOwnerRole = member.roles.cache.some(r => r.name.toLowerCase() === serverSettings.ownerRoleName.toLowerCase());
-
-    if (!hasBaseRole && !hasOwnerRole && !isServerAdministrator) {
-      return interaction.reply({ content: '❌ **عذراً، هذه القائمة مخصصة فقط لمسؤولي التذاكر وأصحاب الرتب!**', ephemeral: true });
-    }
-
-    if (action === 'close_with_reason') {
-      if (!hasBaseRole && !hasOwnerRole && !isServerAdministrator) {
-        return interaction.reply({ content: '❌ **عذراً، هذا الخيار مخصص فقط لأصحاب رتبة القاعدة أو الـ Owner!**', ephemeral: true });
-      }
-
-      const modal = new ModalBuilder()
-        .setCustomId('modal_close_reason')
-        .setTitle('Close Ticket with Reason');
-
-      const reasonInput = new TextInputBuilder()
-        .setCustomId('close_reason_input')
-        .setLabel('سبب إغلاق التذكرة')
-        .setPlaceholder('اكتب سبب الإغلاق هنا...')
-        .setStyle(TextInputStyle.Paragraph)
-        .setRequired(true);
-
-      modal.addComponents(new ActionRowBuilder().addComponents(reasonInput));
-      return await interaction.showModal(modal);
-    }
-
-    if (['add_user', 'pm_reminder', 'request_copy'].includes(action)) {
-      if (!hasOwnerRole && !isServerAdministrator) {
-        return interaction.reply({ content: '❌ **عذراً، هذه الخيارات مخصصة حصرياً لرتبة الـ Owner فقط!**', ephemeral: true });
-      }
-
-      if (action === 'add_user') {
-        await interaction.deferReply({ ephemeral: true });
-        const userSelect = new UserSelectMenuBuilder()
-          .setCustomId('select_user_to_add')
-          .setPlaceholder('اختر العضو المراد إضافته للتذكرة...')
-          .setMaxValues(1);
-
-        return await interaction.editReply({
-          content: '👤 **اختر العضو الذي تريد إضافته إلى التذكرة:**',
-          components: [new ActionRowBuilder().addComponents(userSelect)]
-        });
-      }
-
-      if (action === 'pm_reminder') {
-        await interaction.deferReply({ ephemeral: true });
-        try {
-          addLog('tickets', 'تذكير صاحب التذكرة', `تم إرسال تذكير خاص لصاحب التذكرة في التذكرة #${interaction.channel.name}`);
-          return await interaction.editReply({ content: '✅ **تم إرسال تذكير في الخاص لصاحب التذكرة بنجاح!**' });
-        } catch (e) {
-          return await interaction.editReply({ content: '❌ **تعذر إرسال التذكير.**' });
-        }
-      }
-
-      if (action === 'request_copy') {
-        await interaction.deferReply({ ephemeral: true });
-        const openedByTag = ticketData.openedBy || interaction.user.tag;
-        const guaranteeVal = ticketData.guarantee || 'غير محدد';
-        const missingVal = ticketData.missing || 'غير محدد';
-        const { fileId, buffer } = await saveFullTranscript(interaction.channel, interaction.user, openedByTag, baseName, guaranteeVal, missingVal);
-        const attachment = new AttachmentBuilder(buffer, { name: `transcript-${interaction.channel.name}.txt` });
-        addLog('tickets', 'طلب نسخة تذكرة', `تم طلب نسخة نصية لمحادثات التذكرة #${interaction.channel.name} بواسطة @${interaction.user.username}`, fileId);
-        return await interaction.editReply({ content: '📄 **تفضل نسخة من محادثات التذكرة الحالية:**', files: [attachment] });
-      }
-    }
-  }
-
-  if (interaction.isUserSelectMenu() && interaction.customId === 'select_user_to_add') {
-    const targetUserId = interaction.values[0];
-    await interaction.channel.permissionOverwrites.edit(targetUserId, { ViewChannel: true, SendMessages: true });
-    addLog('tickets', 'إضافة عضو لتذكرة', `تم إضافة العضو <@${targetUserId}> إلى التذكرة #${interaction.channel.name}`);
-    await interaction.reply({ content: `✅ **تمت إضافة العضو <@${targetUserId}> للتذكرة بنجاح!**` });
-  }
-
-  if (interaction.isModalSubmit() && interaction.customId.startsWith('modal_close_reason')) {
-    const reason = interaction.fields.getTextInputValue('close_reason_input');
-    await interaction.reply('⏳ **جاري حفظ محادثات التذكرة وتسجيلها في لوحة التحكم وإغلاق القناة...**');
-
-    const ticketData = ticketsDataMap.get(interaction.channel.id) || {};
-    const openedByTag = ticketData.openedBy || interaction.user.tag;
-    const baseName = ticketData.baseName || 'الدعم الفني';
-    const guaranteeVal = ticketData.guarantee || 'غير محدد';
-    const missingVal = ticketData.missing || 'غير محدد';
-
-    const { fileId, count } = await saveFullTranscript(interaction.channel, interaction.user, openedByTag, baseName, guaranteeVal, missingVal);
-
-    addLog('tickets', 'إغلاق تذكرة', `التذكرة #${interaction.channel.name} أُغلقت بواسطة @${interaction.user.username} | السبب: ${reason} | عدد الرسائل: ${count}`, fileId);
-
-    setTimeout(() => {
-      ticketsDataMap.delete(interaction.channel.id);
-      interaction.channel.delete().catch(() => {});
-    }, 3000);
-  }
+// تشغيل الداشبورد وتوكن البوت
+app.listen(PORT, () => {
+  console.log(`🚀 Dashboard running on port ${PORT}`);
 });
 
 client.login(TOKEN);
