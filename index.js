@@ -10,12 +10,7 @@ const {
   ButtonStyle, 
   StringSelectMenuBuilder, 
   ChannelType, 
-  PermissionFlagsBits,
-  ModalBuilder,
-  TextInputBuilder,
-  TextInputStyle,
-  AttachmentBuilder,
-  UserSelectMenuBuilder
+  PermissionFlagsBits
 } = require('discord.js');
 const express = require('express');
 const session = require('express-session');
@@ -100,13 +95,13 @@ let serverSettings = {
 
 const ticketsDataMap = new Map();
 
-// ------------------- 2. إعدادات Express والداشبورد الفخم -------------------
+// ------------------- 2. إعدادات Express والداشبورد الأسطوري -------------------
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'void_ultimate_logs_persistent_2026',
+  secret: process.env.SESSION_SECRET || 'void_elite_dashboard_2026',
   resave: false,
   saveUninitialized: false,
   cookie: { maxAge: 3600000 * 24 }
@@ -131,7 +126,7 @@ const client = new Client({
   partials: [P.Channel, P.Message, P.User, P.GuildMember]
 });
 
-// 💎 تصميم سينمائي وأنيق جداً للوحة التحكم (Ultimate Void Dashboard Design)
+// 💎 تصميم لوحة التحكم الأسطوري الفائق (أفخم وأرتب من ProBot بكثير)
 const renderUltimateLayout = (activeTab, content) => {
   let memberCount = 0;
   let botIconUrl = 'https://cdn.discordapp.com/embed/avatars/0.png';
@@ -151,58 +146,54 @@ const renderUltimateLayout = (activeTab, content) => {
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Void • Command Center</title>
+    <title>Void • Elite Command Center</title>
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap');
-      * { box-sizing: border-box; font-family: 'Cairo', sans-serif; transition: all 0.25s ease; }
-      body { background: #050608; color: #f3f4f6; margin: 0; padding: 0; display: flex; min-height: 100vh; overflow-x: hidden; }
+      * { box-sizing: border-box; font-family: 'Cairo', sans-serif; transition: all 0.2s ease; }
+      body { background: #040507; color: #f3f4f6; margin: 0; padding: 0; display: flex; min-height: 100vh; overflow-x: hidden; }
       
-      /* خلفية متدرجة ذات إضاءة سينمائية */
       body::before {
-        content: ''; position: fixed; top: -10%; left: -10%; width: 120%; height: 120%;
-        background: radial-gradient(circle at 20% 20%, rgba(124, 58, 237, 0.12), transparent 40%),
-                    radial-gradient(circle at 80% 80%, rgba(99, 102, 241, 0.10), transparent 40%),
-                    radial-gradient(circle at 50% 50%, rgba(15, 23, 42, 0.6), #050608);
+        content: ''; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: radial-gradient(circle at 10% 10%, rgba(139, 92, 246, 0.08), transparent 45%),
+                    radial-gradient(circle at 90% 90%, rgba(59, 130, 246, 0.07), transparent 45%);
         z-index: 1; pointer-events: none;
       }
 
-      /* الشريط الجانبي الفخم */
       .sidebar {
-        width: 270px; background: rgba(10, 12, 20, 0.85); backdrop-filter: blur(30px);
-        border-left: 1px solid rgba(255, 255, 255, 0.08); padding: 26px 18px;
+        width: 280px; background: rgba(9, 11, 17, 0.9); backdrop-filter: blur(30px);
+        border-left: 1px solid rgba(255, 255, 255, 0.07); padding: 26px 20px;
         display: flex; flex-direction: column; justify-content: space-between;
         position: fixed; right: 0; top: 0; bottom: 0; z-index: 100;
-        box-shadow: -10px 0 30px rgba(0,0,0,0.5);
+        box-shadow: -15px 0 40px rgba(0,0,0,0.6);
       }
 
-      .brand-box { display: flex; align-items: center; gap: 14px; padding-bottom: 20px; margin-bottom: 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
-      .brand-avatar { width: 48px; height: 48px; border-radius: 14px; border: 2px solid rgba(168, 85, 247, 0.4); box-shadow: 0 0 15px rgba(168, 85, 247, 0.3); }
-      .brand-title { font-size: 17px; font-weight: 900; background: linear-gradient(135deg, #ffffff, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: 0.5px; }
-      .brand-sub { font-size: 11px; color: #9ca3af; font-weight: 600; }
+      .brand-box { display: flex; align-items: center; gap: 14px; padding-bottom: 20px; margin-bottom: 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.07); }
+      .brand-avatar { width: 48px; height: 48px; border-radius: 14px; border: 2px solid rgba(139, 92, 246, 0.5); box-shadow: 0 0 15px rgba(139, 92, 246, 0.3); }
+      .brand-title { font-size: 18px; font-weight: 900; background: linear-gradient(135deg, #ffffff, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+      .brand-sub { font-size: 11px; color: #6b7280; font-weight: 700; }
 
-      .nav-group { margin-bottom: 22px; }
-      .nav-label { font-size: 10px; color: #818cf8; font-weight: 800; text-transform: uppercase; margin-bottom: 10px; padding-right: 8px; letter-spacing: 1.2px; }
-      .nav-item { display: flex; align-items: center; justify-content: space-between; padding: 11px 16px; border-radius: 12px; color: #9ca3af; text-decoration: none; font-weight: 700; font-size: 13.5px; margin-bottom: 6px; }
-      .nav-item:hover { background: rgba(255, 255, 255, 0.06); color: #ffffff; transform: translateX(-3px); }
-      .nav-item.active { background: linear-gradient(135deg, rgba(124, 58, 237, 0.25), rgba(99, 102, 241, 0.18)); color: #ffffff; border: 1px solid rgba(168, 85, 247, 0.4); box-shadow: 0 4px 15px rgba(124, 58, 237, 0.2); }
+      .nav-group { margin-bottom: 24px; }
+      .nav-label { font-size: 10.5px; color: #a78bfa; font-weight: 800; text-transform: uppercase; margin-bottom: 10px; padding-right: 8px; letter-spacing: 1.2px; }
+      .nav-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-radius: 12px; color: #9ca3af; text-decoration: none; font-weight: 700; font-size: 13.5px; margin-bottom: 6px; }
+      .nav-item:hover { background: rgba(255, 255, 255, 0.05); color: #fff; transform: translateX(-3px); }
+      .nav-item.active { background: linear-gradient(135deg, rgba(139, 92, 246, 0.25), rgba(59, 130, 246, 0.15)); color: #fff; border: 1px solid rgba(139, 92, 246, 0.45); box-shadow: 0 4px 20px rgba(139, 92, 246, 0.2); }
 
-      .badge-live { background: rgba(16, 185, 129, 0.15); color: #34d399; padding: 3px 9px; border-radius: 20px; font-size: 10px; border: 1px solid rgba(16, 185, 129, 0.3); font-weight: 800; }
+      .badge-live { background: rgba(16, 185, 129, 0.15); color: #34d399; padding: 3px 10px; border-radius: 20px; font-size: 10px; border: 1px solid rgba(16, 185, 129, 0.3); font-weight: 800; }
 
-      /* المحتوى الرئيسي */
-      .main-content { margin-right: 270px; flex: 1; padding: 32px 42px; max-width: 1400px; position: relative; z-index: 10; }
+      .main-content { margin-right: 280px; flex: 1; padding: 32px 42px; max-width: 1400px; position: relative; z-index: 10; }
       
       .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-bottom: 26px; }
-      .stat-card { background: rgba(15, 18, 28, 0.65); backdrop-filter: blur(25px); border: 1px solid rgba(255, 255, 255, 0.08); padding: 20px 22px; border-radius: 18px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
-      .stat-card:hover { transform: translateY(-4px); border-color: rgba(168, 85, 247, 0.3); box-shadow: 0 15px 30px rgba(124, 58, 237, 0.15); }
-      .stat-num { font-size: 24px; font-weight: 900; color: #ffffff; margin-top: 2px; }
+      .stat-card { background: rgba(14, 17, 26, 0.7); backdrop-filter: blur(25px); border: 1px solid rgba(255, 255, 255, 0.07); padding: 20px 22px; border-radius: 18px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+      .stat-card:hover { transform: translateY(-3px); border-color: rgba(139, 92, 246, 0.3); }
+      .stat-num { font-size: 24px; font-weight: 900; color: #fff; }
       .stat-title { font-size: 12px; color: #9ca3af; font-weight: 700; }
 
-      .glass-card { background: rgba(15, 18, 28, 0.65); backdrop-filter: blur(25px); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 20px; padding: 26px 30px; margin-bottom: 24px; box-shadow: 0 15px 35px rgba(0,0,0,0.4); }
+      .glass-card { background: rgba(14, 17, 26, 0.65); backdrop-filter: blur(30px); border: 1px solid rgba(255, 255, 255, 0.07); border-radius: 20px; padding: 28px 32px; margin-bottom: 24px; box-shadow: 0 15px 40px rgba(0,0,0,0.4); }
       
       h1, h2, h3 { color: #fff; margin-top: 0; font-weight: 800; }
       .purple-gradient { background: linear-gradient(135deg, #ffffff, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
       
-      .tier-row { display: flex; gap: 12px; align-items: center; margin-bottom: 10px; background: rgba(8, 10, 16, 0.6); padding: 10px 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.06); }
+      .tier-row { display: flex; gap: 12px; align-items: center; margin-bottom: 10px; background: rgba(6, 8, 14, 0.65); padding: 10px 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); }
       .tier-row input[type="number"] { width: 130px; text-align: center; }
       .tier-row input[type="text"] { flex: 1; }
       .tier-label { font-size: 12px; font-weight: 800; color: #c084fc; white-space: nowrap; }
@@ -213,22 +204,20 @@ const renderUltimateLayout = (activeTab, content) => {
       .btn-add { background: rgba(99, 102, 241, 0.2); color: #c7d2fe; border: 1px solid rgba(99, 102, 241, 0.35); border-radius: 10px; padding: 8px 16px; cursor: pointer; font-weight: 700; font-size: 12.5px; margin-top: 8px; display: inline-block; }
       .btn-add:hover { background: rgba(99, 102, 241, 0.4); color: #fff; }
 
-      input, textarea, select { width: 100%; padding: 12px 16px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.09); background: rgba(8, 10, 16, 0.85); color: #f3f4f6; outline: none; margin-top: 6px; font-size: 13.5px; }
-      input:focus, textarea:focus, select:focus { border-color: #818cf8; box-shadow: 0 0 20px rgba(129, 140, 248, 0.25); }
+      input, textarea, select { width: 100%; padding: 12px 16px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.08); background: rgba(6, 8, 14, 0.9); color: #f3f4f6; outline: none; margin-top: 6px; font-size: 13.5px; }
+      input:focus, textarea:focus, select:focus { border-color: #8b5cf6; box-shadow: 0 0 20px rgba(139, 92, 246, 0.25); }
       select option { background: #0f1118; color: #fff; }
       label { font-size: 12.5px; font-weight: 700; color: #e5e7eb; display: block; margin-top: 12px; }
       
-      .btn { background: linear-gradient(135deg, #6366f1, #9333ea); color: #fff; border: none; padding: 13px 26px; border-radius: 12px; font-weight: 800; cursor: pointer; width: 100%; box-shadow: 0 5px 20px rgba(147, 51, 234, 0.35); margin-top: 18px; font-size: 14px; text-align: center; text-decoration: none; display: inline-block; }
-      .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(147, 51, 234, 0.55); }
+      .btn { background: linear-gradient(135deg, #7c3aed, #4f46e5); color: #fff; border: none; padding: 13px 26px; border-radius: 12px; font-weight: 800; cursor: pointer; width: 100%; box-shadow: 0 5px 20px rgba(124, 58, 237, 0.35); margin-top: 18px; font-size: 14px; text-align: center; text-decoration: none; display: inline-block; }
+      .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(124, 58, 237, 0.55); }
 
       .logs-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
-      .logs-table th, .logs-table td { padding: 14px 18px; text-align: right; border-bottom: 1px solid rgba(255, 255, 255, 0.06); font-size: 13.5px; }
-      .logs-table th { color: #9ca3af; font-weight: 800; background: rgba(255, 255, 255, 0.02); border-radius: 8px; }
+      .logs-table th, .logs-table td { padding: 14px 18px; text-align: right; border-bottom: 1px solid rgba(255, 255, 255, 0.05); font-size: 13.5px; }
+      .logs-table th { color: #9ca3af; font-weight: 800; background: rgba(255, 255, 255, 0.02); }
       
       .log-badge { padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 800; display: inline-block; }
       .badge-roles { background: rgba(168, 85, 247, 0.15); color: #e9d5ff; border: 1px solid rgba(168, 85, 247, 0.3); }
-      .badge-messages { background: rgba(245, 158, 11, 0.15); color: #fef08a; border: 1px solid rgba(245, 158, 11, 0.3); }
-      .badge-voice { background: rgba(59, 130, 246, 0.15); color: #bfdbfe; border: 1px solid rgba(59, 130, 246, 0.3); }
       .badge-tickets { background: rgba(16, 185, 129, 0.15); color: #a7f3d0; border: 1px solid rgba(16, 185, 129, 0.3); }
       
       .btn-view-ticket { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); padding: 5px 12px; border-radius: 8px; font-size: 11.5px; font-weight: 700; text-decoration: none; display: inline-block; margin-right: 8px; }
@@ -242,7 +231,7 @@ const renderUltimateLayout = (activeTab, content) => {
         const container = document.getElementById('tier-container-' + baseKey);
         const div = document.createElement('div');
         div.className = 'tier-row';
-        div.innerHTML = '<input type="number" name="' + baseKey + '_maxQty[]" placeholder="العدد" required><span class="tier-label">وتحت ⟵</span><input type="text" name="' + baseKey + '_price[]" placeholder="السعر (مثال: 20 ريال)" required><button type="button" class="btn-del" onclick="this.parentElement.remove()">🗑️</button>';
+        div.innerHTML = '<input type="number" name="' + baseKey + '_maxQty[]" placeholder="العدد" required><span class="tier-label">وتحت ⟵</span><input type="text" name="' + baseKey + '_price[]" placeholder="السعر" required><button type="button" class="btn-del" onclick="this.parentElement.remove()">🗑️</button>';
         container.appendChild(div);
       }
 
@@ -261,8 +250,8 @@ const renderUltimateLayout = (activeTab, content) => {
         <div class="brand-box">
           <img src="${botIconUrl}" class="brand-avatar" alt="Logo">
           <div>
-            <div class="brand-title">VOID CONTROL</div>
-            <div class="brand-sub">Community Center</div>
+            <div class="brand-title">VOID ELITE</div>
+            <div class="brand-sub">Command Center</div>
           </div>
         </div>
         <div class="nav-group">
@@ -272,7 +261,7 @@ const renderUltimateLayout = (activeTab, content) => {
         </div>
         <div class="nav-group">
           <div class="nav-label">المراقبة المباشرة</div>
-          <a href="/logs" class="nav-item ${activeTab === 'logs' ? 'active' : ''}"><span>📜 سجلات الأحداث</span><div class="badge-live">LIVE</div></a>
+          <a href="/logs" class="nav-item ${activeTab === 'logs' ? 'active' : ''}"><span>📜 السجلات الدائمة</span><div class="badge-live">ONLINE</div></a>
         </div>
       </div>
       <a href="/logout" class="btn" style="background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.3); color: #fca5a5; font-size: 13px; padding: 10px;">🚪 تسجيل الخروج</a>
@@ -304,7 +293,7 @@ const renderUltimateLayout = (activeTab, content) => {
   `;
 };
 
-// صفحة تسجيل الدخول الخرافية
+// صفحة تسجيل الدخول الفخمة
 app.get('/login', (req, res) => {
   let botIconUrl = 'https://cdn.discordapp.com/embed/avatars/0.png';
   try {
@@ -321,19 +310,18 @@ app.get('/login', (req, res) => {
       <title>Void • Admin Portal</title>
       <style>
         @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800;900&display=swap');
-        body { background: #050608; color: #fff; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: 'Cairo', sans-serif; }
-        .login-card { background: rgba(15, 18, 28, 0.85); backdrop-filter: blur(40px); border: 1px solid rgba(255, 255, 255, 0.1); padding: 40px 35px; border-radius: 24px; text-align: center; width: 360px; box-shadow: 0 25px 60px rgba(0,0,0,0.8); }
-        .brand-avatar { width: 80px; height: 80px; border-radius: 20px; margin-bottom: 14px; border: 2px solid rgba(168, 85, 247, 0.4); box-shadow: 0 0 20px rgba(168, 85, 247, 0.3); }
-        input { width: 100%; padding: 12px 16px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.12); background: rgba(8, 10, 16, 0.9); color: #fff; text-align: center; font-size: 14px; margin-bottom: 18px; outline: none; }
-        button { background: linear-gradient(135deg, #6366f1, #9333ea); color: #fff; border: none; padding: 12px; border-radius: 12px; width: 100%; font-weight: 800; font-size: 14px; cursor: pointer; box-shadow: 0 5px 20px rgba(147, 51, 234, 0.35); }
-        button:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(147, 51, 234, 0.55); }
+        body { background: #040507; color: #fff; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: 'Cairo', sans-serif; }
+        .login-card { background: rgba(14, 17, 26, 0.85); backdrop-filter: blur(40px); border: 1px solid rgba(255, 255, 255, 0.1); padding: 40px 35px; border-radius: 24px; text-align: center; width: 360px; box-shadow: 0 25px 60px rgba(0,0,0,0.8); }
+        .brand-avatar { width: 80px; height: 80px; border-radius: 20px; margin-bottom: 14px; border: 2px solid rgba(139, 92, 246, 0.5); box-shadow: 0 0 20px rgba(139, 92, 246, 0.3); }
+        input { width: 100%; padding: 12px 16px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.12); background: rgba(6, 8, 14, 0.9); color: #fff; text-align: center; font-size: 14px; margin-bottom: 18px; outline: none; }
+        button { background: linear-gradient(135deg, #7c3aed, #4f46e5); color: #fff; border: none; padding: 12px; border-radius: 12px; width: 100%; font-weight: 800; font-size: 14px; cursor: pointer; box-shadow: 0 5px 20px rgba(124, 58, 237, 0.35); }
       </style>
     </head>
     <body>
       <div class="login-card">
         <img src="${botIconUrl}" class="brand-avatar" alt="Server Logo">
         <h1 style="font-size: 22px; margin-bottom: 4px;" class="purple-gradient">VOID COMMUNITY</h1>
-        <p style="color: #9ca3af; font-size: 12.5px; margin-bottom: 22px;">تسجيل الدخول إلى لوحة القيادة المتقدمة</p>
+        <p style="color: #9ca3af; font-size: 12.5px; margin-bottom: 22px;">تسجيل الدخول إلى لوحة التحكم الفخمة</p>
         <form action="/login/pass" method="POST">
           <input type="password" name="password" placeholder="كلمة المرور" required autofocus>
           <button type="submit">دخول للوحة التحكم</button>
@@ -390,7 +378,7 @@ app.get('/logout', (req, res) => {
   res.redirect('/login');
 });
 
-// الصفحة الرئيسية لإدارة القواعد وتحديث الألوان
+// الصفحة الرئيسية لإدارة القواعد ونشر لوحة التذاكر
 app.get('/', (req, res) => {
   if (!req.session.authenticated) return res.redirect('/login');
 
@@ -407,17 +395,17 @@ app.get('/', (req, res) => {
     <div class="glass-card" style="display: flex; justify-content: space-between; align-items: center;">
       <div>
         <h1 class="purple-gradient" style="margin: 0; font-size: 19px;">🎨 شرائح أسعار النواقص والمقابل بالأغراض (17 قاعدة)</h1>
-        <p style="color: #9ca3af; margin: 4px 0 0 0; font-size: 12.5px;">مرحباً، ${req.session.user?.username || 'المسؤول'} 👋 | يمكن التحكم المباشر بشرائح الأسعار والشروط.</p>
+        <p style="color: #9ca3af; margin: 4px 0 0 0; font-size: 12.5px;">مرحباً، ${req.session.user?.username || 'المسؤول'} 👋 | لوحة تحكم ذكية وفخمة لإدارة السيرفر.</p>
       </div>
-      <span style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); padding: 6px 14px; border-radius: 20px; font-weight: 800; font-size: 11.5px;">🟢 النظام المزدوج المتقدم</span>
+      <span style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); padding: 6px 14px; border-radius: 20px; font-weight: 800; font-size: 11.5px;">🟢 متصل وجاهز</span>
     </div>
 
     <div class="glass-card">
-      <h2 style="font-size: 15.5px;" class="purple-gradient">📢 نشر لوحة التذاكر الفخمة إلى ديسكورد</h2>
+      <h2 style="font-size: 15.5px;" class="purple-gradient">📢 نشر لوحة التذاكر (بالصورة العريضة والقائمة النظيفة)</h2>
       <form action="/send-panel" method="POST">
         <label>اختر القناة المخصصة:</label>
         <select name="channel_id" required>${channelOptionsHTML}</select>
-        <button type="submit" class="btn">🚀 نشر لوحة التذاكر بالصورة العريضة</button>
+        <button type="submit" class="btn">🚀 نشر لوحة التذاكر الفخمة</button>
       </form>
     </div>
 
@@ -461,7 +449,7 @@ app.get('/', (req, res) => {
   res.send(renderUltimateLayout('colors', content));
 });
 
-// نشر لوحة التذاكر الفخمة بالصورة العريضة والقائمة المنسدلة
+// نشر لوحة التذاكر الفخمة ذات الصورة العريضة
 app.post('/send-panel', async (req, res) => {
   if (!req.session.authenticated) return res.redirect('/login');
   const channelId = req.body.channel_id;
@@ -481,16 +469,8 @@ app.post('/send-panel', async (req, res) => {
         .setCustomId('ticket_select_menu')
         .setPlaceholder('اختر خيار التذكرة...')
         .addOptions([
-          {
-            label: 'الدعم الفني | Technical Support',
-            value: 'ticket_support',
-            emoji: '🎫'
-          },
-          {
-            label: 'التقديم على الإدارة | Management Application',
-            value: 'ticket_apply',
-            emoji: '📋'
-          }
+          { label: 'الدعم الفني | Technical Support', value: 'ticket_support', emoji: '🎫' },
+          { label: 'التقديم على الإدارة | Management Application', value: 'ticket_apply', emoji: '📋' }
         ]);
 
       const row = new ActionRowBuilder().addComponents(selectMenu);
@@ -633,7 +613,7 @@ app.get('/view-transcript/:id', (req, res) => {
   } catch(e){}
 
   const messagesHtml = transcriptData.messages.map(m => `
-    <div style="background: rgba(8, 10, 16, 0.7); border: 1px solid rgba(255,255,255,0.06); padding: 14px 18px; border-radius: 14px; margin-bottom: 12px;">
+    <div style="background: rgba(6, 8, 14, 0.7); border: 1px solid rgba(255,255,255,0.06); padding: 14px 18px; border-radius: 14px; margin-bottom: 12px;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
         <span style="font-weight: 800; color: #c084fc; font-size: 14.5px;">${m.author}</span>
         <span style="color: #6b7280; font-size: 11.5px;">${m.time}</span>
@@ -650,13 +630,13 @@ app.get('/view-transcript/:id', (req, res) => {
       <title>Void • عرض تفاصيل التذكرة</title>
       <style>
         @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap');
-        body { background: #050608; color: #f3f4f6; margin: 0; padding: 35px; font-family: 'Cairo', sans-serif; display: flex; justify-content: center; }
+        body { background: #040507; color: #f3f4f6; margin: 0; padding: 35px; font-family: 'Cairo', sans-serif; display: flex; justify-content: center; }
         .container { width: 100%; max-width: 950px; }
-        .glass-card { background: rgba(15, 18, 28, 0.75); backdrop-filter: blur(30px); border: 1px solid rgba(255, 255, 255, 0.09); border-radius: 20px; padding: 28px; margin-bottom: 22px; box-shadow: 0 15px 35px rgba(0,0,0,0.5); }
+        .glass-card { background: rgba(14, 17, 26, 0.75); backdrop-filter: blur(30px); border: 1px solid rgba(255, 255, 255, 0.09); border-radius: 20px; padding: 28px; margin-bottom: 22px; box-shadow: 0 15px 35px rgba(0,0,0,0.5); }
         h1, h2 { color: #fff; margin-top: 0; font-weight: 800; }
         .purple-gradient { background: linear-gradient(135deg, #ffffff, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .info-row { display: flex; justify-content: space-between; background: rgba(8, 10, 16, 0.6); padding: 12px 16px; border-radius: 12px; margin-bottom: 10px; font-size: 13.5px; }
-        .btn { background: linear-gradient(135deg, #6366f1, #9333ea); color: #fff; border: none; padding: 12px 24px; border-radius: 12px; font-weight: 800; cursor: pointer; text-decoration: none; display: inline-block; margin-top: 18px; }
+        .info-row { display: flex; justify-content: space-between; background: rgba(6, 8, 14, 0.6); padding: 12px 16px; border-radius: 12px; margin-bottom: 10px; font-size: 13.5px; }
+        .btn { background: linear-gradient(135deg, #7c3aed, #4f46e5); color: #fff; border: none; padding: 12px 24px; border-radius: 12px; font-weight: 800; cursor: pointer; text-decoration: none; display: inline-block; margin-top: 18px; }
       </style>
     </head>
     <body>
@@ -678,7 +658,7 @@ app.get('/view-transcript/:id', (req, res) => {
   `);
 });
 
-// ------------------- 3. نظام تفاعلات التذاكر بالديسكورد مع استجابة فورية -------------------
+// ------------------- 3. نظام تفاعلات التذاكر بالديسكورد مع استجابة فورية وآمنة -------------------
 client.on('interactionCreate', async (interaction) => {
   if (interaction.isButton() || interaction.isStringSelectMenu()) {
     if (interaction.customId.startsWith('ticket_') || interaction.customId === 'close_ticket') {
@@ -785,7 +765,7 @@ client.on('interactionCreate', async (interaction) => {
   }
 });
 
-// أمر نشر اللوحة بالديسكورد
+// أمر نشر لوحة التذاكر السريع
 client.on('messageCreate', async (message) => {
   if (message.author.bot) return;
 
@@ -821,11 +801,11 @@ client.on('messageCreate', async (message) => {
 });
 
 client.once('ready', () => {
-  console.log(`✅ Logged in as ${client.user.tag}! Void Control Panel is Operational.`);
+  console.log(`✅ Logged in as ${client.user.tag}! Void Elite System is fully operational.`);
 });
 
 app.listen(PORT, () => {
-  console.log(`🚀 Ultimate Dashboard Server running on port ${PORT}`);
+  console.log(`🚀 Elite Dashboard Server running on port ${PORT}`);
 });
 
 client.login(TOKEN);
