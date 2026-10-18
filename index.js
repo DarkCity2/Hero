@@ -10,7 +10,12 @@ const {
   ButtonStyle, 
   StringSelectMenuBuilder, 
   ChannelType, 
-  PermissionFlagsBits
+  PermissionFlagsBits,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle,
+  AttachmentBuilder,
+  UserSelectMenuBuilder
 } = require('discord.js');
 const express = require('express');
 const session = require('express-session');
@@ -59,7 +64,7 @@ function addLog(category, action, details, transcriptId = null) {
   saveLogsToFile();
 }
 
-// ------------------- 1. بيانات قواعد الألوان (17 قاعدة) -------------------
+// ------------------- 1. بيانات قواعد الألوان -------------------
 let basesData = {
   silver: { 
     name: 'Silver Base', emoji: '⚪', 
@@ -95,13 +100,33 @@ let serverSettings = {
 
 const ticketsDataMap = new Map();
 
-// ------------------- 2. إعدادات Express والداشبورد الأسطوري -------------------
+function getTierPrice(tiersArray, userQuantity) {
+  if (!tiersArray || tiersArray.length === 0) return { price: 'غير محدد', tierText: 'غير محدد' };
+  const sorted = [...tiersArray].sort((a, b) => a.maxQty - b.maxQty);
+  for (let tier of sorted) {
+    if (userQuantity <= tier.maxQty) return { price: tier.price, tierText: `${tier.maxQty} وتحت` };
+  }
+  const lastTier = sorted[sorted.length - 1];
+  return { price: lastTier.price, tierText: `فوق ${lastTier.maxQty}` };
+}
+
+function getTierItems(itemTiersArray, userQuantity) {
+  if (!itemTiersArray || itemTiersArray.length === 0) return { items: 'غير محدد', tierText: 'غير محدد' };
+  const sorted = [...itemTiersArray].sort((a, b) => a.maxQty - b.maxQty);
+  for (let tier of sorted) {
+    if (userQuantity <= tier.maxQty) return { items: tier.items, tierText: `${tier.maxQty} وتحت` };
+  }
+  const lastTier = sorted[sorted.length - 1];
+  return { items: lastTier.items, tierText: `فوق ${lastTier.maxQty}` };
+}
+
+// ------------------- 2. إعدادات Express -------------------
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'void_elite_dashboard_2026',
+  secret: process.env.SESSION_SECRET || 'void_ultimate_logs_persistent_2026',
   resave: false,
   saveUninitialized: false,
   cookie: { maxAge: 3600000 * 24 }
@@ -115,18 +140,6 @@ const DASHBOARD_PASSWORD = process.env.DASHBOARD_PASSWORD || 'VD122';
 const TOKEN = process.env.TOKEN;
 const REDIRECT_URI = `${BASE_URL}/api/auth/callback`;
 
-const client = new Client({
-  intents: [
-    I.Guilds,
-    I.GuildMessages,
-    I.MessageContent,
-    I.GuildMembers,
-    I.GuildVoiceStates
-  ],
-  partials: [P.Channel, P.Message, P.User, P.GuildMember]
-});
-
-// 💎 تصميم لوحة التحكم الأسطوري الفائق (أفخم وأرتب من ProBot بكثير)
 const renderUltimateLayout = (activeTab, content) => {
   let memberCount = 0;
   let botIconUrl = 'https://cdn.discordapp.com/embed/avatars/0.png';
@@ -146,92 +159,92 @@ const renderUltimateLayout = (activeTab, content) => {
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Void • Elite Command Center</title>
+    <title>Void • Command Center</title>
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap');
       * { box-sizing: border-box; font-family: 'Cairo', sans-serif; transition: all 0.2s ease; }
-      body { background: #040507; color: #f3f4f6; margin: 0; padding: 0; display: flex; min-height: 100vh; overflow-x: hidden; }
+      body { background: #08090d; color: #f3f4f6; margin: 0; padding: 0; display: flex; min-height: 100vh; overflow-x: hidden; }
       
       body::before {
         content: ''; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-        background: radial-gradient(circle at 10% 10%, rgba(139, 92, 246, 0.08), transparent 45%),
-                    radial-gradient(circle at 90% 90%, rgba(59, 130, 246, 0.07), transparent 45%);
+        background: radial-gradient(circle at 15% 15%, rgba(99, 102, 241, 0.08), transparent 45%),
+                    radial-gradient(circle at 85% 85%, rgba(168, 85, 247, 0.08), transparent 45%);
         z-index: 1; pointer-events: none;
       }
 
       .sidebar {
-        width: 280px; background: rgba(9, 11, 17, 0.9); backdrop-filter: blur(30px);
-        border-left: 1px solid rgba(255, 255, 255, 0.07); padding: 26px 20px;
+        width: 250px; background: rgba(13, 15, 23, 0.88); backdrop-filter: blur(25px);
+        border-left: 1px solid rgba(255, 255, 255, 0.08); padding: 22px 16px;
         display: flex; flex-direction: column; justify-content: space-between;
         position: fixed; right: 0; top: 0; bottom: 0; z-index: 100;
-        box-shadow: -15px 0 40px rgba(0,0,0,0.6);
       }
 
-      .brand-box { display: flex; align-items: center; gap: 14px; padding-bottom: 20px; margin-bottom: 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.07); }
-      .brand-avatar { width: 48px; height: 48px; border-radius: 14px; border: 2px solid rgba(139, 92, 246, 0.5); box-shadow: 0 0 15px rgba(139, 92, 246, 0.3); }
-      .brand-title { font-size: 18px; font-weight: 900; background: linear-gradient(135deg, #ffffff, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-      .brand-sub { font-size: 11px; color: #6b7280; font-weight: 700; }
+      .brand-box { display: flex; align-items: center; gap: 12px; padding-bottom: 18px; margin-bottom: 18px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
+      .brand-avatar { width: 42px; height: 42px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.15); }
+      .brand-title { font-size: 15px; font-weight: 900; background: linear-gradient(135deg, #ffffff, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+      .brand-sub { font-size: 11px; color: #6b7280; }
 
-      .nav-group { margin-bottom: 24px; }
-      .nav-label { font-size: 10.5px; color: #a78bfa; font-weight: 800; text-transform: uppercase; margin-bottom: 10px; padding-right: 8px; letter-spacing: 1.2px; }
-      .nav-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-radius: 12px; color: #9ca3af; text-decoration: none; font-weight: 700; font-size: 13.5px; margin-bottom: 6px; }
-      .nav-item:hover { background: rgba(255, 255, 255, 0.05); color: #fff; transform: translateX(-3px); }
-      .nav-item.active { background: linear-gradient(135deg, rgba(139, 92, 246, 0.25), rgba(59, 130, 246, 0.15)); color: #fff; border: 1px solid rgba(139, 92, 246, 0.45); box-shadow: 0 4px 20px rgba(139, 92, 246, 0.2); }
+      .nav-group { margin-bottom: 18px; }
+      .nav-label { font-size: 10px; color: #6366f1; font-weight: 800; text-transform: uppercase; margin-bottom: 8px; padding-right: 8px; letter-spacing: 1px; }
+      .nav-item { display: flex; align-items: center; justify-content: space-between; padding: 9px 13px; border-radius: 10px; color: #9ca3af; text-decoration: none; font-weight: 600; font-size: 13px; margin-bottom: 4px; }
+      .nav-item:hover { background: rgba(255, 255, 255, 0.05); color: #f3f4f6; }
+      .nav-item.active { background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(168, 85, 247, 0.15)); color: #ffffff; border: 1px solid rgba(99, 102, 241, 0.4); }
 
-      .badge-live { background: rgba(16, 185, 129, 0.15); color: #34d399; padding: 3px 10px; border-radius: 20px; font-size: 10px; border: 1px solid rgba(16, 185, 129, 0.3); font-weight: 800; }
+      .badge-live { background: rgba(16, 185, 129, 0.15); color: #34d399; padding: 2px 8px; border-radius: 20px; font-size: 10px; border: 1px solid rgba(16, 185, 129, 0.3); font-weight: 800; }
 
-      .main-content { margin-right: 280px; flex: 1; padding: 32px 42px; max-width: 1400px; position: relative; z-index: 10; }
+      .main-content { margin-right: 250px; flex: 1; padding: 28px 36px; max-width: 1350px; position: relative; z-index: 10; }
       
-      .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-bottom: 26px; }
-      .stat-card { background: rgba(14, 17, 26, 0.7); backdrop-filter: blur(25px); border: 1px solid rgba(255, 255, 255, 0.07); padding: 20px 22px; border-radius: 18px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
-      .stat-card:hover { transform: translateY(-3px); border-color: rgba(139, 92, 246, 0.3); }
-      .stat-num { font-size: 24px; font-weight: 900; color: #fff; }
-      .stat-title { font-size: 12px; color: #9ca3af; font-weight: 700; }
+      .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 22px; }
+      .stat-card { background: rgba(17, 20, 31, 0.65); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.07); padding: 16px 18px; border-radius: 14px; display: flex; justify-content: space-between; align-items: center; }
+      .stat-num { font-size: 22px; font-weight: 800; color: #ffffff; }
+      .stat-title { font-size: 12px; color: #9ca3af; font-weight: 600; }
 
-      .glass-card { background: rgba(14, 17, 26, 0.65); backdrop-filter: blur(30px); border: 1px solid rgba(255, 255, 255, 0.07); border-radius: 20px; padding: 28px 32px; margin-bottom: 24px; box-shadow: 0 15px 40px rgba(0,0,0,0.4); }
+      .glass-card { background: rgba(17, 20, 31, 0.6); backdrop-filter: blur(25px); border: 1px solid rgba(255, 255, 255, 0.07); border-radius: 16px; padding: 22px 26px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
       
       h1, h2, h3 { color: #fff; margin-top: 0; font-weight: 800; }
       .purple-gradient { background: linear-gradient(135deg, #ffffff, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
       
-      .tier-row { display: flex; gap: 12px; align-items: center; margin-bottom: 10px; background: rgba(6, 8, 14, 0.65); padding: 10px 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); }
-      .tier-row input[type="number"] { width: 130px; text-align: center; }
+      .tier-row { display: flex; gap: 10px; align-items: center; margin-bottom: 8px; background: rgba(10, 12, 18, 0.5); padding: 8px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.05); }
+      .tier-row input[type="number"] { width: 120px; text-align: center; }
       .tier-row input[type="text"] { flex: 1; }
-      .tier-label { font-size: 12px; font-weight: 800; color: #c084fc; white-space: nowrap; }
+      .tier-label { font-size: 12px; font-weight: 800; color: #a855f7; white-space: nowrap; }
       
-      .btn-del { background: rgba(239, 68, 68, 0.2); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.35); border-radius: 10px; padding: 8px 14px; cursor: pointer; font-weight: 700; }
-      .btn-del:hover { background: rgba(239, 68, 68, 0.4); color: #fff; }
-      
-      .btn-add { background: rgba(99, 102, 241, 0.2); color: #c7d2fe; border: 1px solid rgba(99, 102, 241, 0.35); border-radius: 10px; padding: 8px 16px; cursor: pointer; font-weight: 700; font-size: 12.5px; margin-top: 8px; display: inline-block; }
-      .btn-add:hover { background: rgba(99, 102, 241, 0.4); color: #fff; }
+      .btn-del { background: rgba(239, 68, 68, 0.2); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; padding: 7px 12px; cursor: pointer; font-weight: 700; margin-top: 6px; }
+      .btn-add { background: rgba(99, 102, 241, 0.2); color: #a5b4fc; border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 8px; padding: 6px 14px; cursor: pointer; font-weight: 700; font-size: 12px; margin-top: 6px; display: inline-block; }
 
-      input, textarea, select { width: 100%; padding: 12px 16px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.08); background: rgba(6, 8, 14, 0.9); color: #f3f4f6; outline: none; margin-top: 6px; font-size: 13.5px; }
-      input:focus, textarea:focus, select:focus { border-color: #8b5cf6; box-shadow: 0 0 20px rgba(139, 92, 246, 0.25); }
+      input, textarea, select { width: 100%; padding: 10px 14px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.08); background: rgba(10, 12, 18, 0.85); color: #f3f4f6; outline: none; margin-top: 6px; font-size: 13px; }
+      input:focus, textarea:focus, select:focus { border-color: #6366f1; box-shadow: 0 0 15px rgba(99, 102, 241, 0.25); }
       select option { background: #0f1118; color: #fff; }
-      label { font-size: 12.5px; font-weight: 700; color: #e5e7eb; display: block; margin-top: 12px; }
+      label { font-size: 12px; font-weight: 700; color: #d1d5db; display: block; margin-top: 10px; }
       
-      .btn { background: linear-gradient(135deg, #7c3aed, #4f46e5); color: #fff; border: none; padding: 13px 26px; border-radius: 12px; font-weight: 800; cursor: pointer; width: 100%; box-shadow: 0 5px 20px rgba(124, 58, 237, 0.35); margin-top: 18px; font-size: 14px; text-align: center; text-decoration: none; display: inline-block; }
-      .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(124, 58, 237, 0.55); }
+      .btn { background: linear-gradient(135deg, #4f46e5, #7c3aed); color: #fff; border: none; padding: 11px 22px; border-radius: 10px; font-weight: 700; cursor: pointer; width: 100%; box-shadow: 0 4px 15px rgba(79, 70, 229, 0.3); margin-top: 16px; font-size: 13px; text-align: center; text-decoration: none; display: inline-block; }
+      .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(79, 70, 229, 0.5); }
 
-      .logs-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
-      .logs-table th, .logs-table td { padding: 14px 18px; text-align: right; border-bottom: 1px solid rgba(255, 255, 255, 0.05); font-size: 13.5px; }
-      .logs-table th { color: #9ca3af; font-weight: 800; background: rgba(255, 255, 255, 0.02); }
+      .logs-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+      .logs-table th, .logs-table td { padding: 12px 16px; text-align: right; border-bottom: 1px solid rgba(255, 255, 255, 0.05); font-size: 13px; }
+      .logs-table th { color: #9ca3af; font-weight: 700; background: rgba(255, 255, 255, 0.02); }
       
       .log-badge { padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 800; display: inline-block; }
-      .badge-roles { background: rgba(168, 85, 247, 0.15); color: #e9d5ff; border: 1px solid rgba(168, 85, 247, 0.3); }
-      .badge-tickets { background: rgba(16, 185, 129, 0.15); color: #a7f3d0; border: 1px solid rgba(16, 185, 129, 0.3); }
+      .badge-roles { background: rgba(168, 85, 247, 0.15); color: #d8b4fe; border: 1px solid rgba(168, 85, 247, 0.3); }
+      .badge-messages { background: rgba(245, 158, 11, 0.15); color: #fcd34d; border: 1px solid rgba(245, 158, 11, 0.3); }
+      .badge-voice { background: rgba(59, 130, 246, 0.15); color: #93c5fd; border: 1px solid rgba(59, 130, 246, 0.3); }
+      .badge-tickets { background: rgba(16, 185, 129, 0.15); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.3); }
+      .badge-channels { background: rgba(236, 72, 153, 0.15); color: #f472b6; border: 1px solid rgba(236, 72, 153, 0.3); }
+      .badge-members { background: rgba(6, 182, 212, 0.15); color: #67e8f9; border: 1px solid rgba(6, 182, 212, 0.3); }
+      .badge-bans { background: rgba(239, 68, 68, 0.15); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.3); }
       
-      .btn-view-ticket { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); padding: 5px 12px; border-radius: 8px; font-size: 11.5px; font-weight: 700; text-decoration: none; display: inline-block; margin-right: 8px; }
-      .btn-view-ticket:hover { background: rgba(16, 185, 129, 0.4); color: #fff; }
+      .btn-view-ticket { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; text-decoration: none; display: inline-block; margin-right: 8px; }
+      .btn-view-ticket:hover { background: rgba(16, 185, 129, 0.35); color: #fff; }
       
-      .btn-clear-logs { background: rgba(239, 68, 68, 0.15); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.3); padding: 8px 16px; border-radius: 10px; font-size: 12px; font-weight: 700; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
-      .btn-clear-logs:hover { background: rgba(239, 68, 68, 0.35); color: #fff; }
+      .btn-clear-logs { background: rgba(239, 68, 68, 0.15); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.3); padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+      .btn-clear-logs:hover { background: rgba(239, 68, 68, 0.3); color: #fff; }
     </style>
     <script>
       function addTierRow(baseKey) {
         const container = document.getElementById('tier-container-' + baseKey);
         const div = document.createElement('div');
         div.className = 'tier-row';
-        div.innerHTML = '<input type="number" name="' + baseKey + '_maxQty[]" placeholder="العدد" required><span class="tier-label">وتحت ⟵</span><input type="text" name="' + baseKey + '_price[]" placeholder="السعر" required><button type="button" class="btn-del" onclick="this.parentElement.remove()">🗑️</button>';
+        div.innerHTML = '<input type="number" name="' + baseKey + '_maxQty[]" placeholder="العدد" required><span class="tier-label">وتحت ⟵</span><input type="text" name="' + baseKey + '_price[]" placeholder="السعر (مثال: 20 ريال)" required><button type="button" class="btn-del" onclick="this.parentElement.remove()">🗑️</button>';
         container.appendChild(div);
       }
 
@@ -250,8 +263,8 @@ const renderUltimateLayout = (activeTab, content) => {
         <div class="brand-box">
           <img src="${botIconUrl}" class="brand-avatar" alt="Logo">
           <div>
-            <div class="brand-title">VOID ELITE</div>
-            <div class="brand-sub">Command Center</div>
+            <div class="brand-title">VOID BOT</div>
+            <div class="brand-sub">Community Center</div>
           </div>
         </div>
         <div class="nav-group">
@@ -261,29 +274,31 @@ const renderUltimateLayout = (activeTab, content) => {
         </div>
         <div class="nav-group">
           <div class="nav-label">المراقبة المباشرة</div>
-          <a href="/logs" class="nav-item ${activeTab === 'logs' ? 'active' : ''}"><span>📜 السجلات الدائمة</span><div class="badge-live">ONLINE</div></a>
+          <a href="/logs" class="nav-item ${activeTab === 'logs' ? 'active' : ''}"><span>📜 سجلات الأحداث</span><div class="badge-live">PERSISTENT</div></a>
+          <a href="/moderation" class="nav-item ${activeTab === 'moderation' ? 'active' : ''}"><span>🔨 أدوات الإدارة</span></a>
+          <a href="/security" class="nav-item ${activeTab === 'security' ? 'active' : ''}"><span>🛡️ درع الحماية</span></a>
         </div>
       </div>
-      <a href="/logout" class="btn" style="background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.3); color: #fca5a5; font-size: 13px; padding: 10px;">🚪 تسجيل الخروج</a>
+      <a href="/logout" class="btn" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.25); color: #fca5a5; font-size: 12px; padding: 8px;">🚪 تسجيل الخروج</a>
     </div>
 
     <div class="main-content">
       <div class="stats-grid">
         <div class="stat-card">
           <div><div class="stat-title">الأعضاء</div><div class="stat-num">${memberCount}</div></div>
-          <div style="font-size:22px;">👥</div>
+          <div style="font-size:20px;">👥</div>
         </div>
         <div class="stat-card">
-          <div><div class="stat-title">القواعد النشطة</div><div class="stat-num">17</div></div>
-          <div style="font-size:22px;">🎨</div>
+          <div><div class="stat-title">القواعد</div><div class="stat-num">17</div></div>
+          <div style="font-size:20px;">🎨</div>
         </div>
         <div class="stat-card">
-          <div><div class="stat-title">تذاكر جارية</div><div class="stat-num">${ticketsDataMap.size}</div></div>
-          <div style="font-size:22px;">🎫</div>
+          <div><div class="stat-title">تذاكر نشطة</div><div class="stat-num">${ticketsDataMap.size}</div></div>
+          <div style="font-size:20px;">🎫</div>
         </div>
         <div class="stat-card">
           <div><div class="stat-title">إجمالي السجلات</div><div class="stat-num">${totalLogsCount}</div></div>
-          <div style="font-size:22px;">📜</div>
+          <div style="font-size:20px;">📜</div>
         </div>
       </div>
       ${content}
@@ -293,7 +308,6 @@ const renderUltimateLayout = (activeTab, content) => {
   `;
 };
 
-// صفحة تسجيل الدخول الفخمة
 app.get('/login', (req, res) => {
   let botIconUrl = 'https://cdn.discordapp.com/embed/avatars/0.png';
   try {
@@ -309,22 +323,22 @@ app.get('/login', (req, res) => {
       <meta charset="UTF-8">
       <title>Void • Admin Portal</title>
       <style>
-        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800;900&display=swap');
-        body { background: #040507; color: #fff; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: 'Cairo', sans-serif; }
-        .login-card { background: rgba(14, 17, 26, 0.85); backdrop-filter: blur(40px); border: 1px solid rgba(255, 255, 255, 0.1); padding: 40px 35px; border-radius: 24px; text-align: center; width: 360px; box-shadow: 0 25px 60px rgba(0,0,0,0.8); }
-        .brand-avatar { width: 80px; height: 80px; border-radius: 20px; margin-bottom: 14px; border: 2px solid rgba(139, 92, 246, 0.5); box-shadow: 0 0 20px rgba(139, 92, 246, 0.3); }
-        input { width: 100%; padding: 12px 16px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.12); background: rgba(6, 8, 14, 0.9); color: #fff; text-align: center; font-size: 14px; margin-bottom: 18px; outline: none; }
-        button { background: linear-gradient(135deg, #7c3aed, #4f46e5); color: #fff; border: none; padding: 12px; border-radius: 12px; width: 100%; font-weight: 800; font-size: 14px; cursor: pointer; box-shadow: 0 5px 20px rgba(124, 58, 237, 0.35); }
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800&display=swap');
+        body { background: #08090d; color: #fff; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: 'Cairo', sans-serif; }
+        .login-card { background: rgba(15, 18, 28, 0.85); backdrop-filter: blur(40px); border: 1px solid rgba(255, 255, 255, 0.1); padding: 35px 30px; border-radius: 20px; text-align: center; width: 340px; box-shadow: 0 20px 50px rgba(0,0,0,0.8); }
+        .brand-avatar { width: 70px; height: 70px; border-radius: 16px; margin-bottom: 12px; border: 1px solid rgba(255, 255, 255, 0.15); }
+        input { width: 100%; padding: 11px 14px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(8, 10, 16, 0.9); color: #fff; text-align: center; font-size: 13px; margin-bottom: 16px; outline: none; }
+        button { background: linear-gradient(135deg, #4f46e5, #7c3aed); color: #fff; border: none; padding: 11px; border-radius: 10px; width: 100%; font-weight: 700; font-size: 13px; cursor: pointer; }
       </style>
     </head>
     <body>
       <div class="login-card">
         <img src="${botIconUrl}" class="brand-avatar" alt="Server Logo">
-        <h1 style="font-size: 22px; margin-bottom: 4px;" class="purple-gradient">VOID COMMUNITY</h1>
-        <p style="color: #9ca3af; font-size: 12.5px; margin-bottom: 22px;">تسجيل الدخول إلى لوحة التحكم الفخمة</p>
+        <h1 style="font-size: 20px; margin-bottom: 4px;" class="purple-gradient">VOID COMMUNITY</h1>
+        <p style="color: #9ca3af; font-size: 12px; margin-bottom: 20px;">تسجيل الدخول للوحة التحكم</p>
         <form action="/login/pass" method="POST">
           <input type="password" name="password" placeholder="كلمة المرور" required autofocus>
-          <button type="submit">دخول للوحة التحكم</button>
+          <button type="submit">دخول للوحة</button>
         </form>
       </div>
     </body>
@@ -378,7 +392,6 @@ app.get('/logout', (req, res) => {
   res.redirect('/login');
 });
 
-// الصفحة الرئيسية لإدارة القواعد ونشر لوحة التذاكر
 app.get('/', (req, res) => {
   if (!req.session.authenticated) return res.redirect('/login');
 
@@ -394,26 +407,26 @@ app.get('/', (req, res) => {
   const content = `
     <div class="glass-card" style="display: flex; justify-content: space-between; align-items: center;">
       <div>
-        <h1 class="purple-gradient" style="margin: 0; font-size: 19px;">🎨 شرائح أسعار النواقص والمقابل بالأغراض (17 قاعدة)</h1>
-        <p style="color: #9ca3af; margin: 4px 0 0 0; font-size: 12.5px;">مرحباً، ${req.session.user?.username || 'المسؤول'} 👋 | لوحة تحكم ذكية وفخمة لإدارة السيرفر.</p>
+        <h1 class="purple-gradient" style="margin: 0; font-size: 18px;">🎨 شرائح أسعار النواقص والمقابل بالأغراض (17 قاعدة)</h1>
+        <p style="color: #9ca3af; margin: 4px 0 0 0; font-size: 12px;">مرحباً، ${req.session.user?.username || 'المسؤول'} 👋 | يمكنك إضافة وتعديل شرائح المادي والأغراض لكل قاعدة بسهولة.</p>
       </div>
-      <span style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); padding: 6px 14px; border-radius: 20px; font-weight: 800; font-size: 11.5px;">🟢 متصل وجاهز</span>
+      <span style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); padding: 5px 12px; border-radius: 20px; font-weight: 700; font-size: 11px;">🟢 النظام المزدوج الشامل</span>
     </div>
 
     <div class="glass-card">
-      <h2 style="font-size: 15.5px;" class="purple-gradient">📢 نشر لوحة التذاكر (بالصورة العريضة والقائمة النظيفة)</h2>
+      <h2 style="font-size: 15px;" class="purple-gradient">📢 إرسال لوحة الألوان إلى ديسكورد</h2>
       <form action="/send-panel" method="POST">
         <label>اختر القناة المخصصة:</label>
         <select name="channel_id" required>${channelOptionsHTML}</select>
-        <button type="submit" class="btn">🚀 نشر لوحة التذاكر الفخمة</button>
+        <button type="submit" class="btn">🚀 نشر لوحة الألوان الآن</button>
       </form>
     </div>
 
     <form action="/save-colors" method="POST">
-      <h2 style="font-size: 16px; margin-bottom: 14px;" class="purple-gradient">⚡ إعدادات شرائح السعر والأغراض لكل قاعدة</h2>
+      <h2 style="font-size: 15px; margin-bottom: 12px;" class="purple-gradient">⚡ إعدادات شرائح السعر والأغراض لكل قاعدة</h2>
       ${Object.keys(basesData).map(key => `
-        <div class="glass-card" style="padding: 20px;">
-          <h3 style="margin: 0 0 12px 0; color: #c084fc; font-size: 15.5px;">${basesData[key].emoji} ${basesData[key].name}</h3>
+        <div class="glass-card" style="padding: 18px;">
+          <h3 style="margin: 0 0 10px 0; color: #a855f7; font-size: 15px;">${basesData[key].emoji}${basesData[key].name}</h3>
           
           <label style="margin-bottom: 8px;">💰 شرائح تسعير النواقص (المقابل المادي):</label>
           <div id="tier-container-${key}">
@@ -439,7 +452,7 @@ app.get('/', (req, res) => {
               </div>
             `).join('')}
           </div>
-          <button type="button" class="btn-add" style="background: rgba(168, 85, 247, 0.2); color: #e9d5ff; border-color: rgba(168, 85, 247, 0.35);" onclick="addItemTierRow('${key}')">➕ إضافة شريحة أغراض جديدة</button>
+          <button type="button" class="btn-add" style="background: rgba(168, 85, 247, 0.2); color: #d8b4fe; border-color: rgba(168, 85, 247, 0.3);" onclick="addItemTierRow('${key}')">➕ إضافة شريحة أغراض جديدة</button>
         </div>
       `).join('')}
       <button type="submit" class="btn" style="position: sticky; bottom: 20px; z-index: 10;">💾 حفظ كافة التعديلات والشرائح</button>
@@ -447,39 +460,6 @@ app.get('/', (req, res) => {
   `;
 
   res.send(renderUltimateLayout('colors', content));
-});
-
-// نشر لوحة التذاكر الفخمة ذات الصورة العريضة
-app.post('/send-panel', async (req, res) => {
-  if (!req.session.authenticated) return res.redirect('/login');
-  const channelId = req.body.channel_id;
-  try {
-    const channel = await client.channels.fetch(channelId);
-    if (channel && channel.isTextBased()) {
-      const guild = channel.guild;
-      const bannerUrl = guild.bannerURL({ size: 1024, extension: 'png' }) || guild.iconURL({ size: 1024, extension: 'png' }) || 'https://i.imgur.com/8Q9Z4yX.png';
-
-      const embed = new EmbedBuilder()
-        .setColor('#2b2d31')
-        .setTitle(`✨ مركز التذاكر والخدمات الرسمية | ${guild.name}`)
-        .setDescription(`> قم باختيار القسم المناسب لطلبك من القائمة أدناه ليتم فتح تذكرة خاصة بك فوراً.`)
-        .setImage(bannerUrl);
-
-      const selectMenu = new StringSelectMenuBuilder()
-        .setCustomId('ticket_select_menu')
-        .setPlaceholder('اختر خيار التذكرة...')
-        .addOptions([
-          { label: 'الدعم الفني | Technical Support', value: 'ticket_support', emoji: '🎫' },
-          { label: 'التقديم على الإدارة | Management Application', value: 'ticket_apply', emoji: '📋' }
-        ]);
-
-      const row = new ActionRowBuilder().addComponents(selectMenu);
-      await channel.send({ embeds: [embed], components: [row] });
-    }
-  } catch (e) {
-    console.error('Error sending panel:', e);
-  }
-  res.redirect('/');
 });
 
 app.post('/save-colors', (req, res) => {
@@ -518,8 +498,8 @@ app.get('/tickets', (req, res) => {
   if (!req.session.authenticated) return res.redirect('/login');
   const content = `
     <div class="glass-card">
-      <h1 class="purple-gradient" style="margin: 0; font-size: 19px;">🎫 إعدادات نظام التذاكر والكاتيجوري</h1>
-      <p style="color: #9ca3af; margin-top: 4px; font-size: 12.5px;">تحديد الفئات المخصصة للتذاكر ورتبة التحكم العلياء.</p>
+      <h1 class="purple-gradient" style="margin: 0; font-size: 18px;">🎫 إعدادات نظام التذاكر والكاتيجوري</h1>
+      <p style="color: #9ca3af; margin-top: 4px; font-size: 12px;">تحديد الفئات المخصصة للتذاكر ورتبة التحكم.</p>
     </div>
     
     <form action="/save-tickets" method="POST">
@@ -545,59 +525,7 @@ app.post('/save-tickets', (req, res) => {
   res.redirect('/tickets');
 });
 
-// صفحة السجلات الدائمة المفصلة
-app.get('/logs', (req, res) => {
-  if (!req.session.authenticated) return res.redirect('/login');
-  const allLogsHtml = Object.keys(logsStore).map(cat => {
-    const items = logsStore[cat] || [];
-    return items.map(l => `
-      <tr>
-        <td><span class="log-badge badge-${cat}">${cat.toUpperCase()}</span></td>
-        <td style="font-weight: 700; color: #fff;">${l.action}</td>
-        <td>${l.details}${l.transcriptId ? `<a href="/view-transcript/${l.transcriptId}" class="btn-view-ticket">📄 عرض التذكرة</a>` : ''}</td>
-        <td style="color: #6b7280; font-size: 12px;">${l.time}</td>
-      </tr>
-    `).join('');
-  }).join('');
-
-  const content = `
-    <div class="glass-card" style="display: flex; justify-content: space-between; align-items: center;">
-      <div>
-        <h1 class="purple-gradient" style="margin: 0; font-size: 19px;">📜 سجلات الأحداث الدائمة</h1>
-        <p style="color: #9ca3af; margin: 4px 0 0 0; font-size: 12.5px;">متابعة دقيقة لكافة تفاعلات السيرفر والأعضاء والتذاكر.</p>
-      </div>
-      <form action="/clear-logs" method="POST" onsubmit="return confirm('هل أنت متأكد من مسح كافة السجلات؟');">
-        <button type="submit" class="btn-clear-logs">🗑️ مسح السجلات</button>
-      </form>
-    </div>
-
-    <div class="glass-card" style="padding: 10px 20px;">
-      <table class="logs-table">
-        <thead>
-          <tr>
-            <th>القسم</th>
-            <th>الحدث</th>
-            <th>التفاصيل</th>
-            <th>الوقت</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${allLogsHtml || '<tr><td colspan="4" style="text-align: center; color: #6b7280; padding: 35px;">لا توجد سجلات مسجلة حتى الآن.</td></tr>'}
-        </tbody>
-      </table>
-    </div>
-  `;
-  res.send(renderUltimateLayout('logs', content));
-});
-
-app.post('/clear-logs', (req, res) => {
-  if (!req.session.authenticated) return res.redirect('/login');
-  logsStore = { roles: [], messages: [], voice: [], tickets: [], channels: [], members: [], bans: [] };
-  saveLogsToFile();
-  res.redirect('/logs');
-});
-
-// صفحة عرض تفاصيل محادثات التذكرة
+// صفحة عرض تفاصيل محادثات التذكرة (مطابقة تماماً للصورة)
 app.get('/view-transcript/:id', (req, res) => {
   if (!req.session.authenticated) return res.redirect('/login');
   const fileId = req.params.id.replace(/[^a-zA-Z0-9_-]/g, '');
@@ -607,205 +535,630 @@ app.get('/view-transcript/:id', (req, res) => {
     return res.send('<h2 style="color:red; text-align:center; margin-top:50px; font-family:sans-serif;">❌ عذراً، لم يتم العثور على سجل محادثات هذه التذكرة.<br><br><a href="/logs" style="color:#a78bfa;">العودة للسجلات</a></h2>');
   }
 
-  let transcriptData = { ticketName: 'Unknown', closedBy: 'Unknown', date: 'Unknown', messages: [], openedBy: 'Unknown', baseName: 'الدعم الفني' };
+  let transcriptData = { ticketName: 'Unknown', closedBy: 'Unknown', date: 'Unknown', messages: [], openedBy: 'Unknown', baseName: 'الدعم الفني', guarantee: 'غير محدد', missing: 'غير محدد' };
   try {
     transcriptData = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
   } catch(e){}
 
   const messagesHtml = transcriptData.messages.map(m => `
-    <div style="background: rgba(6, 8, 14, 0.7); border: 1px solid rgba(255,255,255,0.06); padding: 14px 18px; border-radius: 14px; margin-bottom: 12px;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-        <span style="font-weight: 800; color: #c084fc; font-size: 14.5px;">${m.author}</span>
-        <span style="color: #6b7280; font-size: 11.5px;">${m.time}</span>
+    <div style="background: rgba(10, 12, 18, 0.7); border: 1px solid rgba(255,255,255,0.05); padding: 12px 16px; border-radius: 12px; margin-bottom: 10px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+        <span style="font-weight: 800; color: #a855f7; font-size: 14px;">${m.author}</span>
+        <span style="color: #6b7280; font-size: 11px;">${m.time}</span>
       </div>
-      <div style="color: #e5e7eb; font-size: 13.5px; white-space: pre-wrap; line-height: 1.6;">${m.content}</div>
+      <div style="color: #e5e7eb; font-size: 13px; white-space: pre-wrap; line-height: 1.5;">${m.content}</div>
     </div>
   `).join('');
 
-  res.send(`
-    <!DOCTYPE html>
-    <html lang="ar" dir="rtl">
-    <head>
-      <meta charset="UTF-8">
-      <title>Void • عرض تفاصيل التذكرة</title>
-      <style>
-        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap');
-        body { background: #040507; color: #f3f4f6; margin: 0; padding: 35px; font-family: 'Cairo', sans-serif; display: flex; justify-content: center; }
-        .container { width: 100%; max-width: 950px; }
-        .glass-card { background: rgba(14, 17, 26, 0.75); backdrop-filter: blur(30px); border: 1px solid rgba(255, 255, 255, 0.09); border-radius: 20px; padding: 28px; margin-bottom: 22px; box-shadow: 0 15px 35px rgba(0,0,0,0.5); }
-        h1, h2 { color: #fff; margin-top: 0; font-weight: 800; }
-        .purple-gradient { background: linear-gradient(135deg, #ffffff, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .info-row { display: flex; justify-content: space-between; background: rgba(6, 8, 14, 0.6); padding: 12px 16px; border-radius: 12px; margin-bottom: 10px; font-size: 13.5px; }
-        .btn { background: linear-gradient(135deg, #7c3aed, #4f46e5); color: #fff; border: none; padding: 12px 24px; border-radius: 12px; font-weight: 800; cursor: pointer; text-decoration: none; display: inline-block; margin-top: 18px; }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="glass-card">
-          <h1 class="purple-gradient" style="font-size: 21px;">📄 سجل محادثات التذكرة: ${transcriptData.ticketName}</h1>
-          <div class="info-row"><span>صاحب التذكرة:</span> <strong>${transcriptData.openedBy}</strong></div>
-          <div class="info-row"><span>أغلق بواسطة:</span> <strong>${transcriptData.closedBy}</strong></div>
-          <div class="info-row"><span>تاريخ الإغلاق:</span> <strong>${transcriptData.date}</strong></div>
+  const html = `
+  <!DOCTYPE html>
+  <html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8">
+    <title>Void • عرض تفاصيل التذكرة</title>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap');
+      body { background: #08090d; color: #f3f4f6; margin: 0; padding: 30px; font-family: 'Cairo', sans-serif; display: flex; justify-content: center; }
+      .container { width: 100%; max-width: 900px; }
+      .glass-card { background: rgba(17, 20, 31, 0.75); backdrop-filter: blur(25px); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; padding: 25px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.4); }
+      h1, h2 { color: #fff; margin-top: 0; font-weight: 800; }
+      .purple-gradient { background: linear-gradient(135deg, #ffffff, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+      .info-row { display: flex; justify-content: space-between; background: rgba(10, 12, 18, 0.5); padding: 10px 14px; border-radius: 10px; margin-bottom: 8px; font-size: 13px; }
+      .btn { background: linear-gradient(135deg, #4f46e5, #7c3aed); color: #fff; border: none; padding: 10px 20px; border-radius: 10px; font-weight: 700; text-decoration: none; display: inline-block; font-size: 13px; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="glass-card" style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <h1 class="purple-gradient" style="margin: 0; font-size: 20px;">🎫 أرشيف محادثات التذكرة</h1>
+          <p style="color: #9ca3af; margin: 4px 0 0 0; font-size: 12px;">عرض تفصيلي لكافة رسائل ومحتويات التذكرة من البداية إلى الإغلاق.</p>
         </div>
-        <div class="glass-card">
-          <h2 style="font-size: 17px; margin-bottom: 18px;">💬 المحادثة الكاملة:</h2>
-          ${messagesHtml || '<p style="color:#6b7280; text-align:center;">لا توجد رسائل مسجلة.</p>'}
-          <a href="/logs" class="btn">⬅️ العودة إلى السجلات</a>
-        </div>
+        <a href="/logs" class="btn">⬅️ العودة للسجلات</a>
       </div>
-    </body>
-    </html>
-  `);
+
+      <div class="glass-card">
+        <div class="info-row"><span>اسم التذكرة:</span><strong>${transcriptData.ticketName}</strong></div>
+        <div class="info-row"><span>مالك التذكرة:</span><strong>${transcriptData.openedBy}</strong></div>
+        <div class="info-row"><span>قسم التذكرة:</span><strong>${transcriptData.baseName}</strong></div>
+        <div class="info-row"><span>🛡️ الضمان:</span><strong style="color: #34d399;">${transcriptData.guarantee || 'غير محدد'}</strong></div>
+        <div class="info-row"><span>🔢 عدد النواقص:</span><strong style="color: #60a5fa;">${transcriptData.missing || 'غير محدد'}</strong></div>
+        <div class="info-row"><span>أُغلقت بواسطة:</span><strong>${transcriptData.closedBy}</strong></div>
+        <div class="info-row"><span>تاريخ الأرشفة:</span><strong>${transcriptData.date}</strong></div>
+      </div>
+
+      <div class="glass-card">
+        <h2 style="font-size: 16px; margin-bottom: 15px;" class="purple-gradient">💬 محادثات التذكرة الكاملة (${transcriptData.messages.length} رسالة)</h2>
+        ${messagesHtml || '<p style="color: #6b7280; text-align: center;">لا توجد رسائل مسجلة.</p>'}
+      </div>
+    </div>
+  </body>
+  </html>
+  `;
+  res.send(html);
 });
 
-// ------------------- 3. نظام تفاعلات التذاكر بالديسكورد مع استجابة فورية وآمنة -------------------
-client.on('interactionCreate', async (interaction) => {
-  if (interaction.isButton() || interaction.isStringSelectMenu()) {
-    if (interaction.customId.startsWith('ticket_') || interaction.customId === 'close_ticket') {
-      try {
-        if (!interaction.replied && !interaction.deferred) {
-          await interaction.deferReply({ ephemeral: true });
+// زر حذف جميع السجلات
+app.get('/clear-logs', (req, res) => {
+  if (!req.session.authenticated) return res.redirect('/login');
+  logsStore = { roles: [], messages: [], voice: [], tickets: [], channels: [], members: [], bans: [] };
+  saveLogsToFile();
+  res.redirect('/logs');
+});
+
+const renderLogTableSection = (title, badgeClass, logsArray) => {
+  const items = logsArray || [];
+  const rows = items.length === 0 
+    ? `<tr><td colspan="3" style="text-align: center; color: #6b7280; padding: 15px; font-size: 12px;">لا توجد أحداث مسجلة في هذا القسم حتى الآن.</td></tr>`
+    : items.map(log => `
+      <tr>
+        <td style="font-weight: 700; color: #ffffff; width: 35%;">${log.action}</td>
+        <td style="color: #d1d5db; width: 45%;">
+          ${log.details}
+          ${log.transcriptId ? `<br><a href="/view-transcript/${log.transcriptId}" target="_blank" class="btn-view-ticket">🎫 عرض تفاصيل التذكرة</a>` : ''}
+        </td>
+        <td style="color: #6b7280; font-size: 11px; white-space: nowrap; text-align: left; width: 20%;">${log.time}</td>
+      </tr>
+    `).join('');
+
+  return `
+    <div class="glass-card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+        <h3 style="margin: 0; font-size: 15px;" class="purple-gradient">${title}</h3>
+        <span class="log-badge ${badgeClass}">${items.length} سجل</span>
+      </div>
+      <div style="overflow-x: auto;">
+        <table class="logs-table">
+          <thead>
+            <tr>
+              <th>الحدث</th>
+              <th>التفاصيل الكاملة</th>
+              <th style="text-align: left;">التوقيت</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+};
+
+app.get('/logs', (req, res) => {
+  if (!req.session.authenticated) return res.redirect('/login');
+
+  const content = `
+    <div class="glass-card" style="display: flex; justify-content: space-between; align-items: center;">
+      <div>
+        <h1 class="purple-gradient" style="margin: 0; font-size: 18px;">📜 سجلات الأحداث الشاملة الدائمة (Persistent Live Logs)</h1>
+        <p style="color: #9ca3af; margin-top: 4px; font-size: 12px;">مراقبة حية لا تختفي أبداً عند تحديث الصفحة أو إعادة تشغيل البوت.</p>
+      </div>
+      <a href="/clear-logs" class="btn-clear-logs" onclick="return confirm('هل أنت متأكد من حذف جميع السجلات بالكامل؟')">🗑️ حذف جميع السجلات</a>
+    </div>
+
+    ${renderLogTableSection('👑 سجلات الرتب (Roles)', 'badge-roles', logsStore.roles)}
+    ${renderLogTableSection('💬 سجلات الرسائل (Messages)', 'badge-messages', logsStore.messages)}
+    ${renderLogTableSection('🎙️ سجلات الرومات الصوتية (Voice)', 'badge-voice', logsStore.voice)}
+    ${renderLogTableSection('🎫 سجلات التذاكر الاحترافية (Tickets)', 'badge-tickets', logsStore.tickets)}
+    ${renderLogTableSection('📁 سجلات الرومات (Channels - إنشاء/حذف/تعديل)', 'badge-channels', logsStore.channels)}
+    ${renderLogTableSection('👥 سجلات الأعضاء (Members - انضمام/مغادرة)', 'badge-members', logsStore.members)}
+    ${renderLogTableSection('🔨 سجلات الحظر (Bans)', 'badge-bans', logsStore.bans)}
+  `;
+
+  res.send(renderUltimateLayout('logs', content));
+});
+
+app.get('/moderation', (req, res) => {
+  if (!req.session.authenticated) return res.redirect('/login');
+  
+  let channelOptionsHTML = '<option value="" disabled selected>اختر القناة لنشر الإعلان...</option>';
+  try {
+    client.guilds.cache.forEach(guild => {
+      guild.channels.cache.filter(c => c.type === ChannelType.GuildText).forEach(channel => {
+        channelOptionsHTML += `<option value="${channel.id}"># ${channel.name} — (${guild.name})</option>`;
+      });
+    });
+  } catch (e) {}
+
+  const content = `
+    <div class="glass-card">
+      <h1 class="purple-gradient" style="margin:0; font-size:18px;">🔨 أدوات الإدارة السريعة</h1>
+      <p style="color:#9ca3af; margin-top:4px; font-size:12px;">إرسال إعلانات رسمية من لوحة التحكم.</p>
+    </div>
+
+    <div class="glass-card">
+      <h2 style="font-size: 15px;" class="purple-gradient">📣 إرسال إعلان رسمي للسيرفر</h2>
+      <form action="/send-announcement" method="POST">
+        <label>اختر القناة:</label>
+        <select name="channel_id" required>${channelOptionsHTML}</select>
+        <label>عنوان الإعلان:</label>
+        <input type="text" name="title" placeholder="العنوان" required>
+        <label>محتوى الإعلان:</label>
+        <textarea name="message" rows="3" placeholder="نص الإعلان..." required></textarea>
+        <button type="submit" class="btn">🚀 إرسال الإعلان</button>
+      </form>
+    </div>
+  `;
+  res.send(renderUltimateLayout('moderation', content));
+});
+
+app.post('/send-announcement', async (req, res) => {
+  if (!req.session.authenticated) return res.redirect('/login');
+  try {
+    const channel = await client.channels.fetch(req.body.channel_id);
+    const embed = new EmbedBuilder()
+      .setTitle(`📢 ${req.body.title}`)
+      .setDescription(req.body.message)
+      .setColor('#6366f1')
+      .setFooter({ text: 'Void Community Official Announcement' })
+      .setTimestamp();
+
+    await channel.send({ embeds: [embed] });
+    addLog('messages', 'إعلان رسمي', `تم إرسال إعلان بعنوان "${req.body.title}" في الروم #${channel.name}`);
+    res.redirect('/moderation');
+  } catch(e) {
+    res.send(`<h2 style="color:red; text-align:center; margin-top:50px;">❌ خطأ: ${e.message}<br><br><a href="/moderation">العودة</a></h2>`);
+  }
+});
+
+app.get('/security', (req, res) => {
+  if (!req.session.authenticated) return res.redirect('/login');
+  const content = `
+    <div class="glass-card">
+      <h1 class="purple-gradient" style="margin:0; font-size:18px;">🛡️ مركز الحماية والأمان</h1>
+      <p style="color:#9ca3af; margin-top:4px; font-size:12px;">مراقبة درع الحماية التلقائي للبوت.</p>
+    </div>
+
+    <div class="glass-card">
+      <h2 style="font-size:15px;" class="purple-gradient">⚡ خيارات الحماية الحالية</h2>
+      <div style="margin-top: 12px; font-size: 12px;">
+        <p>• الحماية من التكرار والسبام (Anti-Spam): <span style="color:#34d399; font-weight:700;">مفعلة</span></p>
+        <p>• الحماية من الهجمات (Anti-Raid): <span style="color:#34d399; font-weight:700;">مفعلة</span></p>
+        <p>• منع روابط الديسكورد والخارجية: <span style="color:#a855f7; font-weight:700;">نشطة</span></p>
+      </div>
+    </div>
+  `;
+  res.send(renderUltimateLayout('security', content));
+});
+
+app.post('/send-panel', async (req, res) => {
+  if (!req.session.authenticated) return res.redirect('/login');
+  try {
+    const channel = await client.channels.fetch(req.body.channel_id);
+    const baseOptions = Object.keys(basesData).map(key => ({
+      label: basesData[key].name,
+      value: key,
+      description: `تقديم طلب لون ${basesData[key].name}`,
+      emoji: basesData[key].emoji
+    }));
+
+    const selectMenu = new StringSelectMenuBuilder()
+      .setCustomId('select_base_color')
+      .setPlaceholder('اختر لون القاعدة المطلوبة...')
+      .addOptions(baseOptions);
+
+    const embed = new EmbedBuilder()
+      .setTitle('🎨 Void Community | نظام ألوان ماب النطة')
+      .setDescription('اختر القاعدة التي تريد طلبها من القائمة المنسدلة أدناه لتقديم بياناتك ونوع المقابل بكل سهولة:')
+      .setColor('#6366f1')
+      .setFooter({ text: 'Void Community • Advanced Ticket System' });
+
+    await channel.send({ embeds: [embed], components: [new ActionRowBuilder().addComponents(selectMenu)] });
+    addLog('tickets', 'نشر لوحة الألوان', `تم نشر لوحة الألوان بنجاح في القناة: #${channel.name}`);
+    res.redirect('/');
+  } catch (err) {
+    res.send(`<h2 style="color:red; text-align:center; margin-top:50px;">❌ خطأ أثناء النشر: ${err.message}<br><br><a href="/">العودة للوحة</a></h2>`);
+  }
+});
+
+app.listen(PORT, () => console.log(`🌐 Dashboard Active on port ${PORT}`));
+
+// ------------------- 7. بوت ديسكورد -------------------
+const client = new Client({
+  intents: [
+    I.Guilds, I.GuildMembers, I.GuildMessages, I.MessageContent,
+    I.GuildMessageReactions, I.GuildVoiceStates, I.GuildModeration, I.GuildInvites,
+    I.GuildExpressions ?? I.GuildEmojisAndStickers
+  ],
+  partials: [P.Message, P.Channel, P.Reaction, P.User, P.GuildMember]
+});
+
+const userSessions = new Map();
+
+async function saveFullTranscript(channel, closedByUser, openedByUserTag, baseName, guaranteeVal, missingVal) {
+  const fetchedMessages = await channel.messages.fetch({ limit: 100 });
+  const sortedMessages = Array.from(fetchedMessages.values())
+    .reverse()
+    .filter(msg => !msg.content.includes('جاري حفظ محادثات التذكرة'));
+
+  let messagesList = [];
+  let txtContent = `========================================================\n`;
+  txtContent += `             VOID COMMUNITY - TICKET TRANSCRIPT        \n`;
+  txtContent += `========================================================\n`;
+  txtContent += `• Ticket Name : ${channel.name}\n`;
+  txtContent += `• Opened By   : ${openedByUserTag}\n`;
+  txtContent += `• Guarantee   : ${guaranteeVal}\n`;
+  txtContent += `• Missing Qty : ${missingVal}\n`;
+  txtContent += `• Closed By   : ${closedByUser.tag}\n`;
+  txtContent += `• Archive Date: ${new Date().toUTCString()}\n`;
+  txtContent += `========================================================\n\n`;
+
+  sortedMessages.forEach(msg => {
+    const timeStr = msg.createdAt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    let content = msg.content;
+
+    if (msg.embeds.length > 0) {
+      msg.embeds.forEach(e => {
+        if (e.title) content += `\n[Embed Title: ${e.title}]`;
+        if (e.description) content += `\n${e.description}`;
+        if (e.fields) {
+          e.fields.forEach(f => {
+            content += `\n   ↳ ${f.name}: ${f.value}`;
+          });
         }
-      } catch (e) {}
-    }
-  }
-
-  // التعامل مع اختيار التذكرة من القائمة المنسدلة
-  if (interaction.isStringSelectMenu() && interaction.customId === 'ticket_select_menu') {
-    const selectedValue = interaction.values[0];
-    const isApply = selectedValue === 'ticket_apply';
-    
-    const ticketType = isApply ? 'تقديم-إدارة' : 'دعم-فني';
-    const ticketTitle = isApply ? '📋 التقديم على الإدارة' : '🎫 الدعم الفني';
-
-    try {
-      const ch = await interaction.guild.channels.create({
-        name: `${ticketType}-${interaction.user.username}`.toLowerCase().replace(/[^a-z0-9\u0600-\u06FF]/g, ''),
-        type: ChannelType.GuildText,
-        permissionOverwrites: [
-          { id: interaction.guild.id, deny: [PermissionFlagsBits.ViewChannel] },
-          { id: interaction.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.AttachFiles, PermissionFlagsBits.EmbedLinks] }
-        ]
       });
-
-      const openTimestamp = `<t:${Math.floor(Date.now() / 1000)}:R>`;
-
-      const ticketEmbed = new EmbedBuilder()
-        .setColor('#2b2d31')
-        .setDescription(
-          `### ${ticketTitle}\n` +
-          `> أهلاً بك <@${interaction.user.id}>، يرجى كتابة تفاصيل طلبك هنا وسيرد عليك الإداري المختص قريباً.\n\n` +
-          `• **الوقت:** ${openTimestamp}\n` +
-          `• **المسؤول:** \`طاقم الإدارة\``
-        )
-        .setFooter({ text: interaction.guild.name, iconURL: interaction.guild.iconURL() || undefined });
-
-      const closeBtn = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId('close_ticket')
-          .setLabel('إغلاق التذكرة')
-          .setEmoji('🔒')
-          .setStyle(ButtonStyle.Danger)
-      );
-
-      await ch.send({
-        content: `|| <@${interaction.user.id}> ||`,
-        embeds: [ticketEmbed],
-        components: [closeBtn]
-      });
-
-      addLog('tickets', 'فتح تذكرة', `تم فتح تذكرة ${ticketTitle} بواسطة @${interaction.user.tag}`);
-
-      return await interaction.editReply({ 
-        content: `✨ **تم فتح تذكرتك بنجاح:** ${ch}` 
-      });
-
-    } catch (err) {
-      console.error('Ticket Error:', err);
-      return await interaction.editReply({ 
-        content: '❌ حدث خطأ أثناء إنشاء التذكرة، يرجى التأكد من صلاحيات البوت.' 
-      }).catch(() => {});
-    }
-  }
-
-  // زر إغلاق التذكرة
-  if (interaction.isButton() && interaction.customId === 'close_ticket') {
-    try {
-      await interaction.editReply({ 
-        embeds: [new EmbedBuilder().setDescription('🔒 **سيتم حذف التذكرة خلال 5 ثوانٍ وحفظ السجل...**').setColor('#ed4245')]
-      });
-
-      const channel = interaction.channel;
-      let fetchedMessages = [];
-      try {
-        const messages = await channel.messages.fetch({ limit: 100 });
-        fetchedMessages = messages.map(m => ({
-          author: m.author.tag,
-          content: m.content || '[محتوى مدمج أو صورة]',
-          time: new Date(m.createdTimestamp).toLocaleString('ar-SA')
-        })).reverse();
-      } catch(e){}
-
-      const transcriptId = 'transcript_' + Date.now();
-      const transcriptData = {
-        ticketName: channel.name,
-        openedBy: interaction.user.tag,
-        closedBy: interaction.user.tag,
-        date: new Date().toLocaleString('ar-SA'),
-        messages: fetchedMessages
-      };
-
-      fs.writeFileSync(path.join(TRANSCRIPTS_DIR, `${transcriptId}.json`), JSON.stringify(transcriptData, null, 2), 'utf-8');
-      addLog('tickets', 'إغلاق تذكرة', `تم إغلاق التذكرة ${channel.name} بواسطة @${interaction.user.tag}`, transcriptId);
-
-      setTimeout(() => {
-        channel.delete().catch(() => {});
-      }, 5000);
-    } catch (e) {}
-  }
-});
-
-// أمر نشر لوحة التذاكر السريع
-client.on('messageCreate', async (message) => {
-  if (message.author.bot) return;
-
-  if (message.content === '!setup-tickets') {
-    if (!message.member.permissions.has(PermissionFlagsBits.Administrator)) {
-      return message.reply('❌ هذا الأمر للمشرفين فقط.');
     }
 
-    try {
-      const bannerUrl = message.guild.bannerURL({ size: 1024, extension: 'png' }) || message.guild.iconURL({ size: 1024, extension: 'png' }) || 'https://i.imgur.com/8Q9Z4yX.png';
-      const embed = new EmbedBuilder()
-        .setColor('#2b2d31')
-        .setTitle(`✨ مركز التذاكر والخدمات الرسمية | ${message.guild.name}`)
-        .setDescription(`> قم باختيار القسم المناسب لطلبك من القائمة أدناه ليتم فتح تذكرة خاصة بك فوراً.`)
-        .setImage(bannerUrl);
-
-      const selectMenu = new StringSelectMenuBuilder()
-        .setCustomId('ticket_select_menu')
-        .setPlaceholder('اختر خيار التذكرة...')
-        .addOptions([
-          { label: 'الدعم الفني | Technical Support', value: 'ticket_support', emoji: '🎫' },
-          { label: 'التقديم على الإدارة | Management Application', value: 'ticket_apply', emoji: '📋' }
-        ]);
-
-      const row = new ActionRowBuilder().addComponents(selectMenu);
-      await message.channel.send({ embeds: [embed], components: [row] });
-      await message.delete().catch(() => {});
-    } catch (err) {
-      console.error(err);
-      message.reply('❌ حدث خطأ أثناء نشر لوحة التذاكر.');
+    if (content.trim()) {
+      messagesList.push({
+        author: msg.author.tag,
+        content: content.trim(),
+        time: timeStr
+      });
+      txtContent += `[${timeStr}] ${msg.author.tag}: ${content.trim()}\n`;
     }
-  }
-});
+  });
+
+  const fileId = Date.now().toString() + Math.random().toString(36).substring(2, 7);
+  const dataToSave = {
+    ticketName: channel.name,
+    openedBy: openedByUserTag,
+    closedBy: closedByUser.tag,
+    baseName: baseName,
+    guarantee: guaranteeVal,
+    missing: missingVal,
+    date: new Date().toLocaleString('ar-SA'),
+    messages: messagesList
+  };
+
+  try {
+    fs.writeFileSync(path.join(TRANSCRIPTS_DIR, `${fileId}.json`), JSON.stringify(dataToSave, null, 2), 'utf-8');
+  } catch(e){}
+
+  return {
+    fileId,
+    buffer: Buffer.from(txtContent, 'utf-8'),
+    count: sortedMessages.length
+  };
+}
 
 client.once('ready', () => {
-  console.log(`✅ Logged in as ${client.user.tag}! Void Elite System is fully operational.`);
+  console.log(`✅ [Void Community] Bot Ready as: ${client.user.tag}`);
+  addLog('roles', 'تشغيل البوت', `تم تشغيل البوت بنجاح باسم ${client.user.tag}`);
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 Elite Dashboard Server running on port ${PORT}`);
+client.on('guildMemberUpdate', (oldMember, newMember) => {
+  const addedRoles = newMember.roles.cache.filter(role => !oldMember.roles.cache.has(role.id));
+  const removedRoles = oldMember.roles.cache.filter(role => !newMember.roles.cache.has(role.id));
+
+  addedRoles.forEach(role => addLog('roles', 'إضافة رتبة لعضو', `تم إعطاء الرتبة [${role.name}] للعضو @${newMember.user.username}`));
+  removedRoles.forEach(role => addLog('roles', 'إزالة رتبة من عضو', `تم إزالة الرتبة [${role.name}] من العضو @${newMember.user.username}`));
+});
+
+client.on('messageDelete', message => {
+  if (message.author?.bot) return;
+  const authorName = message.author ? `@${message.author.username}` : 'عضو غير معروف';
+  const contentStr = message.content ? `"${message.content}"` : 'وسائط / إمبد';
+  const channelName = message.channel ? `#${message.channel.name}` : 'روم غير معروف';
+  addLog('messages', 'حذف رسالة', `حذف رسالة للعضو ${authorName} في القناة ${channelName}: ${contentStr}`);
+});
+
+client.on('messageUpdate', (oldMessage, newMessage) => {
+  if (oldMessage.author?.bot) return;
+  if (oldMessage.content === newMessage.content) return;
+  const authorName = oldMessage.author ? `@${oldMessage.author.username}` : 'عضو';
+  const channelName = oldMessage.channel ? `#${oldMessage.channel.name}` : 'روم';
+  addLog('messages', 'تعديل رسالة', `العضو ${authorName} في ${channelName} عدّل رسالته من: "${oldMessage.content}" إلى: "${newMessage.content}"`);
+});
+
+client.on('voiceStateUpdate', (oldState, newState) => {
+  const memberName = `@${newState.member.user.username}`;
+  if (!oldState.channelId && newState.channelId) {
+    addLog('voice', 'دخول روم صوتي', `انضم العضو ${memberName} إلى الروم الصوتي #${newState.channel.name}`);
+  } else if (oldState.channelId && !newState.channelId) {
+    addLog('voice', 'خروج روم صوتي', `غادر العضو ${memberName} الروم الصوتي #${oldState.channel.name}`);
+  } else if (oldState.channelId !== newState.channelId) {
+    addLog('voice', 'تنقل بين الرومات الصوتية', `انتقل العضو ${memberName} من #${oldState.channel?.name || 'روم'} إلى #${newState.channel.name}`);
+  }
+});
+
+client.on('channelCreate', channel => {
+  const chName = channel.name ? `#${channel.name}` : 'روم';
+  const chType = channel.type === ChannelType.GuildText ? 'كتابي' : channel.type === ChannelType.GuildVoice ? 'صوتي' : 'كاتيجوري';
+  addLog('channels', 'إنشاء روم جديد', `تم إنشاء روم ${chType} جديد باسم: ${chName}`);
+});
+
+client.on('channelDelete', channel => {
+  const chName = channel.name ? `#${channel.name}` : 'روم';
+  const chType = channel.type === ChannelType.GuildText ? 'كتابي' : channel.type === ChannelType.GuildVoice ? 'صوتي' : 'كاتيجوري';
+  addLog('channels', 'حذف روم', `تم حذف روم ${chType}: ${chName}`);
+});
+
+client.on('channelUpdate', (oldChannel, newChannel) => {
+  if (oldChannel.name !== newChannel.name) {
+    addLog('channels', 'تعديل روم', `تم تغيير اسم الروم من #${oldChannel.name} إلى #${newChannel.name}`);
+  }
+});
+
+client.on('guildMemberAdd', member => addLog('members', 'انضمام عضو', `العضو @${member.user.username} انضم إلى السيرفر.`));
+client.on('guildMemberRemove', member => addLog('members', 'مغادرة عضو', `العضو @${member.user.username} غادر السيرفر.`));
+client.on('guildBanAdd', ban => addLog('bans', 'حظر عضو (Ban)', `تم حظر العضو @${ban.user.username} من السيرفر.`));
+client.on('guildBanRemove', ban => addLog('bans', 'فك حظر (Unban)', `تم فك الحظر عن العضو @${ban.user.username}`));
+
+client.on('interactionCreate', async interaction => {
+  if (interaction.isStringSelectMenu() && interaction.customId === 'select_base_color') {
+    const selectedKey = interaction.values[0];
+    const baseInfo = basesData[selectedKey] || { name: selectedKey };
+
+    const modal = new ModalBuilder()
+      .setCustomId(`modal_info_${selectedKey}`)
+      .setTitle(`${baseInfo.name} بيانات ضمان`);
+
+    const guaranteeInput = new TextInputBuilder()
+      .setCustomId('guarantee_val').setLabel('اكتب الضمان حقك').setPlaceholder('اكتب الضمان').setStyle(TextInputStyle.Short).setRequired(true);
+
+    const missingInput = new TextInputBuilder()
+      .setCustomId('missing_val').setLabel('اكتب عدد نواقصك (أرقام فقط)').setPlaceholder('مثال: 15').setStyle(TextInputStyle.Short).setRequired(true);
+
+    modal.addComponents(new ActionRowBuilder().addComponents(guaranteeInput), new ActionRowBuilder().addComponents(missingInput));
+    await interaction.showModal(modal);
+  }
+
+  if (interaction.isModalSubmit() && interaction.customId.startsWith('modal_info_')) {
+    const baseKey = interaction.customId.replace('modal_info_', '');
+    const missingValRaw = interaction.fields.getTextInputValue('missing_val');
+    const missingNumber = parseInt(missingValRaw.replace(/[^0-9]/g, '')) || 1;
+
+    userSessions.set(interaction.user.id, {
+      baseKey: baseKey,
+      guarantee: interaction.fields.getTextInputValue('guarantee_val'),
+      missing: missingValRaw,
+      missingNum: missingNumber
+    });
+
+    const paymentMenu = new StringSelectMenuBuilder()
+      .setCustomId('select_payment')
+      .setPlaceholder('اختر نوع المقابل')
+      .addOptions([
+        { label: 'مقابل مادي (حساب الشريحة تلقائياً)', value: 'money', description: 'عرض السعر حسب شريحة نواقصك', emoji: '💰' },
+        { label: 'أغراض داخل اللعبة (حساب الشريحة تلقائياً)', value: 'items', description: 'عرض الأغراض حسب شريحة نواقصك', emoji: '🎁' }
+      ]);
+
+    await interaction.reply({
+      content: `✅ **تم حفظ الضمان وعدد النواقص (${missingNumber}).**\n\n🎨 **اختر نوع المقابل الآن للحصول على ${basesData[baseKey]?.name || baseKey}:**`,
+      components: [new ActionRowBuilder().addComponents(paymentMenu)],
+      ephemeral: true
+    });
+  }
+
+  if (interaction.isStringSelectMenu() && interaction.customId === 'select_payment') {
+    const payType = interaction.values[0];
+    const session = userSessions.get(interaction.user.id);
+    if (!session) return interaction.reply({ content: '❌ انتهت الجلسة، يرجى البدء من جديد.', ephemeral: true });
+
+    const baseConfig = basesData[session.baseKey] || { name: session.baseKey, tiers: [], itemTiers: [] };
+    
+    let textDetails = '';
+    if (payType === 'money') {
+      const { price, tierText } = getTierPrice(baseConfig.tiers, session.missingNum);
+      textDetails = `💰 **المقابل المادي للون ${baseConfig.name}:**\n💵 **السعر المطلوب لعدد (${session.missingNum}) نواقص:** ${price}\n*(شريحة ${tierText})*`;
+    } else {
+      const { items, tierText } = getTierItems(baseConfig.itemTiers, session.missingNum);
+      textDetails = `🎁 **مقابل الأغراض للون ${baseConfig.name}:**\n📦 **الأغراض المطلوبة لعدد (${session.missingNum}) نواقص:** ${items}\n*(شريحة ${tierText})*`;
+    }
+
+    const btns = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('btn_accept').setLabel('قبول').setEmoji('✅').setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId('btn_reject').setLabel('رفض').setEmoji('❌').setStyle(ButtonStyle.Danger)
+    );
+
+    await interaction.update({
+      content: `${textDetails}\n\n**ضمانك:** ${session.guarantee}\n**عدد نواقصك:** ${session.missing}\n\n**هل توافق على هذا المقابل؟**`,
+      components: [btns]
+    });
+  }
+
+  if (interaction.isButton()) {
+    if (interaction.customId === 'btn_accept') {
+      const session = userSessions.get(interaction.user.id);
+      const baseName = basesData[session?.baseKey]?.name || 'Base';
+
+      const permissionOverwrites = [
+        { id: interaction.guild.id, deny: [PermissionFlagsBits.ViewChannel] },
+        { id: interaction.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] }
+      ];
+
+      const specificRole = interaction.guild.roles.cache.find(r => r.name.toLowerCase() === baseName.toLowerCase());
+      if (specificRole) {
+        permissionOverwrites.push({ id: specificRole.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] });
+      }
+
+      const prefixKey = session?.baseKey ? session.baseKey : 'color';
+      const channelName = `ticket-${prefixKey}-${interaction.user.username}`.toLowerCase();
+
+      const channelOptions = { name: channelName, type: ChannelType.GuildText, permissionOverwrites };
+
+      if (serverSettings.ticketCategories) {
+        const categories = serverSettings.ticketCategories.split(',').map(c => c.trim()).filter(Boolean);
+        if (categories.length > 0) {
+          channelOptions.parent = categories[Math.floor(Math.random() * categories.length)];
+        }
+      }
+
+      const ch = await interaction.guild.channels.create(channelOptions);
+      const openTimestamp = `<t:${Math.floor(Date.now() / 1000)}:f>`;
+
+      ticketsDataMap.set(ch.id, {
+        openedBy: interaction.user.tag,
+        openTime: openTimestamp,
+        baseName: baseName,
+        guarantee: session ? session.guarantee : 'غير محدد',
+        missing: session ? session.missing : 'غير محدد'
+      });
+
+      const actionMenu = new StringSelectMenuBuilder()
+        .setCustomId('ticket_action_select')
+        .setPlaceholder('⚙️ اختر إجراء التذكرة الاحترافي...')
+        .addOptions([
+          { label: 'Close with Reason', value: 'close_with_reason', description: 'إغلاق التذكرة مع كتابة السبب', emoji: '🔒' },
+          { label: 'Add User to Ticket', value: 'add_user', description: 'إضافة عضو إلى التذكرة الحالية', emoji: '👥' },
+          { label: 'Member PM Reminder', value: 'pm_reminder', description: 'إرسال تذكير خاص لصاحب التذكرة', emoji: '✉️' },
+          { label: 'Request Ticket Copy', value: 'request_copy', description: 'طلب نسخة نصية من محادثات التذكرة', emoji: '📄' }
+        ]);
+
+      // شكل الإمبد تماماً مثل الصورة المطلوبة مع إضافة الضمان والنواقص بشكل مريح للعين
+      const embed = new EmbedBuilder()
+        .setDescription(`**مشرفي التذاكر : [ 🛡️ ]**\n${specificRole ? `<@&${specificRole.id}>` : '@LS | Managment'}\n\n**تاريخ التذكرة : [ 📅 ]**\n${openTimestamp}\n\n**قسم التذكرة : [ ? ]**\n${ch.name} | ${baseName}\n\n**الضمان : [ 🔒 ]**\n${session ? session.guarantee : 'غير محدد'}\n\n**عدد النواقص : [ 🔢 ]**\n${session ? session.missing : 'غير محدد'}`)
+        .setColor('#2b2d31');
+
+      await ch.send({ 
+        content: `<@${interaction.user.id}> ${specificRole ? `<@&${specificRole.id}>` : ''}`, 
+        embeds: [embed], 
+        components: [new ActionRowBuilder().addComponents(actionMenu)] 
+      });
+
+      addLog('tickets', 'فتح تذكرة جديدة', `تم فتح تذكرة لون ${baseName} للعضو @${interaction.user.username} في الروم #${ch.name}`);
+      await interaction.update({ content: `🎉 **تم قبول الطلب بنجاح!**\nتم فتح القناة الخاصة بك: ${ch}`, components: [] });
+    }
+
+    if (interaction.customId === 'btn_reject') {
+      addLog('tickets', 'رفض طلب لون', `قام العضو @${interaction.user.username} برفض طلب لون.`);
+      await interaction.update({ content: '❌ **تم إلغاء الطلب.**', components: [] });
+    }
+  }
+
+  if (interaction.isStringSelectMenu() && interaction.customId === 'ticket_action_select') {
+    const action = interaction.values[0];
+    const member = interaction.member;
+    const ticketData = ticketsDataMap.get(interaction.channel.id) || {};
+    const baseName = ticketData.baseName || '';
+
+    const isServerAdministrator = member.permissions.has(PermissionFlagsBits.Administrator);
+    const hasBaseRole = member.roles.cache.some(r => r.name.toLowerCase() === baseName.toLowerCase());
+    const hasOwnerRole = member.roles.cache.some(r => r.name.toLowerCase() === serverSettings.ownerRoleName.toLowerCase());
+
+    if (!hasBaseRole && !hasOwnerRole && !isServerAdministrator) {
+      return interaction.reply({ content: '❌ **عذراً، هذه القائمة مخصصة فقط لمسؤولي التذاكر وأصحاب الرتب!**', ephemeral: true });
+    }
+
+    if (action === 'close_with_reason') {
+      if (!hasBaseRole && !hasOwnerRole && !isServerAdministrator) {
+        return interaction.reply({ content: '❌ **عذراً، هذا الخيار مخصص فقط لأصحاب رتبة القاعدة أو الـ Owner!**', ephemeral: true });
+      }
+
+      const modal = new ModalBuilder()
+        .setCustomId('modal_close_reason')
+        .setTitle('Close Ticket with Reason');
+
+      const reasonInput = new TextInputBuilder()
+        .setCustomId('close_reason_input')
+        .setLabel('سبب إغلاق التذكرة')
+        .setPlaceholder('اكتب سبب الإغلاق هنا...')
+        .setStyle(TextInputStyle.Paragraph)
+        .setRequired(true);
+
+      modal.addComponents(new ActionRowBuilder().addComponents(reasonInput));
+      return await interaction.showModal(modal);
+    }
+
+    if (['add_user', 'pm_reminder', 'request_copy'].includes(action)) {
+      if (!hasOwnerRole && !isServerAdministrator) {
+        return interaction.reply({ content: '❌ **عذراً، هذه الخيارات مخصصة حصرياً لرتبة الـ Owner فقط!**', ephemeral: true });
+      }
+
+      if (action === 'add_user') {
+        await interaction.deferReply({ ephemeral: true });
+        const userSelect = new UserSelectMenuBuilder()
+          .setCustomId('select_user_to_add')
+          .setPlaceholder('اختر العضو المراد إضافته للتذكرة...')
+          .setMaxValues(1);
+
+        return await interaction.editReply({
+          content: '👤 **اختر العضو الذي تريد إضافته إلى التذكرة:**',
+          components: [new ActionRowBuilder().addComponents(userSelect)]
+        });
+      }
+
+      if (action === 'pm_reminder') {
+        await interaction.deferReply({ ephemeral: true });
+        try {
+          addLog('tickets', 'تذكير صاحب التذكرة', `تم إرسال تذكير خاص لصاحب التذكرة في التذكرة #${interaction.channel.name}`);
+          return await interaction.editReply({ content: '✅ **تم إرسال تذكير في الخاص لصاحب التذكرة بنجاح!**' });
+        } catch (e) {
+          return await interaction.editReply({ content: '❌ **تعذر إرسال التذكير.**' });
+        }
+      }
+
+      if (action === 'request_copy') {
+        await interaction.deferReply({ ephemeral: true });
+        const openedByTag = ticketData.openedBy || interaction.user.tag;
+        const guaranteeVal = ticketData.guarantee || 'غير محدد';
+        const missingVal = ticketData.missing || 'غير محدد';
+        const { fileId, buffer } = await saveFullTranscript(interaction.channel, interaction.user, openedByTag, baseName, guaranteeVal, missingVal);
+        const attachment = new AttachmentBuilder(buffer, { name: `transcript-${interaction.channel.name}.txt` });
+        addLog('tickets', 'طلب نسخة تذكرة', `تم طلب نسخة نصية لمحادثات التذكرة #${interaction.channel.name} بواسطة @${interaction.user.username}`, fileId);
+        return await interaction.editReply({ content: '📄 **تفضل نسخة من محادثات التذكرة الحالية:**', files: [attachment] });
+      }
+    }
+  }
+
+  if (interaction.isUserSelectMenu() && interaction.customId === 'select_user_to_add') {
+    const targetUserId = interaction.values[0];
+    await interaction.channel.permissionOverwrites.edit(targetUserId, { ViewChannel: true, SendMessages: true });
+    addLog('tickets', 'إضافة عضو لتذكرة', `تم إضافة العضو <@${targetUserId}> إلى التذكرة #${interaction.channel.name}`);
+    await interaction.reply({ content: `✅ **تمت إضافة العضو <@${targetUserId}> للتذكرة بنجاح!**` });
+  }
+
+  if (interaction.isModalSubmit() && interaction.customId.startsWith('modal_close_reason')) {
+    const reason = interaction.fields.getTextInputValue('close_reason_input');
+    await interaction.reply('⏳ **جاري حفظ محادثات التذكرة وتسجيلها في لوحة التحكم وإغلاق القناة...**');
+
+    const ticketData = ticketsDataMap.get(interaction.channel.id) || {};
+    const openedByTag = ticketData.openedBy || interaction.user.tag;
+    const baseName = ticketData.baseName || 'الدعم الفني';
+    const guaranteeVal = ticketData.guarantee || 'غير محدد';
+    const missingVal = ticketData.missing || 'غير محدد';
+
+    const { fileId, count } = await saveFullTranscript(interaction.channel, interaction.user, openedByTag, baseName, guaranteeVal, missingVal);
+
+    addLog('tickets', 'إغلاق تذكرة', `التذكرة #${interaction.channel.name} أُغلقت بواسطة @${interaction.user.username} | السبب: ${reason} | عدد الرسائل: ${count}`, fileId);
+
+    setTimeout(() => {
+      ticketsDataMap.delete(interaction.channel.id);
+      interaction.channel.delete().catch(() => {});
+    }, 3000);
+  }
 });
 
 client.login(TOKEN);
