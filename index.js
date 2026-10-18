@@ -64,7 +64,7 @@ function addLog(category, action, details, transcriptId = null) {
   saveLogsToFile();
 }
 
-// ------------------- 1. بيانات قواعد الألوان -------------------
+// ------------------- 1. بيانات قواعد الألوان (17 قاعدة) -------------------
 let basesData = {
   silver: { 
     name: 'Silver Base', emoji: '⚪', 
@@ -100,27 +100,7 @@ let serverSettings = {
 
 const ticketsDataMap = new Map();
 
-function getTierPrice(tiersArray, userQuantity) {
-  if (!tiersArray || tiersArray.length === 0) return { price: 'غير محدد', tierText: 'غير محدد' };
-  const sorted = [...tiersArray].sort((a, b) => a.maxQty - b.maxQty);
-  for (let tier of sorted) {
-    if (userQuantity <= tier.maxQty) return { price: tier.price, tierText: `${tier.maxQty} وتحت` };
-  }
-  const lastTier = sorted[sorted.length - 1];
-  return { price: lastTier.price, tierText: `فوق ${lastTier.maxQty}` };
-}
-
-function getTierItems(itemTiersArray, userQuantity) {
-  if (!itemTiersArray || itemTiersArray.length === 0) return { items: 'غير محدد', tierText: 'غير محدد' };
-  const sorted = [...itemTiersArray].sort((a, b) => a.maxQty - b.maxQty);
-  for (let tier of sorted) {
-    if (userQuantity <= tier.maxQty) return { items: tier.items, tierText: `${tier.maxQty} وتحت` };
-  }
-  const lastTier = sorted[sorted.length - 1];
-  return { items: lastTier.items, tierText: `فوق ${lastTier.maxQty}` };
-}
-
-// ------------------- 2. إعدادات Express -------------------
+// ------------------- 2. إعدادات Express والداشبورد الفخم -------------------
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -151,6 +131,7 @@ const client = new Client({
   partials: [P.Channel, P.Message, P.User, P.GuildMember]
 });
 
+// 💎 تصميم سينمائي وأنيق جداً للوحة التحكم (Ultimate Void Dashboard Design)
 const renderUltimateLayout = (activeTab, content) => {
   let memberCount = 0;
   let botIconUrl = 'https://cdn.discordapp.com/embed/avatars/0.png';
@@ -173,82 +154,88 @@ const renderUltimateLayout = (activeTab, content) => {
     <title>Void • Command Center</title>
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap');
-      * { box-sizing: border-box; font-family: 'Cairo', sans-serif; transition: all 0.2s ease; }
-      body { background: #08090d; color: #f3f4f6; margin: 0; padding: 0; display: flex; min-height: 100vh; overflow-x: hidden; }
+      * { box-sizing: border-box; font-family: 'Cairo', sans-serif; transition: all 0.25s ease; }
+      body { background: #050608; color: #f3f4f6; margin: 0; padding: 0; display: flex; min-height: 100vh; overflow-x: hidden; }
       
+      /* خلفية متدرجة ذات إضاءة سينمائية */
       body::before {
-        content: ''; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-        background: radial-gradient(circle at 15% 15%, rgba(99, 102, 241, 0.08), transparent 45%),
-                    radial-gradient(circle at 85% 85%, rgba(168, 85, 247, 0.08), transparent 45%);
+        content: ''; position: fixed; top: -10%; left: -10%; width: 120%; height: 120%;
+        background: radial-gradient(circle at 20% 20%, rgba(124, 58, 237, 0.12), transparent 40%),
+                    radial-gradient(circle at 80% 80%, rgba(99, 102, 241, 0.10), transparent 40%),
+                    radial-gradient(circle at 50% 50%, rgba(15, 23, 42, 0.6), #050608);
         z-index: 1; pointer-events: none;
       }
 
+      /* الشريط الجانبي الفخم */
       .sidebar {
-        width: 250px; background: rgba(13, 15, 23, 0.88); backdrop-filter: blur(25px);
-        border-left: 1px solid rgba(255, 255, 255, 0.08); padding: 22px 16px;
+        width: 270px; background: rgba(10, 12, 20, 0.85); backdrop-filter: blur(30px);
+        border-left: 1px solid rgba(255, 255, 255, 0.08); padding: 26px 18px;
         display: flex; flex-direction: column; justify-content: space-between;
         position: fixed; right: 0; top: 0; bottom: 0; z-index: 100;
+        box-shadow: -10px 0 30px rgba(0,0,0,0.5);
       }
 
-      .brand-box { display: flex; align-items: center; gap: 12px; padding-bottom: 18px; margin-bottom: 18px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
-      .brand-avatar { width: 42px; height: 42px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.15); }
-      .brand-title { font-size: 15px; font-weight: 900; background: linear-gradient(135deg, #ffffff, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-      .brand-sub { font-size: 11px; color: #6b7280; }
+      .brand-box { display: flex; align-items: center; gap: 14px; padding-bottom: 20px; margin-bottom: 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
+      .brand-avatar { width: 48px; height: 48px; border-radius: 14px; border: 2px solid rgba(168, 85, 247, 0.4); box-shadow: 0 0 15px rgba(168, 85, 247, 0.3); }
+      .brand-title { font-size: 17px; font-weight: 900; background: linear-gradient(135deg, #ffffff, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: 0.5px; }
+      .brand-sub { font-size: 11px; color: #9ca3af; font-weight: 600; }
 
-      .nav-group { margin-bottom: 18px; }
-      .nav-label { font-size: 10px; color: #6366f1; font-weight: 800; text-transform: uppercase; margin-bottom: 8px; padding-right: 8px; letter-spacing: 1px; }
-      .nav-item { display: flex; align-items: center; justify-content: space-between; padding: 9px 13px; border-radius: 10px; color: #9ca3af; text-decoration: none; font-weight: 600; font-size: 13px; margin-bottom: 4px; }
-      .nav-item:hover { background: rgba(255, 255, 255, 0.05); color: #f3f4f6; }
-      .nav-item.active { background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(168, 85, 247, 0.15)); color: #ffffff; border: 1px solid rgba(99, 102, 241, 0.4); }
+      .nav-group { margin-bottom: 22px; }
+      .nav-label { font-size: 10px; color: #818cf8; font-weight: 800; text-transform: uppercase; margin-bottom: 10px; padding-right: 8px; letter-spacing: 1.2px; }
+      .nav-item { display: flex; align-items: center; justify-content: space-between; padding: 11px 16px; border-radius: 12px; color: #9ca3af; text-decoration: none; font-weight: 700; font-size: 13.5px; margin-bottom: 6px; }
+      .nav-item:hover { background: rgba(255, 255, 255, 0.06); color: #ffffff; transform: translateX(-3px); }
+      .nav-item.active { background: linear-gradient(135deg, rgba(124, 58, 237, 0.25), rgba(99, 102, 241, 0.18)); color: #ffffff; border: 1px solid rgba(168, 85, 247, 0.4); box-shadow: 0 4px 15px rgba(124, 58, 237, 0.2); }
 
-      .badge-live { background: rgba(16, 185, 129, 0.15); color: #34d399; padding: 2px 8px; border-radius: 20px; font-size: 10px; border: 1px solid rgba(16, 185, 129, 0.3); font-weight: 800; }
+      .badge-live { background: rgba(16, 185, 129, 0.15); color: #34d399; padding: 3px 9px; border-radius: 20px; font-size: 10px; border: 1px solid rgba(16, 185, 129, 0.3); font-weight: 800; }
 
-      .main-content { margin-right: 250px; flex: 1; padding: 28px 36px; max-width: 1350px; position: relative; z-index: 10; }
+      /* المحتوى الرئيسي */
+      .main-content { margin-right: 270px; flex: 1; padding: 32px 42px; max-width: 1400px; position: relative; z-index: 10; }
       
-      .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 22px; }
-      .stat-card { background: rgba(17, 20, 31, 0.65); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.07); padding: 16px 18px; border-radius: 14px; display: flex; justify-content: space-between; align-items: center; }
-      .stat-num { font-size: 22px; font-weight: 800; color: #ffffff; }
-      .stat-title { font-size: 12px; color: #9ca3af; font-weight: 600; }
+      .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-bottom: 26px; }
+      .stat-card { background: rgba(15, 18, 28, 0.65); backdrop-filter: blur(25px); border: 1px solid rgba(255, 255, 255, 0.08); padding: 20px 22px; border-radius: 18px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
+      .stat-card:hover { transform: translateY(-4px); border-color: rgba(168, 85, 247, 0.3); box-shadow: 0 15px 30px rgba(124, 58, 237, 0.15); }
+      .stat-num { font-size: 24px; font-weight: 900; color: #ffffff; margin-top: 2px; }
+      .stat-title { font-size: 12px; color: #9ca3af; font-weight: 700; }
 
-      .glass-card { background: rgba(17, 20, 31, 0.6); backdrop-filter: blur(25px); border: 1px solid rgba(255, 255, 255, 0.07); border-radius: 16px; padding: 22px 26px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+      .glass-card { background: rgba(15, 18, 28, 0.65); backdrop-filter: blur(25px); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 20px; padding: 26px 30px; margin-bottom: 24px; box-shadow: 0 15px 35px rgba(0,0,0,0.4); }
       
       h1, h2, h3 { color: #fff; margin-top: 0; font-weight: 800; }
       .purple-gradient { background: linear-gradient(135deg, #ffffff, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
       
-      .tier-row { display: flex; gap: 10px; align-items: center; margin-bottom: 8px; background: rgba(10, 12, 18, 0.5); padding: 8px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.05); }
-      .tier-row input[type="number"] { width: 120px; text-align: center; }
+      .tier-row { display: flex; gap: 12px; align-items: center; margin-bottom: 10px; background: rgba(8, 10, 16, 0.6); padding: 10px 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.06); }
+      .tier-row input[type="number"] { width: 130px; text-align: center; }
       .tier-row input[type="text"] { flex: 1; }
-      .tier-label { font-size: 12px; font-weight: 800; color: #a855f7; white-space: nowrap; }
+      .tier-label { font-size: 12px; font-weight: 800; color: #c084fc; white-space: nowrap; }
       
-      .btn-del { background: rgba(239, 68, 68, 0.2); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; padding: 7px 12px; cursor: pointer; font-weight: 700; margin-top: 6px; }
-      .btn-add { background: rgba(99, 102, 241, 0.2); color: #a5b4fc; border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 8px; padding: 6px 14px; cursor: pointer; font-weight: 700; font-size: 12px; margin-top: 6px; display: inline-block; }
+      .btn-del { background: rgba(239, 68, 68, 0.2); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.35); border-radius: 10px; padding: 8px 14px; cursor: pointer; font-weight: 700; }
+      .btn-del:hover { background: rgba(239, 68, 68, 0.4); color: #fff; }
+      
+      .btn-add { background: rgba(99, 102, 241, 0.2); color: #c7d2fe; border: 1px solid rgba(99, 102, 241, 0.35); border-radius: 10px; padding: 8px 16px; cursor: pointer; font-weight: 700; font-size: 12.5px; margin-top: 8px; display: inline-block; }
+      .btn-add:hover { background: rgba(99, 102, 241, 0.4); color: #fff; }
 
-      input, textarea, select { width: 100%; padding: 10px 14px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.08); background: rgba(10, 12, 18, 0.85); color: #f3f4f6; outline: none; margin-top: 6px; font-size: 13px; }
-      input:focus, textarea:focus, select:focus { border-color: #6366f1; box-shadow: 0 0 15px rgba(99, 102, 241, 0.25); }
+      input, textarea, select { width: 100%; padding: 12px 16px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.09); background: rgba(8, 10, 16, 0.85); color: #f3f4f6; outline: none; margin-top: 6px; font-size: 13.5px; }
+      input:focus, textarea:focus, select:focus { border-color: #818cf8; box-shadow: 0 0 20px rgba(129, 140, 248, 0.25); }
       select option { background: #0f1118; color: #fff; }
-      label { font-size: 12px; font-weight: 700; color: #d1d5db; display: block; margin-top: 10px; }
+      label { font-size: 12.5px; font-weight: 700; color: #e5e7eb; display: block; margin-top: 12px; }
       
-      .btn { background: linear-gradient(135deg, #4f46e5, #7c3aed); color: #fff; border: none; padding: 11px 22px; border-radius: 10px; font-weight: 700; cursor: pointer; width: 100%; box-shadow: 0 4px 15px rgba(79, 70, 229, 0.3); margin-top: 16px; font-size: 13px; text-align: center; text-decoration: none; display: inline-block; }
-      .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(79, 70, 229, 0.5); }
+      .btn { background: linear-gradient(135deg, #6366f1, #9333ea); color: #fff; border: none; padding: 13px 26px; border-radius: 12px; font-weight: 800; cursor: pointer; width: 100%; box-shadow: 0 5px 20px rgba(147, 51, 234, 0.35); margin-top: 18px; font-size: 14px; text-align: center; text-decoration: none; display: inline-block; }
+      .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(147, 51, 234, 0.55); }
 
-      .logs-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-      .logs-table th, .logs-table td { padding: 12px 16px; text-align: right; border-bottom: 1px solid rgba(255, 255, 255, 0.05); font-size: 13px; }
-      .logs-table th { color: #9ca3af; font-weight: 700; background: rgba(255, 255, 255, 0.02); }
+      .logs-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+      .logs-table th, .logs-table td { padding: 14px 18px; text-align: right; border-bottom: 1px solid rgba(255, 255, 255, 0.06); font-size: 13.5px; }
+      .logs-table th { color: #9ca3af; font-weight: 800; background: rgba(255, 255, 255, 0.02); border-radius: 8px; }
       
       .log-badge { padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 800; display: inline-block; }
-      .badge-roles { background: rgba(168, 85, 247, 0.15); color: #d8b4fe; border: 1px solid rgba(168, 85, 247, 0.3); }
-      .badge-messages { background: rgba(245, 158, 11, 0.15); color: #fcd34d; border: 1px solid rgba(245, 158, 11, 0.3); }
-      .badge-voice { background: rgba(59, 130, 246, 0.15); color: #93c5fd; border: 1px solid rgba(59, 130, 246, 0.3); }
-      .badge-tickets { background: rgba(16, 185, 129, 0.15); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.3); }
-      .badge-channels { background: rgba(236, 72, 153, 0.15); color: #f472b6; border: 1px solid rgba(236, 72, 153, 0.3); }
-      .badge-members { background: rgba(6, 182, 212, 0.15); color: #67e8f9; border: 1px solid rgba(6, 182, 212, 0.3); }
-      .badge-bans { background: rgba(239, 68, 68, 0.15); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.3); }
+      .badge-roles { background: rgba(168, 85, 247, 0.15); color: #e9d5ff; border: 1px solid rgba(168, 85, 247, 0.3); }
+      .badge-messages { background: rgba(245, 158, 11, 0.15); color: #fef08a; border: 1px solid rgba(245, 158, 11, 0.3); }
+      .badge-voice { background: rgba(59, 130, 246, 0.15); color: #bfdbfe; border: 1px solid rgba(59, 130, 246, 0.3); }
+      .badge-tickets { background: rgba(16, 185, 129, 0.15); color: #a7f3d0; border: 1px solid rgba(16, 185, 129, 0.3); }
       
-      .btn-view-ticket { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; text-decoration: none; display: inline-block; margin-right: 8px; }
-      .btn-view-ticket:hover { background: rgba(16, 185, 129, 0.35); color: #fff; }
+      .btn-view-ticket { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); padding: 5px 12px; border-radius: 8px; font-size: 11.5px; font-weight: 700; text-decoration: none; display: inline-block; margin-right: 8px; }
+      .btn-view-ticket:hover { background: rgba(16, 185, 129, 0.4); color: #fff; }
       
-      .btn-clear-logs { background: rgba(239, 68, 68, 0.15); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.3); padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
-      .btn-clear-logs:hover { background: rgba(239, 68, 68, 0.3); color: #fff; }
+      .btn-clear-logs { background: rgba(239, 68, 68, 0.15); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.3); padding: 8px 16px; border-radius: 10px; font-size: 12px; font-weight: 700; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+      .btn-clear-logs:hover { background: rgba(239, 68, 68, 0.35); color: #fff; }
     </style>
     <script>
       function addTierRow(baseKey) {
@@ -274,7 +261,7 @@ const renderUltimateLayout = (activeTab, content) => {
         <div class="brand-box">
           <img src="${botIconUrl}" class="brand-avatar" alt="Logo">
           <div>
-            <div class="brand-title">VOID BOT</div>
+            <div class="brand-title">VOID CONTROL</div>
             <div class="brand-sub">Community Center</div>
           </div>
         </div>
@@ -285,31 +272,29 @@ const renderUltimateLayout = (activeTab, content) => {
         </div>
         <div class="nav-group">
           <div class="nav-label">المراقبة المباشرة</div>
-          <a href="/logs" class="nav-item ${activeTab === 'logs' ? 'active' : ''}"><span>📜 سجلات الأحداث</span><div class="badge-live">PERSISTENT</div></a>
-          <a href="/moderation" class="nav-item ${activeTab === 'moderation' ? 'active' : ''}"><span>🔨 أدوات الإدارة</span></a>
-          <a href="/security" class="nav-item ${activeTab === 'security' ? 'active' : ''}"><span>🛡️ درع الحماية</span></a>
+          <a href="/logs" class="nav-item ${activeTab === 'logs' ? 'active' : ''}"><span>📜 سجلات الأحداث</span><div class="badge-live">LIVE</div></a>
         </div>
       </div>
-      <a href="/logout" class="btn" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.25); color: #fca5a5; font-size: 12px; padding: 8px;">🚪 تسجيل الخروج</a>
+      <a href="/logout" class="btn" style="background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.3); color: #fca5a5; font-size: 13px; padding: 10px;">🚪 تسجيل الخروج</a>
     </div>
 
     <div class="main-content">
       <div class="stats-grid">
         <div class="stat-card">
           <div><div class="stat-title">الأعضاء</div><div class="stat-num">${memberCount}</div></div>
-          <div style="font-size:20px;">👥</div>
+          <div style="font-size:22px;">👥</div>
         </div>
         <div class="stat-card">
-          <div><div class="stat-title">القواعد</div><div class="stat-num">17</div></div>
-          <div style="font-size:20px;">🎨</div>
+          <div><div class="stat-title">القواعد النشطة</div><div class="stat-num">17</div></div>
+          <div style="font-size:22px;">🎨</div>
         </div>
         <div class="stat-card">
-          <div><div class="stat-title">تذاكر نشطة</div><div class="stat-num">${ticketsDataMap.size}</div></div>
-          <div style="font-size:20px;">🎫</div>
+          <div><div class="stat-title">تذاكر جارية</div><div class="stat-num">${ticketsDataMap.size}</div></div>
+          <div style="font-size:22px;">🎫</div>
         </div>
         <div class="stat-card">
           <div><div class="stat-title">إجمالي السجلات</div><div class="stat-num">${totalLogsCount}</div></div>
-          <div style="font-size:20px;">📜</div>
+          <div style="font-size:22px;">📜</div>
         </div>
       </div>
       ${content}
@@ -319,6 +304,7 @@ const renderUltimateLayout = (activeTab, content) => {
   `;
 };
 
+// صفحة تسجيل الدخول الخرافية
 app.get('/login', (req, res) => {
   let botIconUrl = 'https://cdn.discordapp.com/embed/avatars/0.png';
   try {
@@ -334,22 +320,23 @@ app.get('/login', (req, res) => {
       <meta charset="UTF-8">
       <title>Void • Admin Portal</title>
       <style>
-        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800&display=swap');
-        body { background: #08090d; color: #fff; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: 'Cairo', sans-serif; }
-        .login-card { background: rgba(15, 18, 28, 0.85); backdrop-filter: blur(40px); border: 1px solid rgba(255, 255, 255, 0.1); padding: 35px 30px; border-radius: 20px; text-align: center; width: 340px; box-shadow: 0 20px 50px rgba(0,0,0,0.8); }
-        .brand-avatar { width: 70px; height: 70px; border-radius: 16px; margin-bottom: 12px; border: 1px solid rgba(255, 255, 255, 0.15); }
-        input { width: 100%; padding: 11px 14px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(8, 10, 16, 0.9); color: #fff; text-align: center; font-size: 13px; margin-bottom: 16px; outline: none; }
-        button { background: linear-gradient(135deg, #4f46e5, #7c3aed); color: #fff; border: none; padding: 11px; border-radius: 10px; width: 100%; font-weight: 700; font-size: 13px; cursor: pointer; }
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800;900&display=swap');
+        body { background: #050608; color: #fff; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: 'Cairo', sans-serif; }
+        .login-card { background: rgba(15, 18, 28, 0.85); backdrop-filter: blur(40px); border: 1px solid rgba(255, 255, 255, 0.1); padding: 40px 35px; border-radius: 24px; text-align: center; width: 360px; box-shadow: 0 25px 60px rgba(0,0,0,0.8); }
+        .brand-avatar { width: 80px; height: 80px; border-radius: 20px; margin-bottom: 14px; border: 2px solid rgba(168, 85, 247, 0.4); box-shadow: 0 0 20px rgba(168, 85, 247, 0.3); }
+        input { width: 100%; padding: 12px 16px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.12); background: rgba(8, 10, 16, 0.9); color: #fff; text-align: center; font-size: 14px; margin-bottom: 18px; outline: none; }
+        button { background: linear-gradient(135deg, #6366f1, #9333ea); color: #fff; border: none; padding: 12px; border-radius: 12px; width: 100%; font-weight: 800; font-size: 14px; cursor: pointer; box-shadow: 0 5px 20px rgba(147, 51, 234, 0.35); }
+        button:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(147, 51, 234, 0.55); }
       </style>
     </head>
     <body>
       <div class="login-card">
         <img src="${botIconUrl}" class="brand-avatar" alt="Server Logo">
-        <h1 style="font-size: 20px; margin-bottom: 4px;" class="purple-gradient">VOID COMMUNITY</h1>
-        <p style="color: #9ca3af; font-size: 12px; margin-bottom: 20px;">تسجيل الدخول للوحة التحكم</p>
+        <h1 style="font-size: 22px; margin-bottom: 4px;" class="purple-gradient">VOID COMMUNITY</h1>
+        <p style="color: #9ca3af; font-size: 12.5px; margin-bottom: 22px;">تسجيل الدخول إلى لوحة القيادة المتقدمة</p>
         <form action="/login/pass" method="POST">
           <input type="password" name="password" placeholder="كلمة المرور" required autofocus>
-          <button type="submit">دخول للوحة</button>
+          <button type="submit">دخول للوحة التحكم</button>
         </form>
       </div>
     </body>
@@ -403,6 +390,7 @@ app.get('/logout', (req, res) => {
   res.redirect('/login');
 });
 
+// الصفحة الرئيسية لإدارة القواعد وتحديث الألوان
 app.get('/', (req, res) => {
   if (!req.session.authenticated) return res.redirect('/login');
 
@@ -418,26 +406,26 @@ app.get('/', (req, res) => {
   const content = `
     <div class="glass-card" style="display: flex; justify-content: space-between; align-items: center;">
       <div>
-        <h1 class="purple-gradient" style="margin: 0; font-size: 18px;">🎨 شرائح أسعار النواقص والمقابل بالأغراض (17 قاعدة)</h1>
-        <p style="color: #9ca3af; margin: 4px 0 0 0; font-size: 12px;">مرحباً، ${req.session.user?.username || 'المسؤول'} 👋 | يمكنك إضافة وتعديل شرائح المادي والأغراض لكل قاعدة بسهولة.</p>
+        <h1 class="purple-gradient" style="margin: 0; font-size: 19px;">🎨 شرائح أسعار النواقص والمقابل بالأغراض (17 قاعدة)</h1>
+        <p style="color: #9ca3af; margin: 4px 0 0 0; font-size: 12.5px;">مرحباً، ${req.session.user?.username || 'المسؤول'} 👋 | يمكن التحكم المباشر بشرائح الأسعار والشروط.</p>
       </div>
-      <span style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); padding: 5px 12px; border-radius: 20px; font-weight: 700; font-size: 11px;">🟢 النظام المزدوج الشامل</span>
+      <span style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); padding: 6px 14px; border-radius: 20px; font-weight: 800; font-size: 11.5px;">🟢 النظام المزدوج المتقدم</span>
     </div>
 
     <div class="glass-card">
-      <h2 style="font-size: 15px;" class="purple-gradient">📢 إرسال لوحة الألوان إلى ديسكورد</h2>
+      <h2 style="font-size: 15.5px;" class="purple-gradient">📢 نشر لوحة التذاكر الفخمة إلى ديسكورد</h2>
       <form action="/send-panel" method="POST">
         <label>اختر القناة المخصصة:</label>
         <select name="channel_id" required>${channelOptionsHTML}</select>
-        <button type="submit" class="btn">🚀 نشر لوحة الألوان الآن</button>
+        <button type="submit" class="btn">🚀 نشر لوحة التذاكر بالصورة العريضة</button>
       </form>
     </div>
 
     <form action="/save-colors" method="POST">
-      <h2 style="font-size: 15px; margin-bottom: 12px;" class="purple-gradient">⚡ إعدادات شرائح السعر والأغراض لكل قاعدة</h2>
+      <h2 style="font-size: 16px; margin-bottom: 14px;" class="purple-gradient">⚡ إعدادات شرائح السعر والأغراض لكل قاعدة</h2>
       ${Object.keys(basesData).map(key => `
-        <div class="glass-card" style="padding: 18px;">
-          <h3 style="margin: 0 0 10px 0; color: #a855f7; font-size: 15px;">${basesData[key].emoji}${basesData[key].name}</h3>
+        <div class="glass-card" style="padding: 20px;">
+          <h3 style="margin: 0 0 12px 0; color: #c084fc; font-size: 15.5px;">${basesData[key].emoji} ${basesData[key].name}</h3>
           
           <label style="margin-bottom: 8px;">💰 شرائح تسعير النواقص (المقابل المادي):</label>
           <div id="tier-container-${key}">
@@ -463,7 +451,7 @@ app.get('/', (req, res) => {
               </div>
             `).join('')}
           </div>
-          <button type="button" class="btn-add" style="background: rgba(168, 85, 247, 0.2); color: #d8b4fe; border-color: rgba(168, 85, 247, 0.3);" onclick="addItemTierRow('${key}')">➕ إضافة شريحة أغراض جديدة</button>
+          <button type="button" class="btn-add" style="background: rgba(168, 85, 247, 0.2); color: #e9d5ff; border-color: rgba(168, 85, 247, 0.35);" onclick="addItemTierRow('${key}')">➕ إضافة شريحة أغراض جديدة</button>
         </div>
       `).join('')}
       <button type="submit" class="btn" style="position: sticky; bottom: 20px; z-index: 10;">💾 حفظ كافة التعديلات والشرائح</button>
@@ -473,7 +461,7 @@ app.get('/', (req, res) => {
   res.send(renderUltimateLayout('colors', content));
 });
 
-// إرسال لوحة التذاكر الفخمة ذات الصورة العريضة
+// نشر لوحة التذاكر الفخمة بالصورة العريضة والقائمة المنسدلة
 app.post('/send-panel', async (req, res) => {
   if (!req.session.authenticated) return res.redirect('/login');
   const channelId = req.body.channel_id;
@@ -550,8 +538,8 @@ app.get('/tickets', (req, res) => {
   if (!req.session.authenticated) return res.redirect('/login');
   const content = `
     <div class="glass-card">
-      <h1 class="purple-gradient" style="margin: 0; font-size: 18px;">🎫 إعدادات نظام التذاكر والكاتيجوري</h1>
-      <p style="color: #9ca3af; margin-top: 4px; font-size: 12px;">تحديد الفئات المخصصة للتذاكر ورتبة التحكم.</p>
+      <h1 class="purple-gradient" style="margin: 0; font-size: 19px;">🎫 إعدادات نظام التذاكر والكاتيجوري</h1>
+      <p style="color: #9ca3af; margin-top: 4px; font-size: 12.5px;">تحديد الفئات المخصصة للتذاكر ورتبة التحكم العلياء.</p>
     </div>
     
     <form action="/save-tickets" method="POST">
@@ -577,7 +565,7 @@ app.post('/save-tickets', (req, res) => {
   res.redirect('/tickets');
 });
 
-// صفحة السجلات الدائمة
+// صفحة السجلات الدائمة المفصلة
 app.get('/logs', (req, res) => {
   if (!req.session.authenticated) return res.redirect('/login');
   const allLogsHtml = Object.keys(logsStore).map(cat => {
@@ -595,8 +583,8 @@ app.get('/logs', (req, res) => {
   const content = `
     <div class="glass-card" style="display: flex; justify-content: space-between; align-items: center;">
       <div>
-        <h1 class="purple-gradient" style="margin: 0; font-size: 18px;">📜 سجلات الأحداث الدائمة</h1>
-        <p style="color: #9ca3af; margin: 4px 0 0 0; font-size: 12px;">متابعة دقيقة لكافة تفاعلات السيرفر والأعضاء والتذاكر.</p>
+        <h1 class="purple-gradient" style="margin: 0; font-size: 19px;">📜 سجلات الأحداث الدائمة</h1>
+        <p style="color: #9ca3af; margin: 4px 0 0 0; font-size: 12.5px;">متابعة دقيقة لكافة تفاعلات السيرفر والأعضاء والتذاكر.</p>
       </div>
       <form action="/clear-logs" method="POST" onsubmit="return confirm('هل أنت متأكد من مسح كافة السجلات؟');">
         <button type="submit" class="btn-clear-logs">🗑️ مسح السجلات</button>
@@ -614,7 +602,7 @@ app.get('/logs', (req, res) => {
           </tr>
         </thead>
         <tbody>
-          ${allLogsHtml || '<tr><td colspan="4" style="text-align: center; color: #6b7280; padding: 30px;">لا توجد سجلات مسجلة حتى الآن.</td></tr>'}
+          ${allLogsHtml || '<tr><td colspan="4" style="text-align: center; color: #6b7280; padding: 35px;">لا توجد سجلات مسجلة حتى الآن.</td></tr>'}
         </tbody>
       </table>
     </div>
@@ -629,7 +617,7 @@ app.post('/clear-logs', (req, res) => {
   res.redirect('/logs');
 });
 
-// صفحة عرض تفاصيل محادثات التذكرة المطابقة لبرمجتك
+// صفحة عرض تفاصيل محادثات التذكرة
 app.get('/view-transcript/:id', (req, res) => {
   if (!req.session.authenticated) return res.redirect('/login');
   const fileId = req.params.id.replace(/[^a-zA-Z0-9_-]/g, '');
@@ -639,18 +627,18 @@ app.get('/view-transcript/:id', (req, res) => {
     return res.send('<h2 style="color:red; text-align:center; margin-top:50px; font-family:sans-serif;">❌ عذراً، لم يتم العثور على سجل محادثات هذه التذكرة.<br><br><a href="/logs" style="color:#a78bfa;">العودة للسجلات</a></h2>');
   }
 
-  let transcriptData = { ticketName: 'Unknown', closedBy: 'Unknown', date: 'Unknown', messages: [], openedBy: 'Unknown', baseName: 'الدعم الفني', guarantee: 'غير محدد', missing: 'غير محدد' };
+  let transcriptData = { ticketName: 'Unknown', closedBy: 'Unknown', date: 'Unknown', messages: [], openedBy: 'Unknown', baseName: 'الدعم الفني' };
   try {
     transcriptData = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
   } catch(e){}
 
   const messagesHtml = transcriptData.messages.map(m => `
-    <div style="background: rgba(10, 12, 18, 0.7); border: 1px solid rgba(255,255,255,0.05); padding: 12px 16px; border-radius: 12px; margin-bottom: 10px;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-        <span style="font-weight: 800; color: #a855f7; font-size: 14px;">${m.author}</span>
-        <span style="color: #6b7280; font-size: 11px;">${m.time}</span>
+    <div style="background: rgba(8, 10, 16, 0.7); border: 1px solid rgba(255,255,255,0.06); padding: 14px 18px; border-radius: 14px; margin-bottom: 12px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+        <span style="font-weight: 800; color: #c084fc; font-size: 14.5px;">${m.author}</span>
+        <span style="color: #6b7280; font-size: 11.5px;">${m.time}</span>
       </div>
-      <div style="color: #e5e7eb; font-size: 13px; white-space: pre-wrap; line-height: 1.5;">${m.content}</div>
+      <div style="color: #e5e7eb; font-size: 13.5px; white-space: pre-wrap; line-height: 1.6;">${m.content}</div>
     </div>
   `).join('');
 
@@ -662,25 +650,25 @@ app.get('/view-transcript/:id', (req, res) => {
       <title>Void • عرض تفاصيل التذكرة</title>
       <style>
         @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap');
-        body { background: #08090d; color: #f3f4f6; margin: 0; padding: 30px; font-family: 'Cairo', sans-serif; display: flex; justify-content: center; }
-        .container { width: 100%; max-width: 900px; }
-        .glass-card { background: rgba(17, 20, 31, 0.75); backdrop-filter: blur(25px); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; padding: 25px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.4); }
+        body { background: #050608; color: #f3f4f6; margin: 0; padding: 35px; font-family: 'Cairo', sans-serif; display: flex; justify-content: center; }
+        .container { width: 100%; max-width: 950px; }
+        .glass-card { background: rgba(15, 18, 28, 0.75); backdrop-filter: blur(30px); border: 1px solid rgba(255, 255, 255, 0.09); border-radius: 20px; padding: 28px; margin-bottom: 22px; box-shadow: 0 15px 35px rgba(0,0,0,0.5); }
         h1, h2 { color: #fff; margin-top: 0; font-weight: 800; }
         .purple-gradient { background: linear-gradient(135deg, #ffffff, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .info-row { display: flex; justify-content: space-between; background: rgba(10, 12, 18, 0.5); padding: 10px 14px; border-radius: 10px; margin-bottom: 8px; font-size: 13px; }
-        .btn { background: linear-gradient(135deg, #4f46e5, #7c3aed); color: #fff; border: none; padding: 10px 20px; border-radius: 10px; font-weight: 700; cursor: pointer; text-decoration: none; display: inline-block; margin-top: 15px; }
+        .info-row { display: flex; justify-content: space-between; background: rgba(8, 10, 16, 0.6); padding: 12px 16px; border-radius: 12px; margin-bottom: 10px; font-size: 13.5px; }
+        .btn { background: linear-gradient(135deg, #6366f1, #9333ea); color: #fff; border: none; padding: 12px 24px; border-radius: 12px; font-weight: 800; cursor: pointer; text-decoration: none; display: inline-block; margin-top: 18px; }
       </style>
     </head>
     <body>
       <div class="container">
         <div class="glass-card">
-          <h1 class="purple-gradient" style="font-size: 20px;">📄 سجل محادثات التذكرة: ${transcriptData.ticketName}</h1>
+          <h1 class="purple-gradient" style="font-size: 21px;">📄 سجل محادثات التذكرة: ${transcriptData.ticketName}</h1>
           <div class="info-row"><span>صاحب التذكرة:</span> <strong>${transcriptData.openedBy}</strong></div>
           <div class="info-row"><span>أغلق بواسطة:</span> <strong>${transcriptData.closedBy}</strong></div>
           <div class="info-row"><span>تاريخ الإغلاق:</span> <strong>${transcriptData.date}</strong></div>
         </div>
         <div class="glass-card">
-          <h2 style="font-size: 16px; margin-bottom: 15px;">💬 المحادثة الكاملة:</h2>
+          <h2 style="font-size: 17px; margin-bottom: 18px;">💬 المحادثة الكاملة:</h2>
           ${messagesHtml || '<p style="color:#6b7280; text-align:center;">لا توجد رسائل مسجلة.</p>'}
           <a href="/logs" class="btn">⬅️ العودة إلى السجلات</a>
         </div>
@@ -690,7 +678,7 @@ app.get('/view-transcript/:id', (req, res) => {
   `);
 });
 
-// ------------------- 3. نظام تفاعلات التذاكر الشامل بأسلوب سريع بدون أخطاء -------------------
+// ------------------- 3. نظام تفاعلات التذاكر بالديسكورد مع استجابة فورية -------------------
 client.on('interactionCreate', async (interaction) => {
   if (interaction.isButton() || interaction.isStringSelectMenu()) {
     if (interaction.customId.startsWith('ticket_') || interaction.customId === 'close_ticket') {
@@ -797,7 +785,7 @@ client.on('interactionCreate', async (interaction) => {
   }
 });
 
-// أمر نشر لوحة التذاكر المباشر
+// أمر نشر اللوحة بالديسكورد
 client.on('messageCreate', async (message) => {
   if (message.author.bot) return;
 
@@ -833,12 +821,11 @@ client.on('messageCreate', async (message) => {
 });
 
 client.once('ready', () => {
-  console.log(`✅ Logged in as ${client.user.tag}! Void Full System is online.`);
+  console.log(`✅ Logged in as ${client.user.tag}! Void Control Panel is Operational.`);
 });
 
-// تشغيل الداشبورد وتوكن البوت
 app.listen(PORT, () => {
-  console.log(`🚀 Dashboard running on port ${PORT}`);
+  console.log(`🚀 Ultimate Dashboard Server running on port ${PORT}`);
 });
 
 client.login(TOKEN);
